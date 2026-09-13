@@ -1,20 +1,28 @@
 /* =========================================================
+   GOLD SHOW - SCRIPT.JS
+   HTML INGIZ BILAN TO'LIQ MOS
+========================================================= */
+
+
+/* =========================================================
    SUPABASE
 ========================================================= */
 
-const SUPABASE_URL = "https://mvrrftlhjlbrsiexnwjq.supabase.co";
+const SUPABASE_URL =
+    "https://mvrrftlhjlbrsiexnwjq.supabase.co";
 
 const SUPABASE_KEY =
     "sb_publishable_MFI3LFGRmSviFv6ygJnXyg_wFktEpyP";
 
-const supabase = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-);
+const supabase =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
 
 
 /* =========================================================
-   GLOBAL VARIABLES
+   GLOBAL
 ========================================================= */
 
 let currentUser = null;
@@ -26,15 +34,14 @@ let allApplications = [];
 let allUsers = [];
 
 let currentEventPage = 1;
-const eventsPerPage = 6;
 
-let eventImageData = "";
+const EVENTS_PER_PAGE = 6;
 
-let applicationCheckTimer = null;
+let applicationTimer = null;
 
 
 /* =========================================================
-   UZBEK MONTHS
+   MONTHS
 ========================================================= */
 
 const UZ_MONTHS = [
@@ -54,7 +61,7 @@ const UZ_MONTHS = [
 
 
 /* =========================================================
-   DATE FORMAT
+   DATE
 ========================================================= */
 
 function formatDate(value) {
@@ -63,83 +70,75 @@ function formatDate(value) {
         return "";
     }
 
-    const date = new Date(value);
+    const date =
+        new Date(value);
 
     if (isNaN(date.getTime())) {
         return value;
     }
 
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = UZ_MONTHS[date.getMonth()];
-    const year = date.getFullYear();
+    const day =
+        String(date.getDate())
+            .padStart(2, "0");
+
+    const month =
+        UZ_MONTHS[date.getMonth()];
+
+    const year =
+        date.getFullYear();
 
     return `${day}-${month} ${year}-yil`;
 }
 
 
-function formatDateShort(value) {
+function formatShortDate(value) {
 
     if (!value) {
         return "";
     }
 
-    const date = new Date(value);
+    const date =
+        new Date(value);
 
     if (isNaN(date.getTime())) {
         return value;
     }
 
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
+    const day =
+        String(date.getDate())
+            .padStart(2, "0");
+
+    const month =
+        String(date.getMonth() + 1)
+            .padStart(2, "0");
+
+    const year =
+        date.getFullYear();
 
     return `${day}.${month}.${year}`;
 }
 
 
-function formatDateTime(dateValue, timeValue = "") {
-
-    if (!dateValue) {
-        return "";
-    }
-
-    const date = new Date(dateValue);
-
-    if (isNaN(date.getTime())) {
-        return `${dateValue} ${timeValue}`;
-    }
-
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-
-    let time = "";
-
-    if (timeValue) {
-        time = String(timeValue).slice(0, 5);
-    }
-
-    return `${day}.${month}.${year} ${time}`;
-}
-
-
-/* =========================================================
-   TODAY DATE
-========================================================= */
-
 function updateDate() {
 
-    const element = document.getElementById("todayDate");
+    const element =
+        document.getElementById("todayDate");
 
     if (!element) {
         return;
     }
 
-    const date = new Date();
+    const date =
+        new Date();
 
-    const day = date.getDate();
-    const month = UZ_MONTHS[date.getMonth()];
-    const year = date.getFullYear();
+    const day =
+        date.getDate();
+
+    const month =
+        UZ_MONTHS[date.getMonth()];
+
+    const year =
+        date.getFullYear();
 
     element.textContent =
         `${day}-${month} ${year}-yil`;
@@ -147,358 +146,7 @@ function updateDate() {
 
 
 /* =========================================================
-   PAGE
-========================================================= */
-
-function showPage(pageId) {
-
-    document.querySelectorAll(".page").forEach(page => {
-        page.classList.remove("active");
-    });
-
-    const page = document.getElementById(pageId);
-
-    if (page) {
-        page.classList.add("active");
-    }
-}
-
-
-/* =========================================================
-   LANDING PAGE
-========================================================= */
-
-function openCustomerPage() {
-
-    showPage("customerPage");
-
-    loadCustomerEvents();
-}
-
-
-function openLoginPage() {
-
-    showPage("loginPage");
-
-    const username =
-        document.getElementById("loginUsername");
-
-    const password =
-        document.getElementById("loginPassword");
-
-    if (username) {
-        username.value = "";
-    }
-
-    if (password) {
-        password.value = "";
-    }
-}
-
-
-function backToLanding() {
-
-    showPage("landingPage");
-}
-
-
-/* =========================================================
-   LOGIN
-========================================================= */
-
-async function loginUser(event) {
-
-    if (event) {
-        event.preventDefault();
-    }
-
-    const usernameInput =
-        document.getElementById("username") ||
-        document.getElementById("loginUsername");
-
-    const passwordInput =
-        document.getElementById("password") ||
-        document.getElementById("loginPassword");
-
-    const username =
-        usernameInput ? usernameInput.value.trim() : "";
-
-    const password =
-        passwordInput ? passwordInput.value.trim() : "";
-
-    if (!username || !password) {
-
-        alert("Login va parolni kiriting.");
-
-        return;
-    }
-
-    try {
-
-        const {
-            data,
-            error
-        } = await supabase
-            .from("users")
-            .select("*")
-            .eq("username", username)
-            .eq("password", password)
-            .maybeSingle();
-
-        if (error) {
-
-            console.error("LOGIN ERROR:", error);
-
-            alert(
-                "Login vaqtida xatolik:\n" +
-                error.message
-            );
-
-            return;
-        }
-
-        if (!data) {
-
-            alert(
-                "Login yoki parol noto‘g‘ri."
-            );
-
-            return;
-        }
-
-        currentUser = data;
-        currentRole = data.role;
-
-        localStorage.setItem(
-            "goldshow_user",
-            JSON.stringify(data)
-        );
-
-        if (data.role === "admin") {
-
-            await openAdminPage();
-
-        } else {
-
-            await openWorkerPage();
-        }
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "Kutilmagan xatolik:\n" +
-            error.message
-        );
-    }
-}
-
-
-/* =========================================================
-   LOGOUT
-========================================================= */
-
-function logout() {
-
-    currentUser = null;
-    currentRole = null;
-
-    localStorage.removeItem("goldshow_user");
-
-    if (applicationCheckTimer) {
-        clearInterval(applicationCheckTimer);
-        applicationCheckTimer = null;
-    }
-
-    showPage("landingPage");
-}
-
-
-/* =========================================================
-   ROLE MENUS
-========================================================= */
-
-function toggleRoleMenus(isAdmin) {
-
-    const addOrderMenu =
-        document.getElementById("addOrderMenu");
-
-    const applicationsMenu =
-        document.getElementById("applicationsMenu");
-
-    const usersMenu =
-        document.getElementById("usersMenu");
-
-    const eventAdminForm =
-        document.getElementById("workerEventAdminForm");
-
-    if (addOrderMenu) {
-        addOrderMenu.style.display =
-            isAdmin ? "" : "none";
-    }
-
-    if (applicationsMenu) {
-        applicationsMenu.style.display =
-            isAdmin ? "" : "none";
-    }
-
-    if (usersMenu) {
-        usersMenu.style.display =
-            isAdmin ? "" : "none";
-    }
-
-    if (eventAdminForm) {
-        eventAdminForm.style.display =
-            isAdmin ? "" : "none";
-    }
-}
-
-
-/* =========================================================
-   OPEN ADMIN PAGE
-========================================================= */
-
-async function openAdminPage() {
-
-    currentRole = "admin";
-
-    toggleRoleMenus(true);
-
-    await prepareMainPage();
-
-    showPage("mainPage");
-
-    toggleRoleMenus(true);
-
-    await updateDashboard();
-}
-
-
-/* =========================================================
-   OPEN WORKER PAGE
-========================================================= */
-
-async function openWorkerPage() {
-
-    currentRole = "user";
-
-    toggleRoleMenus(false);
-
-    await prepareMainPage();
-
-    showPage("mainPage");
-
-    toggleRoleMenus(false);
-}
-
-
-/* =========================================================
-   PREPARE MAIN PAGE
-========================================================= */
-
-async function prepareMainPage() {
-
-    updateDate();
-
-    await updateDashboard();
-
-    await getOrders();
-
-    await getEvents();
-
-    if (currentRole === "admin") {
-
-        await getApplications();
-
-        await getUsers();
-    }
-}
-
-
-/* =========================================================
-   MENU
-========================================================= */
-
-function openDashboard() {
-
-    showPageSection("dashboardSection");
-
-    updateDashboard();
-}
-
-
-function openOrdersPage() {
-
-    showPageSection("ordersSection");
-
-    getOrders();
-}
-
-
-function openOrderFormPage() {
-
-    showPageSection("orderFormSection");
-
-    resetOrderForm();
-}
-
-
-function openApplicationsPage() {
-
-    if (currentRole !== "admin") {
-        return;
-    }
-
-    showPageSection("applicationsPage");
-
-    getApplications();
-}
-
-
-function openUsersPage() {
-
-    if (currentRole !== "admin") {
-        return;
-    }
-
-    showPageSection("usersPage");
-
-    getUsers();
-}
-
-
-function openEventsPage() {
-
-    showPageSection("workerEventsPage");
-
-    getEvents();
-}
-
-
-function showPageSection(sectionId) {
-
-    document
-        .querySelectorAll(".main-section")
-        .forEach(section => {
-
-            section.classList.remove("active");
-            section.style.display = "none";
-        });
-
-    const section =
-        document.getElementById(sectionId);
-
-    if (section) {
-
-        section.classList.add("active");
-        section.style.display = "block";
-    }
-}
-
-
-/* =========================================================
-   ORDER FORM
+   HELPERS
 ========================================================= */
 
 function getValue(id) {
@@ -512,540 +160,13 @@ function getValue(id) {
 }
 
 
-function getNumberValue(id) {
-
-    const value =
-        parseFloat(getValue(id));
-
-    return isNaN(value) ? 0 : value;
-}
-
-
-function getOrderFromForm() {
-
-    return {
-
-        client_name:
-            getValue("clientName").trim(),
-
-        client_phone:
-            getValue("clientPhone").trim(),
-
-        location:
-            getValue("location").trim(),
-
-        event_date:
-            getValue("eventDate"),
-
-        event_time:
-            getValue("eventTime"),
-
-        screen_height:
-            getNumberValue("screenHeight"),
-
-        screen_width:
-            getNumberValue("screenWidth"),
-
-        stage_width:
-            getNumberValue("stageWidth"),
-
-        stage_length:
-            getNumberValue("stageLength"),
-
-        curtain:
-            getValue("curtain") || "Yo‘q",
-
-        lights:
-            parseInt(getNumberValue("lights")) || 0,
-
-        galava:
-            parseInt(getNumberValue("galava")) || 0,
-
-        ledwash:
-            parseInt(getNumberValue("ledwash")) || 0,
-
-        confetti:
-            parseInt(getNumberValue("confetti")) || 0,
-
-        dim:
-            parseInt(getNumberValue("dim")) || 0,
-
-        firework:
-            parseInt(getNumberValue("firework")) || 0,
-
-        side_screens:
-            parseInt(getNumberValue("sideScreens")) || 0,
-
-        side_height:
-            getNumberValue("sideHeight"),
-
-        side_width:
-            getNumberValue("sideWidth"),
-
-        paid:
-            getNumberValue("paid"),
-
-        total_price:
-            getNumberValue("totalPrice"),
-
-        remaining:
-            getNumberValue("remaining")
-    };
-}
-
-
-/* =========================================================
-   SAVE ORDER
-========================================================= */
-
-async function saveOrderFromForm(event) {
-
-    if (event) {
-        event.preventDefault();
-    }
-
-    const form =
-        document.getElementById("orderForm");
-
-    if (!form) {
-        return;
-    }
-
-    const order =
-        getOrderFromForm();
-
-    if (!order.client_name) {
-
-        alert("Buyurtmachi ismini kiriting.");
-
-        return;
-    }
-
-    if (!order.client_phone) {
-
-        alert("Telefon raqamini kiriting.");
-
-        return;
-    }
-
-    if (!order.location) {
-
-        alert("Manzilni kiriting.");
-
-        return;
-    }
-
-    if (!order.event_date) {
-
-        alert("Tadbir sanasini tanlang.");
-
-        return;
-    }
-
-    if (!order.event_time) {
-
-        alert("Tadbir vaqtini tanlang.");
-
-        return;
-    }
-
-    const editingId =
-        getValue("editingOrderId");
-
-    const button =
-        document.getElementById("orderSubmitBtn");
-
-    try {
-
-        if (button) {
-            button.disabled = true;
-            button.textContent =
-                "Saqlanmoqda...";
-        }
-
-        let result;
-
-        if (editingId) {
-
-            result = await supabase
-                .from("orders")
-                .update(order)
-                .eq("id", editingId);
-
-        } else {
-
-            result = await supabase
-                .from("orders")
-                .insert([order]);
-        }
-
-        if (result.error) {
-
-            console.error(
-                "ORDER ERROR:",
-                result.error
-            );
-
-            alert(
-                "❌ Buyurtma saqlanmadi:\n" +
-                result.error.message
-            );
-
-            return;
-        }
-
-        alert(
-            editingId
-                ? "✅ Buyurtma yangilandi."
-                : "✅ Buyurtma qo‘shildi."
-        );
-
-        resetOrderForm();
-
-        await getOrders();
-
-        await updateDashboard();
-
-        showPageSection("ordersSection");
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "❌ Buyurtma qo‘shishda xatolik:\n" +
-            error.message
-        );
-
-    } finally {
-
-        if (button) {
-
-            button.disabled = false;
-
-            button.textContent =
-                "Saqlash";
-        }
-    }
-}
-
-
-/* =========================================================
-   RESET ORDER FORM
-========================================================= */
-
-function resetOrderForm() {
-
-    const form =
-        document.getElementById("orderForm");
-
-    if (form) {
-        form.reset();
-    }
-
-    const editing =
-        document.getElementById("editingOrderId");
-
-    if (editing) {
-        editing.value = "";
-    }
-
-    const cancelButton =
-        document.getElementById("cancelEditBtn");
-
-    if (cancelButton) {
-        cancelButton.style.display = "none";
-    }
-
-    const badge =
-        document.getElementById("editBadge");
-
-    if (badge) {
-        badge.style.display = "none";
-    }
-
-    const submitButton =
-        document.getElementById("orderSubmitBtn");
-
-    if (submitButton) {
-        submitButton.textContent =
-            "Saqlash";
-    }
-
-    calculateRemaining();
-}
-
-
-/* =========================================================
-   CALCULATE REMAINING
-========================================================= */
-
-function calculateRemaining() {
-
-    const total =
-        getNumberValue("totalPrice");
-
-    const paid =
-        getNumberValue("paid");
-
-    const remaining =
-        Math.max(0, total - paid);
-
-    const remainingInput =
-        document.getElementById("remaining");
-
-    if (remainingInput) {
-
-        remainingInput.value =
-            remaining;
-    }
-}
-
-
-/* =========================================================
-   GET ORDERS
-========================================================= */
-
-async function getOrders() {
-
-    try {
-
-        const {
-            data,
-            error
-        } = await supabase
-            .from("orders")
-            .select("*")
-            .order("event_date", {
-                ascending: true
-            })
-            .order("event_time", {
-                ascending: true
-            });
-
-        if (error) {
-
-            console.error(
-                "GET ORDERS ERROR:",
-                error
-            );
-
-            return;
-        }
-
-        allOrders = data || [];
-
-        displayOrders(allOrders);
-
-    } catch (error) {
-
-        console.error(error);
-    }
-}
-
-
-/* =========================================================
-   DISPLAY ORDERS
-========================================================= */
-
-function displayOrders(orders) {
-
-    const container =
-        document.getElementById("ordersList");
-
-    if (!container) {
-        return;
-    }
-
-    if (!orders.length) {
-
-        container.innerHTML = `
-            <div class="empty-state">
-                Buyurtmalar hali mavjud emas.
-            </div>
-        `;
-
-        return;
-    }
-
-    container.innerHTML =
-        orders.map(createOrderHTML).join("");
-}
-
-
-/* =========================================================
-   ORDER HTML
-========================================================= */
-
-function createOrderHTML(order) {
-
-    return `
-        <div class="order-card">
-
-            <div class="order-card-header">
-
-                <div>
-                    <h3>
-                        ${escapeHTML(order.client_name || "-")}
-                    </h3>
-
-                    <p>
-                        📞 ${escapeHTML(order.client_phone || "-")}
-                    </p>
-                </div>
-
-                <div class="order-date">
-                    ${formatDate(order.event_date)}
-                </div>
-
-            </div>
-
-            <div class="order-info-grid">
-
-                <div>
-                    <strong>📍 Manzil:</strong>
-                    ${escapeHTML(order.location || "-")}
-                </div>
-
-                <div>
-                    <strong>🕒 Vaqt:</strong>
-                    ${escapeHTML(
-                        String(order.event_time || "").slice(0, 5)
-                    )}
-                </div>
-
-                <div>
-                    <strong>💰 Jami:</strong>
-                    ${formatMoney(order.total_price)} so‘m
-                </div>
-
-                <div>
-                    <strong>💵 To‘langan:</strong>
-                    ${formatMoney(order.paid)} so‘m
-                </div>
-
-                <div>
-                    <strong>💳 Qolgan:</strong>
-                    ${formatMoney(order.remaining)} so‘m
-                </div>
-
-                <div>
-                    <strong>🪟 Parda:</strong>
-                    ${escapeHTML(order.curtain || "Yo‘q")}
-                </div>
-
-            </div>
-
-            <div class="order-buttons">
-
-                <button
-                    type="button"
-                    onclick="editOrder(${order.id})"
-                    class="btn-edit">
-                    ✏️ Tahrirlash
-                </button>
-
-                <button
-                    type="button"
-                    onclick="deleteOrder(${order.id})"
-                    class="btn-delete">
-                    🗑️ O‘chirish
-                </button>
-
-            </div>
-
-        </div>
-    `;
-}
-
-
-/* =========================================================
-   EDIT ORDER
-========================================================= */
-
-function editOrder(id) {
-
-    const order =
-        allOrders.find(item => item.id == id);
-
-    if (!order) {
-        return;
-    }
-
-    showPageSection("orderFormSection");
-
-    setValue("editingOrderId", order.id);
-
-    setValue("clientName", order.client_name);
-    setValue("clientPhone", order.client_phone);
-    setValue("location", order.location);
-
-    setValue("eventDate", order.event_date);
-    setValue(
-        "eventTime",
-        String(order.event_time || "").slice(0, 5)
-    );
-
-    setValue("screenHeight", order.screen_height);
-    setValue("screenWidth", order.screen_width);
-
-    setValue("stageWidth", order.stage_width);
-    setValue("stageLength", order.stage_length);
-
-    setValue("curtain", order.curtain);
-
-    setValue("sideScreens", order.side_screens);
-
-    setValue("sideHeight", order.side_height);
-    setValue("sideWidth", order.side_width);
-
-    setValue("lights", order.lights);
-    setValue("galava", order.galava);
-    setValue("ledwash", order.ledwash);
-    setValue("confetti", order.confetti);
-    setValue("dim", order.dim);
-    setValue("firework", order.firework);
-
-    setValue("totalPrice", order.total_price);
-    setValue("paid", order.paid);
-    setValue("remaining", order.remaining);
-
-    const cancelButton =
-        document.getElementById("cancelEditBtn");
-
-    if (cancelButton) {
-        cancelButton.style.display = "inline-block";
-    }
-
-    const badge =
-        document.getElementById("editBadge");
-
-    if (badge) {
-        badge.style.display = "inline-block";
-    }
-
-    const submitButton =
-        document.getElementById("orderSubmitBtn");
-
-    if (submitButton) {
-        submitButton.textContent =
-            "Yangilash";
-    }
-
-    calculateRemaining();
-}
-
-
-/* =========================================================
-   SET INPUT VALUE
-========================================================= */
-
 function setValue(id, value) {
 
     const element =
         document.getElementById(id);
 
     if (element) {
+
         element.value =
             value === null ||
             value === undefined
@@ -1055,109 +176,647 @@ function setValue(id, value) {
 }
 
 
-/* =========================================================
-   DELETE ORDER
-========================================================= */
+function getNumber(id) {
 
-async function deleteOrder(id) {
-
-    const confirmDelete =
-        confirm(
-            "Bu buyurtmani o‘chirmoqchimisiz?"
+    const value =
+        parseFloat(
+            getValue(id)
         );
 
-    if (!confirmDelete) {
+    return isNaN(value)
+        ? 0
+        : value;
+}
+
+
+function setText(id, value) {
+
+    const element =
+        document.getElementById(id);
+
+    if (element) {
+        element.textContent =
+            value;
+    }
+}
+
+
+function formatMoney(value) {
+
+    return new Intl.NumberFormat(
+        "uz-UZ"
+    ).format(
+        Number(value || 0)
+    );
+}
+
+
+function escapeHTML(value) {
+
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+function escapeAttribute(value) {
+
+    return escapeHTML(value);
+}
+
+
+/* =========================================================
+   LANDING PAGE
+========================================================= */
+
+function openCustomerPage() {
+
+    hideAllMainSections();
+
+    const landing =
+        document.getElementById("landingPage");
+
+    const login =
+        document.getElementById("loginPage");
+
+    const customer =
+        document.getElementById("customerPage");
+
+    const main =
+        document.getElementById("mainPage");
+
+    if (landing) {
+        landing.classList.add("hidden");
+    }
+
+    if (login) {
+        login.classList.add("hidden");
+    }
+
+    if (main) {
+        main.classList.add("hidden");
+    }
+
+    if (customer) {
+        customer.classList.remove("hidden");
+    }
+
+    loadCustomerEvents();
+}
+
+
+function openWorkerLogin() {
+
+    const landing =
+        document.getElementById("landingPage");
+
+    const login =
+        document.getElementById("loginPage");
+
+    const customer =
+        document.getElementById("customerPage");
+
+    const main =
+        document.getElementById("mainPage");
+
+    if (landing) {
+        landing.classList.add("hidden");
+    }
+
+    if (customer) {
+        customer.classList.add("hidden");
+    }
+
+    if (main) {
+        main.classList.add("hidden");
+    }
+
+    if (login) {
+        login.classList.remove("hidden");
+    }
+
+    const username =
+        document.getElementById("username");
+
+    const password =
+        document.getElementById("password");
+
+    const error =
+        document.getElementById("loginError");
+
+    if (username) {
+        username.value = "";
+    }
+
+    if (password) {
+        password.value = "";
+    }
+
+    if (error) {
+        error.textContent = "";
+    }
+
+    if (username) {
+        username.focus();
+    }
+}
+
+
+function backToLanding() {
+
+    const landing =
+        document.getElementById("landingPage");
+
+    const login =
+        document.getElementById("loginPage");
+
+    const customer =
+        document.getElementById("customerPage");
+
+    const main =
+        document.getElementById("mainPage");
+
+    if (login) {
+        login.classList.add("hidden");
+    }
+
+    if (customer) {
+        customer.classList.add("hidden");
+    }
+
+    if (main) {
+        main.classList.add("hidden");
+    }
+
+    if (landing) {
+        landing.classList.remove("hidden");
+    }
+}
+
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+async function login(event) {
+
+    if (event) {
+        event.preventDefault();
+    }
+
+    const username =
+        getValue("username").trim();
+
+    const password =
+        getValue("password").trim();
+
+    const errorElement =
+        document.getElementById("loginError");
+
+    if (errorElement) {
+        errorElement.textContent = "";
+    }
+
+    if (!username || !password) {
+
+        if (errorElement) {
+            errorElement.textContent =
+                "Login va parolni kiriting.";
+        }
+
         return;
     }
 
     try {
 
         const {
+            data,
             error
-        } = await supabase
-            .from("orders")
-            .delete()
-            .eq("id", id);
+        } =
+            await supabase
+                .from("users")
+                .select("*")
+                .eq("username", username)
+                .eq("password", password)
+                .maybeSingle();
 
         if (error) {
 
             console.error(
-                "DELETE ORDER ERROR:",
+                "LOGIN ERROR:",
                 error
             );
 
-            alert(
-                "❌ O‘chirishda xatolik:\n" +
-                error.message
-            );
+            if (errorElement) {
+                errorElement.textContent =
+                    "Kirishda xatolik: " +
+                    error.message;
+            }
 
             return;
         }
 
-        alert(
-            "✅ Buyurtma o‘chirildi."
+        if (!data) {
+
+            if (errorElement) {
+                errorElement.textContent =
+                    "Login yoki parol noto‘g‘ri.";
+            }
+
+            return;
+        }
+
+        currentUser =
+            data;
+
+        currentRole =
+            data.role;
+
+        localStorage.setItem(
+            "goldshow_user",
+            JSON.stringify(data)
         );
 
-        await getOrders();
+        if (data.role === "admin") {
 
-        await updateDashboard();
+            await openMainPage("admin");
+
+        } else {
+
+            await openMainPage("user");
+        }
 
     } catch (error) {
 
         console.error(error);
 
-        alert(
-            "❌ Xatolik:\n" +
-            error.message
-        );
+        if (errorElement) {
+
+            errorElement.textContent =
+                "Kutilmagan xatolik: " +
+                error.message;
+        }
     }
 }
 
 
 /* =========================================================
-   SEARCH ORDERS
+   MAIN PAGE
 ========================================================= */
 
-function searchOrders() {
+async function openMainPage(role) {
 
-    const input =
-        document.getElementById("searchInput");
+    currentRole =
+        role;
 
-    const query =
-        input
-            ? input.value.trim().toLowerCase()
-            : "";
+    const landing =
+        document.getElementById("landingPage");
 
-    if (!query) {
+    const login =
+        document.getElementById("loginPage");
 
-        displayOrders(allOrders);
+    const customer =
+        document.getElementById("customerPage");
 
+    const main =
+        document.getElementById("mainPage");
+
+    if (landing) {
+        landing.classList.add("hidden");
+    }
+
+    if (login) {
+        login.classList.add("hidden");
+    }
+
+    if (customer) {
+        customer.classList.add("hidden");
+    }
+
+    if (main) {
+        main.classList.remove("hidden");
+    }
+
+    updateUserInfo();
+
+    setupRoleMenus();
+
+    updateDate();
+
+    await getEvents();
+
+    await getOrders();
+
+    if (role === "admin") {
+
+        await getApplications();
+
+        await getUsers();
+    }
+
+    showPage(
+        "dashboardPage",
+        document.querySelector(
+            ".menu-btn"
+        )
+    );
+}
+
+
+/* =========================================================
+   USER INFO
+========================================================= */
+
+function updateUserInfo() {
+
+    if (!currentUser) {
         return;
     }
 
-    const filtered =
-        allOrders.filter(order => {
+    const nameElement =
+        document.getElementById("currentUser");
 
-            return (
-                String(order.client_name || "")
-                    .toLowerCase()
-                    .includes(query)
+    const roleElement =
+        document.getElementById("userRole");
 
-                ||
+    const avatarElement =
+        document.getElementById("userAvatar");
 
-                String(order.client_phone || "")
-                    .toLowerCase()
-                    .includes(query)
+    if (nameElement) {
 
-                ||
+        nameElement.textContent =
+            currentUser.name ||
+            currentUser.username;
+    }
 
-                String(order.location || "")
-                    .toLowerCase()
-                    .includes(query)
+    if (roleElement) {
+
+        roleElement.textContent =
+            currentUser.role === "admin"
+                ? "Admin"
+                : "Ishchi";
+    }
+
+    if (avatarElement) {
+
+        const name =
+            currentUser.name ||
+            currentUser.username ||
+            "G";
+
+        avatarElement.textContent =
+            name
+                .charAt(0)
+                .toUpperCase();
+    }
+}
+
+
+/* =========================================================
+   ROLE MENUS
+========================================================= */
+
+function setupRoleMenus() {
+
+    const addOrderMenu =
+        document.getElementById(
+            "addOrderMenu"
+        );
+
+    const applicationsMenu =
+        document.getElementById(
+            "applicationsMenu"
+        );
+
+    const usersMenu =
+        document.getElementById(
+            "usersMenu"
+        );
+
+    const eventAdminForm =
+        document.getElementById(
+            "workerEventAdminForm"
+        );
+
+    if (currentRole === "admin") {
+
+        if (addOrderMenu) {
+            addOrderMenu.classList.remove(
+                "hidden"
+            );
+        }
+
+        if (applicationsMenu) {
+            applicationsMenu.classList.remove(
+                "hidden"
+            );
+        }
+
+        if (usersMenu) {
+            usersMenu.classList.remove(
+                "hidden"
+            );
+        }
+
+        if (eventAdminForm) {
+            eventAdminForm.classList.remove(
+                "hidden"
+            );
+        }
+
+    } else {
+
+        if (addOrderMenu) {
+            addOrderMenu.classList.add(
+                "hidden"
+            );
+        }
+
+        if (applicationsMenu) {
+            applicationsMenu.classList.add(
+                "hidden"
+            );
+        }
+
+        if (usersMenu) {
+            usersMenu.classList.add(
+                "hidden"
+            );
+        }
+
+        if (eventAdminForm) {
+            eventAdminForm.classList.add(
+                "hidden"
+            );
+        }
+    }
+}
+
+
+/* =========================================================
+   SHOW PAGE
+========================================================= */
+
+function showPage(pageId, button = null) {
+
+    const pages =
+        document.querySelectorAll(
+            "#mainPage .page"
+        );
+
+    pages.forEach(page => {
+
+        page.classList.add(
+            "hidden"
+        );
+
+        page.classList.remove(
+            "active"
+        );
+    });
+
+    const target =
+        document.getElementById(pageId);
+
+    if (!target) {
+        return;
+    }
+
+    target.classList.remove(
+        "hidden"
+    );
+
+    target.classList.add(
+        "active"
+    );
+
+    const buttons =
+        document.querySelectorAll(
+            ".menu-btn"
+        );
+
+    buttons.forEach(btn => {
+
+        btn.classList.remove(
+            "active"
+        );
+    });
+
+    if (button) {
+
+        button.classList.add(
+            "active"
+        );
+    }
+
+    updatePageTitle(pageId);
+
+    if (pageId === "dashboardPage") {
+
+        updateDashboard();
+    }
+
+    if (pageId === "ordersPage") {
+
+        displayOrders();
+    }
+
+    if (pageId === "workerEventsPage") {
+
+        getEvents();
+    }
+
+    if (pageId === "applicationsPage") {
+
+        getApplications();
+    }
+
+    if (pageId === "usersPage") {
+
+        getUsers();
+    }
+}
+
+
+function hideAllMainSections() {
+
+    document
+        .querySelectorAll(
+            "#mainPage .page"
+        )
+        .forEach(page => {
+
+            page.classList.add(
+                "hidden"
             );
         });
+}
 
-    displayOrders(filtered);
+
+function updatePageTitle(pageId) {
+
+    const title =
+        document.getElementById(
+            "pageTitle"
+        );
+
+    if (!title) {
+        return;
+    }
+
+    const titles = {
+
+        dashboardPage:
+            "Bosh sahifa",
+
+        ordersPage:
+            "Zakaslar",
+
+        addOrderPage:
+            "Zakas qo‘shish",
+
+        workerEventsPage:
+            "Tadbirlar",
+
+        applicationsPage:
+            "Arizalar",
+
+        usersPage:
+            "Userlar"
+    };
+
+    title.textContent =
+        titles[pageId] ||
+        "Gold Show";
+}
+
+
+/* =========================================================
+   LOGOUT
+========================================================= */
+
+function logout() {
+
+    currentUser = null;
+    currentRole = null;
+
+    localStorage.removeItem(
+        "goldshow_user"
+    );
+
+    if (applicationTimer) {
+
+        clearInterval(
+            applicationTimer
+        );
+
+        applicationTimer = null;
+    }
+
+    backToLanding();
 }
 
 
@@ -1172,9 +831,10 @@ async function updateDashboard() {
         const {
             data,
             error
-        } = await supabase
-            .from("orders")
-            .select("*");
+        } =
+            await supabase
+                .from("orders")
+                .select("*");
 
         if (error) {
 
@@ -1192,61 +852,83 @@ async function updateDashboard() {
         allOrders =
             orders;
 
-        const totalOrders =
-            orders.length;
-
         const today =
             new Date();
 
         const todayString =
-            `${today.getFullYear()}-` +
-            `${String(today.getMonth() + 1).padStart(2, "0")}-` +
-            `${String(today.getDate()).padStart(2, "0")}`;
+            today.getFullYear() +
+            "-" +
+            String(
+                today.getMonth() + 1
+            ).padStart(2, "0") +
+            "-" +
+            String(
+                today.getDate()
+            ).padStart(2, "0");
 
         const todayOrders =
             orders.filter(
                 order =>
-                    order.event_date === todayString
-            ).length;
+                    order.event_date ===
+                    todayString
+            );
 
         const upcomingOrders =
             orders.filter(
                 order =>
-                    order.event_date > todayString
-            ).length;
+                    order.event_date >
+                    todayString
+            );
 
         const totalMoney =
             orders.reduce(
-                (sum, order) =>
-                    sum +
-                    Number(order.total_price || 0),
+                (
+                    sum,
+                    order
+                ) => {
+
+                    return (
+                        sum +
+                        Number(
+                            order.total_price ||
+                            0
+                        )
+                    );
+
+                },
                 0
             );
 
         setText(
             "totalOrders",
-            totalOrders
+            orders.length
         );
 
         setText(
             "todayOrders",
-            todayOrders
+            todayOrders.length
         );
 
         setText(
             "upcomingOrders",
-            upcomingOrders
+            upcomingOrders.length
         );
 
         setText(
             "totalMoney",
-            formatMoney(totalMoney) +
-            " so‘m"
+            formatMoney(
+                totalMoney
+            ) + " so‘m"
         );
 
-        displayTodayOrders(orders);
+        displayTodayOrders(
+            todayOrders
+        );
 
-        checkNotifications(orders);
+        updateNotifications(
+            todayOrders,
+            upcomingOrders
+        );
 
     } catch (error) {
 
@@ -1259,34 +941,24 @@ async function updateDashboard() {
    TODAY ORDERS
 ========================================================= */
 
-function displayTodayOrders(orders) {
+function displayTodayOrders(
+    orders
+) {
 
     const container =
-        document.getElementById("todayOrdersList");
+        document.getElementById(
+            "todayOrdersList"
+        );
 
     if (!container) {
         return;
     }
 
-    const today =
-        new Date();
-
-    const todayString =
-        `${today.getFullYear()}-` +
-        `${String(today.getMonth() + 1).padStart(2, "0")}-` +
-        `${String(today.getDate()).padStart(2, "0")}`;
-
-    const todayOrders =
-        orders.filter(
-            order =>
-                order.event_date === todayString
-        );
-
-    if (!todayOrders.length) {
+    if (!orders.length) {
 
         container.innerHTML = `
             <div class="empty-state">
-                Bugun buyurtma yo‘q.
+                Bugun zakas yo‘q.
             </div>
         `;
 
@@ -1294,30 +966,48 @@ function displayTodayOrders(orders) {
     }
 
     container.innerHTML =
-        todayOrders.map(order => {
+        orders
+            .map(
+                order => {
 
-            return `
-                <div class="today-order-item">
+                    return `
+                        <div class="order-card">
 
-                    <strong>
-                        ${escapeHTML(order.client_name || "-")}
-                    </strong>
+                            <h3>
+                                ${escapeHTML(
+                                    order.client_name
+                                )}
+                            </h3>
 
-                    <span>
-                        ${escapeHTML(
-                            String(order.event_time || "")
-                                .slice(0, 5)
-                        )}
-                    </span>
+                            <p>
+                                📞
+                                ${escapeHTML(
+                                    order.client_phone
+                                )}
+                            </p>
 
-                    <small>
-                        ${escapeHTML(order.location || "-")}
-                    </small>
+                            <p>
+                                📍
+                                ${escapeHTML(
+                                    order.location
+                                )}
+                            </p>
 
-                </div>
-            `;
+                            <p>
+                                🕒
+                                ${escapeHTML(
+                                    String(
+                                        order.event_time ||
+                                        ""
+                                    ).slice(0, 5)
+                                )}
+                            </p>
 
-        }).join("");
+                        </div>
+                    `;
+                }
+            )
+            .join("");
 }
 
 
@@ -1325,54 +1015,1032 @@ function displayTodayOrders(orders) {
    NOTIFICATIONS
 ========================================================= */
 
-function checkNotifications(orders = allOrders) {
+function updateNotifications(
+    todayOrders,
+    upcomingOrders
+) {
 
     const element =
-        document.getElementById("notifications");
+        document.getElementById(
+            "notifications"
+        );
 
     if (!element) {
         return;
     }
 
-    const today =
-        new Date();
+    let text = "";
 
-    const todayString =
-        `${today.getFullYear()}-` +
-        `${String(today.getMonth() + 1).padStart(2, "0")}-` +
-        `${String(today.getDate()).padStart(2, "0")}`;
+    if (todayOrders.length > 0) {
 
-    const todayOrders =
-        orders.filter(
-            order =>
-                order.event_date === todayString
+        text +=
+            `🔔 Bugun ${todayOrders.length} ta zakas bor. `;
+    }
+
+    if (upcomingOrders.length > 0) {
+
+        text +=
+            `📅 Kelgusi ${upcomingOrders.length} ta tadbir bor.`;
+    }
+
+    if (!text) {
+
+        text =
+            "✅ Hozircha yangi xabar yo‘q.";
+    }
+
+    element.textContent =
+        text;
+}
+
+
+/* =========================================================
+   GET ORDERS
+========================================================= */
+
+async function getOrders() {
+
+    try {
+
+        const {
+            data,
+            error
+        } =
+            await supabase
+                .from("orders")
+                .select("*")
+                .order(
+                    "event_date",
+                    {
+                        ascending: true
+                    }
+                )
+                .order(
+                    "event_time",
+                    {
+                        ascending: true
+                    }
+                );
+
+        if (error) {
+
+            console.error(
+                "ORDERS ERROR:",
+                error
+            );
+
+            return;
+        }
+
+        allOrders =
+            data || [];
+
+        displayOrders();
+
+    } catch (error) {
+
+        console.error(error);
+    }
+}
+
+
+/* =========================================================
+   DISPLAY ORDERS
+========================================================= */
+
+function displayOrders() {
+
+    const container =
+        document.getElementById(
+            "ordersList"
         );
 
-    const upcomingOrders =
-        orders.filter(
-            order =>
-                order.event_date > todayString
+    if (!container) {
+        return;
+    }
+
+    const search =
+        getValue(
+            "searchInput"
+        )
+        .trim()
+        .toLowerCase();
+
+    let orders =
+        [...allOrders];
+
+    if (search) {
+
+        orders =
+            orders.filter(
+                order => {
+
+                    return (
+
+                        String(
+                            order.client_name ||
+                            ""
+                        )
+                            .toLowerCase()
+                            .includes(search)
+
+                        ||
+
+                        String(
+                            order.client_phone ||
+                            ""
+                        )
+                            .toLowerCase()
+                            .includes(search)
+
+                        ||
+
+                        String(
+                            order.location ||
+                            ""
+                        )
+                            .toLowerCase()
+                            .includes(search)
+                    );
+                }
+            );
+    }
+
+    if (!orders.length) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                Zakaslar topilmadi.
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        orders
+            .map(
+                order =>
+                    createOrderHTML(
+                        order
+                    )
+            )
+            .join("");
+}
+
+
+/* =========================================================
+   ORDER HTML
+========================================================= */
+
+function createOrderHTML(order) {
+
+    return `
+        <div class="order-card">
+
+            <div class="order-card-header">
+
+                <div>
+
+                    <h3>
+                        ${escapeHTML(
+                            order.client_name ||
+                            "-"
+                        )}
+                    </h3>
+
+                    <p>
+                        📞
+                        ${escapeHTML(
+                            order.client_phone ||
+                            "-"
+                        )}
+                    </p>
+
+                </div>
+
+                <div>
+                    ${formatDate(
+                        order.event_date
+                    )}
+                </div>
+
+            </div>
+
+
+            <div class="order-info-grid">
+
+                <div>
+                    📍
+                    ${escapeHTML(
+                        order.location ||
+                        "-"
+                    )}
+                </div>
+
+                <div>
+                    🕒
+                    ${escapeHTML(
+                        String(
+                            order.event_time ||
+                            ""
+                        ).slice(0, 5)
+                    )}
+                </div>
+
+                <div>
+                    💰
+                    Jami:
+                    ${formatMoney(
+                        order.total_price
+                    )} so‘m
+                </div>
+
+                <div>
+                    💵
+                    To‘langan:
+                    ${formatMoney(
+                        order.paid
+                    )} so‘m
+                </div>
+
+                <div>
+                    💳
+                    Qolgan:
+                    ${formatMoney(
+                        order.remaining
+                    )} so‘m
+                </div>
+
+            </div>
+
+
+            <div class="order-buttons">
+
+                <button
+                    type="button"
+                    onclick="editOrder(${order.id})"
+                >
+                    ✏️ Tahrirlash
+                </button>
+
+                <button
+                    type="button"
+                    class="btn-delete"
+                    onclick="deleteOrder(${order.id})"
+                >
+                    🗑️ O‘chirish
+                </button>
+
+            </div>
+
+        </div>
+    `;
+}
+
+
+/* =========================================================
+   ORDER FORM
+========================================================= */
+
+function getOrderFromForm() {
+
+    return {
+
+        client_name:
+            getValue(
+                "clientName"
+            ).trim(),
+
+        client_phone:
+            getValue(
+                "clientPhone"
+            ).trim(),
+
+        location:
+            getValue(
+                "location"
+            ).trim(),
+
+        event_date:
+            getValue(
+                "eventDate"
+            ),
+
+        event_time:
+            getValue(
+                "eventTime"
+            ),
+
+        screen_height:
+            getNumber(
+                "screenHeight"
+            ),
+
+        screen_width:
+            getNumber(
+                "screenWidth"
+            ),
+
+        stage_width:
+            getNumber(
+                "stageWidth"
+            ),
+
+        stage_length:
+            getNumber(
+                "stageLength"
+            ),
+
+        curtain:
+            getValue(
+                "curtain"
+            ) || "Yo‘q",
+
+        lights:
+            Math.floor(
+                getNumber(
+                    "lights"
+                )
+            ),
+
+        galava:
+            Math.floor(
+                getNumber(
+                    "galava"
+                )
+            ),
+
+        ledwash:
+            Math.floor(
+                getNumber(
+                    "ledwash"
+                )
+            ),
+
+        confetti:
+            Math.floor(
+                getNumber(
+                    "confetti"
+                )
+            ),
+
+        dim:
+            Math.floor(
+                getNumber(
+                    "dim"
+                )
+            ),
+
+        firework:
+            Math.floor(
+                getNumber(
+                    "firework"
+                )
+            ),
+
+        side_screens:
+            Math.floor(
+                getNumber(
+                    "sideScreens"
+                )
+            ),
+
+        side_height:
+            getNumber(
+                "sideHeight"
+            ),
+
+        side_width:
+            getNumber(
+                "sideWidth"
+            ),
+
+        paid:
+            getNumber(
+                "paid"
+            ),
+
+        total_price:
+            getNumber(
+                "totalPrice"
+            ),
+
+        remaining:
+            Math.max(
+                0,
+                getNumber(
+                    "totalPrice"
+                ) -
+                getNumber(
+                    "paid"
+                )
+            )
+    };
+}
+
+
+/* =========================================================
+   SAVE ORDER
+========================================================= */
+
+async function saveOrder(event) {
+
+    if (event) {
+        event.preventDefault();
+    }
+
+    if (currentRole !== "admin") {
+
+        alert(
+            "Faqat admin zakas qo‘sha oladi."
         );
 
-    let message = "";
-
-    if (todayOrders.length) {
-
-        message +=
-            `Bugun ${todayOrders.length} ta tadbir bor. `;
+        return;
     }
 
-    if (upcomingOrders.length) {
+    const order =
+        getOrderFromForm();
 
-        message +=
-            `Kelgusi ${upcomingOrders.length} ta buyurtma bor.`;
+    if (!order.client_name) {
+
+        alert(
+            "Mijoz ismini kiriting."
+        );
+
+        return;
     }
 
-    if (!message) {
-        message = "Yangi xabar yo‘q.";
+    if (!order.client_phone) {
+
+        alert(
+            "Telefon raqamini kiriting."
+        );
+
+        return;
     }
 
-    element.textContent = message;
+    if (!order.location) {
+
+        alert(
+            "Manzilni kiriting."
+        );
+
+        return;
+    }
+
+    if (!order.event_date) {
+
+        alert(
+            "Tadbir sanasini tanlang."
+        );
+
+        return;
+    }
+
+    if (!order.event_time) {
+
+        alert(
+            "Tadbir vaqtini tanlang."
+        );
+
+        return;
+    }
+
+    const editingId =
+        getValue(
+            "editingOrderId"
+        );
+
+    const button =
+        document.getElementById(
+            "orderSubmitBtn"
+        );
+
+    try {
+
+        if (button) {
+
+            button.disabled =
+                true;
+
+            button.textContent =
+                "Saqlanmoqda...";
+        }
+
+        let result;
+
+        if (editingId) {
+
+            result =
+                await supabase
+                    .from("orders")
+                    .update(order)
+                    .eq(
+                        "id",
+                        editingId
+                    );
+
+        } else {
+
+            result =
+                await supabase
+                    .from("orders")
+                    .insert([
+                        order
+                    ]);
+        }
+
+        if (result.error) {
+
+            console.error(
+                result.error
+            );
+
+            alert(
+                "❌ Zakas saqlanmadi:\n" +
+                result.error.message
+            );
+
+            return;
+        }
+
+        alert(
+            editingId
+                ? "✅ Zakas yangilandi."
+                : "✅ Zakas qo‘shildi."
+        );
+
+        resetOrderForm();
+
+        await getOrders();
+
+        await updateDashboard();
+
+        showPage(
+            "ordersPage"
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "❌ Zakas qo‘shishda xatolik:\n" +
+            error.message
+        );
+
+    } finally {
+
+        if (button) {
+
+            button.disabled =
+                false;
+
+            button.textContent =
+                "💾 Zakasni saqlash";
+        }
+    }
+}
+
+
+/* =========================================================
+   CALCULATE REMAINING
+========================================================= */
+
+function calculateRemaining() {
+
+    const total =
+        getNumber(
+            "totalPrice"
+        );
+
+    const paid =
+        getNumber(
+            "paid"
+        );
+
+    const remaining =
+        Math.max(
+            0,
+            total - paid
+        );
+
+    const element =
+        document.getElementById(
+            "remaining"
+        );
+
+    if (element) {
+
+        element.textContent =
+            formatMoney(
+                remaining
+            ) + " so‘m";
+    }
+}
+
+
+/* =========================================================
+   EDIT ORDER
+========================================================= */
+
+function editOrder(id) {
+
+    const order =
+        allOrders.find(
+            item =>
+                item.id == id
+        );
+
+    if (!order) {
+        return;
+    }
+
+    showPage(
+        "addOrderPage"
+    );
+
+    setValue(
+        "editingOrderId",
+        order.id
+    );
+
+    setValue(
+        "clientName",
+        order.client_name
+    );
+
+    setValue(
+        "clientPhone",
+        order.client_phone
+    );
+
+    setValue(
+        "location",
+        order.location
+    );
+
+    setValue(
+        "eventDate",
+        order.event_date
+    );
+
+    setValue(
+        "eventTime",
+        String(
+            order.event_time ||
+            ""
+        ).slice(0, 5)
+    );
+
+    setValue(
+        "screenHeight",
+        order.screen_height
+    );
+
+    setValue(
+        "screenWidth",
+        order.screen_width
+    );
+
+    setValue(
+        "stageWidth",
+        order.stage_width
+    );
+
+    setValue(
+        "stageLength",
+        order.stage_length
+    );
+
+    setValue(
+        "curtain",
+        order.curtain
+    );
+
+    setValue(
+        "sideScreens",
+        order.side_screens
+    );
+
+    setValue(
+        "sideHeight",
+        order.side_height
+    );
+
+    setValue(
+        "sideWidth",
+        order.side_width
+    );
+
+    setValue(
+        "lights",
+        order.lights
+    );
+
+    setValue(
+        "galava",
+        order.galava
+    );
+
+    setValue(
+        "ledwash",
+        order.ledwash
+    );
+
+    setValue(
+        "confetti",
+        order.confetti
+    );
+
+    setValue(
+        "dim",
+        order.dim
+    );
+
+    setValue(
+        "firework",
+        order.firework
+    );
+
+    setValue(
+        "totalPrice",
+        order.total_price
+    );
+
+    setValue(
+        "paid",
+        order.paid
+    );
+
+    calculateRemaining();
+
+    const badge =
+        document.getElementById(
+            "editBadge"
+        );
+
+    if (badge) {
+
+        badge.classList.remove(
+            "hidden"
+        );
+    }
+
+    const title =
+        document.getElementById(
+            "orderFormTitle"
+        );
+
+    if (title) {
+
+        title.textContent =
+            "✏️ Zakasni tahrirlash";
+    }
+
+    const button =
+        document.getElementById(
+            "orderSubmitBtn"
+        );
+
+    if (button) {
+
+        button.textContent =
+            "💾 Zakasni yangilash";
+    }
+
+    const cancel =
+        document.getElementById(
+            "cancelEditBtn"
+        );
+
+    if (cancel) {
+
+        cancel.classList.remove(
+            "hidden"
+        );
+    }
+}
+
+
+/* =========================================================
+   CANCEL EDIT
+========================================================= */
+
+function cancelEditOrder() {
+
+    resetOrderForm();
+
+    showPage(
+        "ordersPage"
+    );
+}
+
+
+/* =========================================================
+   RESET ORDER
+========================================================= */
+
+function resetOrderForm() {
+
+    const form =
+        document.getElementById(
+            "orderForm"
+        );
+
+    if (form) {
+        form.reset();
+    }
+
+    setValue(
+        "editingOrderId",
+        ""
+    );
+
+    setValue(
+        "screenHeight",
+        "0"
+    );
+
+    setValue(
+        "screenWidth",
+        "0"
+    );
+
+    setValue(
+        "stageWidth",
+        "0"
+    );
+
+    setValue(
+        "stageLength",
+        "0"
+    );
+
+    setValue(
+        "sideScreens",
+        "0"
+    );
+
+    setValue(
+        "sideHeight",
+        "0"
+    );
+
+    setValue(
+        "sideWidth",
+        "0"
+    );
+
+    setValue(
+        "lights",
+        "0"
+    );
+
+    setValue(
+        "galava",
+        "0"
+    );
+
+    setValue(
+        "ledwash",
+        "0"
+    );
+
+    setValue(
+        "confetti",
+        "0"
+    );
+
+    setValue(
+        "dim",
+        "0"
+    );
+
+    setValue(
+        "firework",
+        "0"
+    );
+
+    setValue(
+        "totalPrice",
+        "0"
+    );
+
+    setValue(
+        "paid",
+        "0"
+    );
+
+    calculateRemaining();
+
+    const badge =
+        document.getElementById(
+            "editBadge"
+        );
+
+    if (badge) {
+
+        badge.classList.add(
+            "hidden"
+        );
+    }
+
+    const cancel =
+        document.getElementById(
+            "cancelEditBtn"
+        );
+
+    if (cancel) {
+
+        cancel.classList.add(
+            "hidden"
+        );
+    }
+
+    const title =
+        document.getElementById(
+            "orderFormTitle"
+        );
+
+    if (title) {
+
+        title.textContent =
+            "➕ Yangi zakas qo‘shish";
+    }
+
+    const button =
+        document.getElementById(
+            "orderSubmitBtn"
+        );
+
+    if (button) {
+
+        button.textContent =
+            "💾 Zakasni saqlash";
+    }
+}
+
+
+/* =========================================================
+   DELETE ORDER
+========================================================= */
+
+async function deleteOrder(id) {
+
+    if (currentRole !== "admin") {
+        return;
+    }
+
+    if (
+        !confirm(
+            "Bu zakasni o‘chirmoqchimisiz?"
+        )
+    ) {
+        return;
+    }
+
+    try {
+
+        const {
+            error
+        } =
+            await supabase
+                .from("orders")
+                .delete()
+                .eq(
+                    "id",
+                    id
+                );
+
+        if (error) {
+
+            alert(
+                "❌ O‘chirishda xatolik:\n" +
+                error.message
+            );
+
+            return;
+        }
+
+        await getOrders();
+
+        await updateDashboard();
+
+        alert(
+            "✅ Zakas o‘chirildi."
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "❌ Xatolik:\n" +
+            error.message
+        );
+    }
 }
 
 
@@ -1387,17 +2055,21 @@ async function getEvents() {
         const {
             data,
             error
-        } = await supabase
-            .from("events")
-            .select("*")
-            .order("created_at", {
-                ascending: false
-            });
+        } =
+            await supabase
+                .from("events")
+                .select("*")
+                .order(
+                    "created_at",
+                    {
+                        ascending: false
+                    }
+                );
 
         if (error) {
 
             console.error(
-                "GET EVENTS ERROR:",
+                "EVENTS ERROR:",
                 error
             );
 
@@ -1408,6 +2080,7 @@ async function getEvents() {
             data || [];
 
         displayWorkerEvents();
+
         displayCustomerEvents();
 
     } catch (error) {
@@ -1421,43 +2094,34 @@ async function getEvents() {
    EVENT IMAGE
 ========================================================= */
 
-function handleEventImage(event) {
+async function getImageData(file) {
 
-    const file =
-        event.target.files &&
-        event.target.files[0];
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
 
-    if (!file) {
-        eventImageData = "";
-        return;
-    }
+            const reader =
+                new FileReader();
 
-    const maxSize =
-        2 * 1024 * 1024;
+            reader.onload =
+                () =>
+                    resolve(
+                        reader.result
+                    );
 
-    if (file.size > maxSize) {
+            reader.onerror =
+                () =>
+                    reject(
+                        reader.error
+                    );
 
-        alert(
-            "Rasm hajmi 2 MB dan oshmasin."
-        );
-
-        event.target.value = "";
-
-        eventImageData = "";
-
-        return;
-    }
-
-    const reader =
-        new FileReader();
-
-    reader.onload = function(e) {
-
-        eventImageData =
-            e.target.result;
-    };
-
-    reader.readAsDataURL(file);
+            reader.readAsDataURL(
+                file
+            );
+        }
+    );
 }
 
 
@@ -1465,7 +2129,7 @@ function handleEventImage(event) {
    SAVE EVENT
 ========================================================= */
 
-async function saveEventFromForm(event) {
+async function saveEvent(event) {
 
     if (event) {
         event.preventDefault();
@@ -1481,37 +2145,45 @@ async function saveEventFromForm(event) {
     }
 
     const title =
-        getValue("eventTitle").trim();
+        getValue(
+            "eventTitle"
+        ).trim();
 
     const description =
-        getValue("eventDescription").trim();
+        getValue(
+            "eventDescription"
+        ).trim();
 
     const imageInput =
-        document.getElementById("eventImage");
+        document.getElementById(
+            "eventImage"
+        );
 
     if (!title) {
 
-        alert("Tadbir nomini kiriting.");
+        alert(
+            "Tadbir nomini kiriting."
+        );
 
         return;
     }
 
-    let image_url =
-        eventImageData || "";
+    let imageURL =
+        "";
 
     if (
         imageInput &&
         imageInput.files &&
-        imageInput.files[0]
+        imageInput.files.length > 0
     ) {
 
         const file =
             imageInput.files[0];
 
-        const maxSize =
-            2 * 1024 * 1024;
-
-        if (file.size > maxSize) {
+        if (
+            file.size >
+            2 * 1024 * 1024
+        ) {
 
             alert(
                 "Rasm hajmi 2 MB dan oshmasin."
@@ -1520,28 +2192,36 @@ async function saveEventFromForm(event) {
             return;
         }
 
-        image_url =
-            await fileToDataURL(file);
+        imageURL =
+            await getImageData(
+                file
+            );
     }
 
     try {
 
         const {
             error
-        } = await supabase
-            .from("events")
-            .insert([
-                {
-                    title: title,
-                    description: description,
-                    image_url: image_url
-                }
-            ]);
+        } =
+            await supabase
+                .from("events")
+                .insert([
+                    {
+                        title:
+                            title,
+
+                        description:
+                            description,
+
+                        image_url:
+                            imageURL
+                    }
+                ]);
 
         if (error) {
 
             console.error(
-                "SAVE EVENT ERROR:",
+                "EVENT INSERT ERROR:",
                 error
             );
 
@@ -1554,17 +2234,17 @@ async function saveEventFromForm(event) {
         }
 
         alert(
-            "✅ Tadbir muvaffaqiyatli qo‘shildi."
+            "✅ Tadbir qo‘shildi."
         );
 
         const form =
-            document.getElementById("eventForm");
+            document.getElementById(
+                "eventForm"
+            );
 
         if (form) {
             form.reset();
         }
-
-        eventImageData = "";
 
         await getEvents();
 
@@ -1581,54 +2261,35 @@ async function saveEventFromForm(event) {
 
 
 /* =========================================================
-   FILE TO DATA URL
-========================================================= */
-
-function fileToDataURL(file) {
-
-    return new Promise(
-        (resolve, reject) => {
-
-            const reader =
-                new FileReader();
-
-            reader.onload =
-                () => resolve(
-                    reader.result
-                );
-
-            reader.onerror =
-                reject;
-
-            reader.readAsDataURL(file);
-        }
-    );
-}
-
-
-/* =========================================================
-   WORKER EVENTS
+   DISPLAY WORKER EVENTS
 ========================================================= */
 
 function displayWorkerEvents() {
 
     const container =
-        document.getElementById("workerEventsList");
+        document.getElementById(
+            "workerEventsList"
+        );
 
     if (!container) {
         return;
     }
 
     const start =
-        (currentEventPage - 1) *
-        eventsPerPage;
+        (
+            currentEventPage - 1
+        ) *
+        EVENTS_PER_PAGE;
 
     const end =
         start +
-        eventsPerPage;
+        EVENTS_PER_PAGE;
 
     const events =
-        allEvents.slice(start, end);
+        allEvents.slice(
+            start,
+            end
+        );
 
     if (!events.length) {
 
@@ -1644,58 +2305,65 @@ function displayWorkerEvents() {
     }
 
     container.innerHTML =
-        events.map(event => {
+        events
+            .map(
+                event => {
 
-            return `
-                <div class="event-card">
+                    return `
+                        <div class="event-card">
 
-                    ${
-                        event.image_url
-                            ? `
-                                <img
-                                    src="${escapeAttribute(event.image_url)}"
-                                    alt="${escapeAttribute(event.title)}"
-                                    class="event-image"
-                                >
-                            `
-                            : ""
-                    }
+                            ${
+                                event.image_url
+                                    ? `
+                                        <img
+                                            src="${escapeAttribute(
+                                                event.image_url
+                                            )}"
+                                            alt="${escapeAttribute(
+                                                event.title
+                                            )}"
+                                        >
+                                    `
+                                    : ""
+                            }
 
-                    <div class="event-content">
+                            <div class="event-content">
 
-                        <h3>
-                            ${escapeHTML(event.title)}
-                        </h3>
+                                <h3>
+                                    ${escapeHTML(
+                                        event.title
+                                    )}
+                                </h3>
 
-                        <p>
-                            ${escapeHTML(
-                                event.description || ""
-                            )}
-                        </p>
+                                <p>
+                                    ${escapeHTML(
+                                        event.description ||
+                                        ""
+                                    )}
+                                </p>
 
-                        <small>
-                            ${formatDate(event.created_at)}
-                        </small>
+                                ${
+                                    currentRole ===
+                                    "admin"
+                                        ? `
+                                            <button
+                                                type="button"
+                                                class="btn-delete"
+                                                onclick="deleteEvent(${event.id})"
+                                            >
+                                                🗑️ O‘chirish
+                                            </button>
+                                        `
+                                        : ""
+                                }
 
-                        ${
-                            currentRole === "admin"
-                                ? `
-                                    <button
-                                        type="button"
-                                        onclick="deleteEvent(${event.id})"
-                                        class="btn-delete">
-                                        🗑️ O‘chirish
-                                    </button>
-                                `
-                                : ""
-                        }
+                            </div>
 
-                    </div>
-
-                </div>
-            `;
-
-        }).join("");
+                        </div>
+                    `;
+                }
+            )
+            .join("");
 
     renderEventPagination();
 }
@@ -1708,7 +2376,9 @@ function displayWorkerEvents() {
 function displayCustomerEvents() {
 
     const container =
-        document.getElementById("customerEventsList");
+        document.getElementById(
+            "customerEventsList"
+        );
 
     if (!container) {
         return;
@@ -1726,53 +2396,58 @@ function displayCustomerEvents() {
     }
 
     container.innerHTML =
-        allEvents.map(event => {
+        allEvents
+            .map(
+                event => {
 
-            return `
-                <div class="customer-event-card">
+                    return `
+                        <div class="customer-event-card">
 
-                    ${
-                        event.image_url
-                            ? `
-                                <img
-                                    src="${escapeAttribute(event.image_url)}"
-                                    alt="${escapeAttribute(event.title)}"
+                            ${
+                                event.image_url
+                                    ? `
+                                        <img
+                                            src="${escapeAttribute(
+                                                event.image_url
+                                            )}"
+                                            alt="${escapeAttribute(
+                                                event.title
+                                            )}"
+                                        >
+                                    `
+                                    : ""
+                            }
+
+                            <div class="customer-event-content">
+
+                                <h3>
+                                    ${escapeHTML(
+                                        event.title
+                                    )}
+                                </h3>
+
+                                <p>
+                                    ${escapeHTML(
+                                        event.description ||
+                                        ""
+                                    )}
+                                </p>
+
+                                <button
+                                    type="button"
+                                    class="customer-order-btn"
+                                    onclick="openOrderModal()"
                                 >
-                            `
-                            : ""
-                    }
+                                    📩 Buyurtma berish
+                                </button>
 
-                    <div class="customer-event-content">
+                            </div>
 
-                        <h3>
-                            ${escapeHTML(event.title)}
-                        </h3>
-
-                        <p>
-                            ${escapeHTML(
-                                event.description || ""
-                            )}
-                        </p>
-
-                        <button
-                            type="button"
-                            onclick="openOrderModal(${event.id})"
-                            class="btn-primary">
-                            Buyurtma berish
-                        </button>
-
-                    </div>
-
-                </div>
-            `;
-
-        }).join("");
-}
-
-
-function loadCustomerEvents() {
-
-    getEvents();
+                        </div>
+                    `;
+                }
+            )
+            .join("");
 }
 
 
@@ -1783,7 +2458,9 @@ function loadCustomerEvents() {
 function renderEventPagination() {
 
     const container =
-        document.getElementById("workerPagination");
+        document.getElementById(
+            "workerPagination"
+        );
 
     if (!container) {
         return;
@@ -1792,17 +2469,19 @@ function renderEventPagination() {
     const totalPages =
         Math.ceil(
             allEvents.length /
-            eventsPerPage
+            EVENTS_PER_PAGE
         );
 
     if (totalPages <= 1) {
 
-        container.innerHTML = "";
+        container.innerHTML =
+            "";
 
         return;
     }
 
-    let html = "";
+    let html =
+        "";
 
     for (
         let i = 1;
@@ -1813,12 +2492,13 @@ function renderEventPagination() {
         html += `
             <button
                 type="button"
+                onclick="goToEventPage(${i})"
                 class="${
                     i === currentEventPage
                         ? "active"
                         : ""
                 }"
-                onclick="goToEventPage(${i})">
+            >
                 ${i}
             </button>
         `;
@@ -1848,12 +2528,11 @@ async function deleteEvent(id) {
         return;
     }
 
-    const result =
-        confirm(
+    if (
+        !confirm(
             "Bu tadbirni o‘chirmoqchimisiz?"
-        );
-
-    if (!result) {
+        )
+    ) {
         return;
     }
 
@@ -1861,29 +2540,24 @@ async function deleteEvent(id) {
 
         const {
             error
-        } = await supabase
-            .from("events")
-            .delete()
-            .eq("id", id);
+        } =
+            await supabase
+                .from("events")
+                .delete()
+                .eq(
+                    "id",
+                    id
+                );
 
         if (error) {
 
-            console.error(
-                "DELETE EVENT ERROR:",
-                error
-            );
-
             alert(
-                "❌ Tadbir o‘chirilmadi:\n" +
+                "❌ O‘chirishda xatolik:\n" +
                 error.message
             );
 
             return;
         }
-
-        alert(
-            "✅ Tadbir o‘chirildi."
-        );
 
         await getEvents();
 
@@ -1900,50 +2574,41 @@ async function deleteEvent(id) {
 
 
 /* =========================================================
-   CUSTOMER ORDER MODAL
+   CUSTOMER MODAL
 ========================================================= */
 
-function openOrderModal(eventId = null) {
+function openOrderModal() {
 
     const modal =
-        document.getElementById("orderModal");
+        document.getElementById(
+            "orderModal"
+        );
 
     if (!modal) {
         return;
     }
 
-    modal.style.display = "flex";
+    modal.classList.remove(
+        "hidden"
+    );
 
     const form =
-        document.getElementById("applicationForm");
+        document.getElementById(
+            "applicationForm"
+        );
 
     if (form) {
         form.reset();
     }
 
     const message =
-        document.getElementById("applicationMessage");
-
-    if (message) {
-        message.textContent = "";
-    }
-
-    const selectedEvent =
-        allEvents.find(
-            event =>
-                event.id == eventId
+        document.getElementById(
+            "applicationMessage"
         );
 
-    if (selectedEvent) {
-
-        const title =
-            document.getElementById("selectedEventTitle");
-
-        if (title) {
-
-            title.textContent =
-                selectedEvent.title;
-        }
+    if (message) {
+        message.textContent =
+            "";
     }
 }
 
@@ -1951,10 +2616,15 @@ function openOrderModal(eventId = null) {
 function closeOrderModal() {
 
     const modal =
-        document.getElementById("orderModal");
+        document.getElementById(
+            "orderModal"
+        );
 
     if (modal) {
-        modal.style.display = "none";
+
+        modal.classList.add(
+            "hidden"
+        );
     }
 }
 
@@ -1970,30 +2640,38 @@ async function submitApplication(event) {
     }
 
     const name =
-        getValue("applicationName").trim();
+        getValue(
+            "applicationName"
+        ).trim();
 
     const phone =
-        getValue("applicationPhone").trim();
+        getValue(
+            "applicationPhone"
+        ).trim();
 
     const message =
-        document.getElementById("applicationMessage");
+        document.getElementById(
+            "applicationMessage"
+        );
 
     if (!name) {
 
-        showApplicationMessage(
-            "Ismingizni kiriting.",
-            "error"
-        );
+        if (message) {
+
+            message.textContent =
+                "Ism va familyani kiriting.";
+        }
 
         return;
     }
 
     if (!phone) {
 
-        showApplicationMessage(
-            "Telefon raqamingizni kiriting.",
-            "error"
-        );
+        if (message) {
+
+            message.textContent =
+                "Telefon raqamini kiriting.";
+        }
 
         return;
     }
@@ -2003,17 +2681,23 @@ async function submitApplication(event) {
         const {
             data,
             error
-        } = await supabase
-            .from("applications")
-            .insert([
-                {
-                    full_name: name,
-                    phone: phone,
-                    status: "new"
-                }
-            ])
-            .select()
-            .single();
+        } =
+            await supabase
+                .from("applications")
+                .insert([
+                    {
+                        full_name:
+                            name,
+
+                        phone:
+                            phone,
+
+                        status:
+                            "new"
+                    }
+                ])
+                .select()
+                .single();
 
         if (error) {
 
@@ -2022,11 +2706,12 @@ async function submitApplication(event) {
                 error
             );
 
-            showApplicationMessage(
-                "Ariza yuborishda xatolik:\n" +
-                error.message,
-                "error"
-            );
+            if (message) {
+
+                message.textContent =
+                    "❌ Ariza yuborishda xatolik: " +
+                    error.message;
+            }
 
             return;
         }
@@ -2036,89 +2721,63 @@ async function submitApplication(event) {
             data.id
         );
 
-        localStorage.setItem(
-            "goldshow_application_phone",
-            phone
-        );
+        if (message) {
 
-        showApplicationMessage(
-            "✅ Arizangiz muvaffaqiyatli yuborildi.",
-            "success"
-        );
+            message.textContent =
+                "✅ Arizangiz yuborildi!";
+        }
 
         const statusBox =
-            document.getElementById("customerStatusBox");
+            document.getElementById(
+                "customerStatusBox"
+            );
 
         if (statusBox) {
 
-            statusBox.innerHTML = `
-                <div class="status-success">
-                    Ariza qabul qilindi.
-                    Admin javobini kuting.
-                </div>
-            `;
+            statusBox.classList.remove(
+                "hidden"
+            );
+
+            statusBox.textContent =
+                "⏳ Arizangiz ko‘rib chiqilmoqda...";
         }
 
-        startApplicationStatusCheck(data.id);
+        startApplicationCheck(
+            data.id
+        );
 
     } catch (error) {
 
         console.error(error);
 
-        showApplicationMessage(
-            "Ariza yuborishda xatolik:\n" +
-            error.message,
-            "error"
-        );
+        if (message) {
+
+            message.textContent =
+                "❌ Xatolik: " +
+                error.message;
+        }
     }
 }
 
 
 /* =========================================================
-   APPLICATION MESSAGE
+   APPLICATION STATUS
 ========================================================= */
 
-function showApplicationMessage(
-    text,
-    type = "success"
-) {
+function startApplicationCheck(id) {
 
-    const element =
-        document.getElementById(
-            "applicationMessage"
-        );
-
-    if (!element) {
-        alert(text);
-        return;
-    }
-
-    element.textContent =
-        text;
-
-    element.className =
-        type === "error"
-            ? "error-message"
-            : "success-message";
-}
-
-
-/* =========================================================
-   CHECK APPLICATION STATUS
-========================================================= */
-
-function startApplicationStatusCheck(id) {
-
-    if (applicationCheckTimer) {
+    if (applicationTimer) {
 
         clearInterval(
-            applicationCheckTimer
+            applicationTimer
         );
     }
 
-    checkApplicationStatus(id);
+    checkApplicationStatus(
+        id
+    );
 
-    applicationCheckTimer =
+    applicationTimer =
         setInterval(
             () => {
 
@@ -2139,19 +2798,17 @@ async function checkApplicationStatus(id) {
         const {
             data,
             error
-        } = await supabase
-            .from("applications")
-            .select("*")
-            .eq("id", id)
-            .maybeSingle();
+        } =
+            await supabase
+                .from("applications")
+                .select("*")
+                .eq(
+                    "id",
+                    id
+                )
+                .maybeSingle();
 
         if (error) {
-
-            console.error(
-                "STATUS CHECK ERROR:",
-                error
-            );
-
             return;
         }
 
@@ -2168,51 +2825,38 @@ async function checkApplicationStatus(id) {
             return;
         }
 
-        if (data.status === "accepted") {
+        statusBox.classList.remove(
+            "hidden"
+        );
 
-            statusBox.innerHTML = `
-                <div class="status-success">
-                    ✅ Arizangiz tasdiqlandi.
-                </div>
-            `;
-
-            if (applicationCheckTimer) {
-
-                clearInterval(
-                    applicationCheckTimer
-                );
-
-                applicationCheckTimer =
-                    null;
-            }
-
-        } else if (
-            data.status === "rejected"
+        if (
+            data.status ===
+            "accepted"
         ) {
 
-            statusBox.innerHTML = `
-                <div class="status-error">
-                    ❌ Arizangiz rad etildi.
-                </div>
-            `;
+            statusBox.textContent =
+                "✅ Arizangiz tasdiqlandi.";
 
-            if (applicationCheckTimer) {
+            clearInterval(
+                applicationTimer
+            );
 
-                clearInterval(
-                    applicationCheckTimer
-                );
+        } else if (
+            data.status ===
+            "rejected"
+        ) {
 
-                applicationCheckTimer =
-                    null;
-            }
+            statusBox.textContent =
+                "❌ Arizangiz rad etildi.";
+
+            clearInterval(
+                applicationTimer
+            );
 
         } else {
 
-            statusBox.innerHTML = `
-                <div class="status-pending">
-                    ⏳ Arizangiz ko‘rib chiqilmoqda...
-                </div>
-            `;
+            statusBox.textContent =
+                "⏳ Arizangiz ko‘rib chiqilmoqda...";
         }
 
     } catch (error) {
@@ -2223,12 +2867,15 @@ async function checkApplicationStatus(id) {
 
 
 /* =========================================================
-   GET APPLICATIONS
+   APPLICATIONS ADMIN
 ========================================================= */
 
 async function getApplications() {
 
-    if (currentRole !== "admin") {
+    if (
+        currentRole !==
+        "admin"
+    ) {
         return;
     }
 
@@ -2237,17 +2884,21 @@ async function getApplications() {
         const {
             data,
             error
-        } = await supabase
-            .from("applications")
-            .select("*")
-            .order("created_at", {
-                ascending: false
-            });
+        } =
+            await supabase
+                .from("applications")
+                .select("*")
+                .order(
+                    "created_at",
+                    {
+                        ascending: false
+                    }
+                );
 
         if (error) {
 
             console.error(
-                "GET APPLICATIONS ERROR:",
+                "APPLICATIONS ERROR:",
                 error
             );
 
@@ -2265,10 +2916,6 @@ async function getApplications() {
     }
 }
 
-
-/* =========================================================
-   DISPLAY APPLICATIONS
-========================================================= */
 
 function displayApplications() {
 
@@ -2293,100 +2940,104 @@ function displayApplications() {
     }
 
     container.innerHTML =
-        allApplications.map(
-            application => {
+        allApplications
+            .map(
+                application => {
 
-                let statusText =
-                    "Yangi";
+                    let status =
+                        "Yangi";
 
-                if (
-                    application.status ===
-                    "accepted"
-                ) {
-                    statusText =
-                        "Tasdiqlangan";
-                }
+                    if (
+                        application.status ===
+                        "accepted"
+                    ) {
 
-                if (
-                    application.status ===
-                    "rejected"
-                ) {
-                    statusText =
-                        "Rad etilgan";
-                }
+                        status =
+                            "Tasdiqlangan";
+                    }
 
-                return `
-                    <div class="application-card">
+                    if (
+                        application.status ===
+                        "rejected"
+                    ) {
 
-                        <div>
+                        status =
+                            "Rad etilgan";
+                    }
 
-                            <h3>
-                                ${escapeHTML(
-                                    application.full_name
-                                )}
-                            </h3>
+                    return `
+                        <div class="application-card">
 
-                            <p>
-                                📞 ${escapeHTML(
-                                    application.phone
-                                )}
-                            </p>
+                            <div>
 
-                            <small>
-                                ${formatDate(
-                                    application.created_at
-                                )}
-                            </small>
+                                <h3>
+                                    ${escapeHTML(
+                                        application.full_name
+                                    )}
+                                </h3>
 
-                        </div>
+                                <p>
+                                    📞
+                                    ${escapeHTML(
+                                        application.phone
+                                    )}
+                                </p>
 
-                        <div class="application-status">
+                                <small>
+                                    ${formatDate(
+                                        application.created_at
+                                    )}
+                                </small>
 
-                            <strong>
-                                ${statusText}
-                            </strong>
+                            </div>
 
-                            <div class="application-buttons">
+                            <div>
 
-                                <button
-                                    type="button"
-                                    onclick="acceptApplication(${application.id})">
-                                    ✅ Tasdiqlash
-                                </button>
+                                <strong>
+                                    ${status}
+                                </strong>
 
-                                <button
-                                    type="button"
-                                    onclick="rejectApplication(${application.id})">
-                                    ❌ Rad etish
-                                </button>
+                                <div>
 
-                                <button
-                                    type="button"
-                                    onclick="deleteApplication(${application.id})"
-                                    class="btn-delete">
-                                    🗑️
-                                </button>
+                                    <button
+                                        type="button"
+                                        onclick="acceptApplication(${application.id})"
+                                    >
+                                        ✅
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onclick="rejectApplication(${application.id})"
+                                    >
+                                        ❌
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onclick="deleteApplication(${application.id})"
+                                        class="btn-delete"
+                                    >
+                                        🗑️
+                                    </button>
+
+                                </div>
 
                             </div>
 
                         </div>
-
-                    </div>
-                `;
-            }
-        ).join("");
+                    `;
+                }
+            )
+            .join("");
 }
 
 
 /* =========================================================
-   ACCEPT APPLICATION
+   ACCEPT / REJECT
 ========================================================= */
 
 async function acceptApplication(id) {
-
-    if (currentRole !== "admin") {
-        return;
-    }
 
     await changeApplicationStatus(
         id,
@@ -2395,15 +3046,7 @@ async function acceptApplication(id) {
 }
 
 
-/* =========================================================
-   REJECT APPLICATION
-========================================================= */
-
 async function rejectApplication(id) {
-
-    if (currentRole !== "admin") {
-        return;
-    }
 
     await changeApplicationStatus(
         id,
@@ -2412,40 +3055,49 @@ async function rejectApplication(id) {
 }
 
 
-/* =========================================================
-   CHANGE APPLICATION STATUS
-========================================================= */
-
 async function changeApplicationStatus(
     id,
     status
 ) {
 
+    if (
+        currentRole !==
+        "admin"
+    ) {
+        return;
+    }
+
     try {
 
         const updateData = {
-            status: status
+            status:
+                status
         };
 
-        if (status === "accepted") {
+        if (
+            status ===
+            "accepted"
+        ) {
 
             updateData.accepted_at =
-                new Date().toISOString();
+                new Date()
+                    .toISOString();
         }
 
         const {
             error
-        } = await supabase
-            .from("applications")
-            .update(updateData)
-            .eq("id", id);
+        } =
+            await supabase
+                .from("applications")
+                .update(
+                    updateData
+                )
+                .eq(
+                    "id",
+                    id
+                );
 
         if (error) {
-
-            console.error(
-                "STATUS UPDATE ERROR:",
-                error
-            );
 
             alert(
                 "❌ Xatolik:\n" +
@@ -2460,11 +3112,6 @@ async function changeApplicationStatus(
     } catch (error) {
 
         console.error(error);
-
-        alert(
-            "❌ Xatolik:\n" +
-            error.message
-        );
     }
 }
 
@@ -2473,18 +3120,22 @@ async function changeApplicationStatus(
    DELETE APPLICATION
 ========================================================= */
 
-async function deleteApplication(id) {
+async function deleteApplication(
+    id
+) {
 
-    if (currentRole !== "admin") {
+    if (
+        currentRole !==
+        "admin"
+    ) {
         return;
     }
 
-    const confirmDelete =
-        confirm(
+    if (
+        !confirm(
             "Bu arizani o‘chirmoqchimisiz?"
-        );
-
-    if (!confirmDelete) {
+        )
+    ) {
         return;
     }
 
@@ -2492,17 +3143,16 @@ async function deleteApplication(id) {
 
         const {
             error
-        } = await supabase
-            .from("applications")
-            .delete()
-            .eq("id", id);
+        } =
+            await supabase
+                .from("applications")
+                .delete()
+                .eq(
+                    "id",
+                    id
+                );
 
         if (error) {
-
-            console.error(
-                "DELETE APPLICATION ERROR:",
-                error
-            );
 
             alert(
                 "❌ Xatolik:\n" +
@@ -2517,11 +3167,6 @@ async function deleteApplication(id) {
     } catch (error) {
 
         console.error(error);
-
-        alert(
-            "❌ Xatolik:\n" +
-            error.message
-        );
     }
 }
 
@@ -2532,7 +3177,10 @@ async function deleteApplication(id) {
 
 async function getUsers() {
 
-    if (currentRole !== "admin") {
+    if (
+        currentRole !==
+        "admin"
+    ) {
         return;
     }
 
@@ -2541,17 +3189,21 @@ async function getUsers() {
         const {
             data,
             error
-        } = await supabase
-            .from("users")
-            .select("*")
-            .order("created_at", {
-                ascending: false
-            });
+        } =
+            await supabase
+                .from("users")
+                .select("*")
+                .order(
+                    "created_at",
+                    {
+                        ascending: false
+                    }
+                );
 
         if (error) {
 
             console.error(
-                "GET USERS ERROR:",
+                "USERS ERROR:",
                 error
             );
 
@@ -2597,137 +3249,103 @@ function displayUsers() {
     }
 
     container.innerHTML =
-        allUsers.map(user => {
+        allUsers
+            .map(
+                user => {
 
-            const isCurrent =
-                currentUser &&
-                currentUser.id === user.id;
+                    const current =
+                        currentUser &&
+                        currentUser.id ===
+                        user.id;
 
-            return `
-                <div class="user-card">
+                    return `
+                        <div class="user-card">
 
-                    <div class="user-main-info">
+                            <div>
 
-                        <h3>
-                            ${escapeHTML(
-                                user.name || "-"
-                            )}
-                        </h3>
+                                <h3>
+                                    ${escapeHTML(
+                                        user.name
+                                    )}
+                                </h3>
 
-                        <p>
-                            Login:
-                            <strong>
-                                ${escapeHTML(
-                                    user.username
-                                )}
-                            </strong>
-                        </p>
+                                <p>
+                                    Login:
+                                    <strong>
+                                        ${escapeHTML(
+                                            user.username
+                                        )}
+                                    </strong>
+                                </p>
 
-                        <p>
-                            Rol:
-                            <strong>
-                                ${escapeHTML(
-                                    user.role
-                                )}
-                            </strong>
-                        </p>
+                                <p>
+                                    Rol:
+                                    <strong>
+                                        ${
+                                            user.role ===
+                                            "admin"
+                                                ? "Admin"
+                                                : "Ishchi"
+                                        }
+                                    </strong>
+                                </p>
 
-                        <p>
-                            Parol:
-                            <span id="password-${user.id}">
-                                ••••••••
-                            </span>
+                                <p>
+                                    Parol:
+                                    <span
+                                        id="password-${user.id}"
+                                    >
+                                        ••••••••
+                                    </span>
 
-                            <button
-                                type="button"
-                                onclick="showUserPassword(${user.id})">
-                                👁️
-                            </button>
-                        </p>
-
-                    </div>
-
-                    <div class="user-actions">
-
-                        <button
-                            type="button"
-                            onclick="changeUsername(${user.id})">
-                            ✏️ Login
-                        </button>
-
-                        <button
-                            type="button"
-                            onclick="changePassword(${user.id})">
-                            🔑 Parol
-                        </button>
-
-                        ${
-                            !isCurrent
-                                ? `
                                     <button
                                         type="button"
-                                        onclick="deleteUser(${user.id})"
-                                        class="btn-delete">
-                                        🗑️ O‘chirish
+                                        onclick="showUserPassword(${user.id})"
+                                    >
+                                        👁️
                                     </button>
-                                `
-                                : ""
-                        }
 
-                    </div>
+                                </p>
 
-                </div>
-            `;
-        }).join("");
-}
+                            </div>
 
+                            <div>
 
-/* =========================================================
-   SHOW USER PASSWORD
-========================================================= */
+                                <button
+                                    type="button"
+                                    onclick="changeUsername(${user.id})"
+                                >
+                                    ✏️ Login
+                                </button>
 
-async function showUserPassword(id) {
+                                <button
+                                    type="button"
+                                    onclick="changePassword(${user.id})"
+                                >
+                                    🔑 Parol
+                                </button>
 
-    if (currentRole !== "admin") {
-        return;
-    }
+                                ${
+                                    !current
+                                        ? `
+                                            <button
+                                                type="button"
+                                                class="btn-delete"
+                                                onclick="deleteUser(${user.id})"
+                                            >
+                                                🗑️
+                                            </button>
+                                        `
+                                        : ""
+                                }
 
-    const element =
-        document.getElementById(
-            `password-${id}`
-        );
+                            </div>
 
-    if (!element) {
-        return;
-    }
-
-    const user =
-        allUsers.find(
-            item => item.id == id
-        );
-
-    if (!user) {
-        return;
-    }
-
-    if (
-        element.dataset.visible === "true"
-    ) {
-
-        element.textContent =
-            "••••••••";
-
-        element.dataset.visible =
-            "false";
-
-        return;
-    }
-
-    element.textContent =
-        user.password || "";
-
-    element.dataset.visible =
-        "true";
+                        </div>
+                    `;
+                }
+            )
+            .join("");
 }
 
 
@@ -2741,40 +3359,43 @@ async function createUser(event) {
         event.preventDefault();
     }
 
-    if (currentRole !== "admin") {
+    if (
+        currentRole !==
+        "admin"
+    ) {
         return;
     }
 
     const name =
-        getValue("newUserName").trim();
+        getValue(
+            "newUserName"
+        ).trim();
 
     const username =
-        getValue("newUsername").trim();
+        getValue(
+            "newUsername"
+        ).trim();
 
     const password =
-        getValue("newUserPassword").trim();
+        getValue(
+            "newUserPassword"
+        ).trim();
 
     const role =
-        getValue("newUserRole") ||
+        getValue(
+            "newUserRole"
+        ) ||
         "user";
 
-    if (!name) {
+    if (
+        !name ||
+        !username ||
+        !password
+    ) {
 
-        alert("User ismini kiriting.");
-
-        return;
-    }
-
-    if (!username) {
-
-        alert("Login kiriting.");
-
-        return;
-    }
-
-    if (!password) {
-
-        alert("Parol kiriting.");
+        alert(
+            "Barcha maydonlarni to‘ldiring."
+        );
 
         return;
     }
@@ -2782,30 +3403,35 @@ async function createUser(event) {
     try {
 
         const {
-            data,
             error
-        } = await supabase
-            .from("users")
-            .insert([
-                {
-                    name: name,
-                    username: username,
-                    password: password,
-                    role: role
-                }
-            ])
-            .select()
-            .single();
+        } =
+            await supabase
+                .from("users")
+                .insert([
+                    {
+                        name:
+                            name,
+
+                        username:
+                            username,
+
+                        password:
+                            password,
+
+                        role:
+                            role
+                    }
+                ]);
 
         if (error) {
 
             console.error(
-                "CREATE USER ERROR:",
                 error
             );
 
             if (
-                error.code === "23505"
+                error.code ===
+                "23505"
             ) {
 
                 alert(
@@ -2824,11 +3450,13 @@ async function createUser(event) {
         }
 
         alert(
-            "✅ Yangi user yaratildi."
+            "✅ User yaratildi."
         );
 
         const form =
-            document.getElementById("userForm");
+            document.getElementById(
+                "userForm"
+            );
 
         if (form) {
             form.reset();
@@ -2849,85 +3477,48 @@ async function createUser(event) {
 
 
 /* =========================================================
-   CHANGE PASSWORD
+   SHOW PASSWORD
 ========================================================= */
 
-async function changePassword(id) {
+function showUserPassword(id) {
 
-    if (currentRole !== "admin") {
+    const element =
+        document.getElementById(
+            `password-${id}`
+        );
+
+    if (!element) {
         return;
     }
 
     const user =
         allUsers.find(
-            item => item.id == id
+            item =>
+                item.id == id
         );
 
     if (!user) {
         return;
     }
 
-    const newPassword =
-        prompt(
-            `Yangi parolni kiriting:\n${user.username}`
-        );
+    if (
+        element.dataset.visible ===
+        "true"
+    ) {
 
-    if (newPassword === null) {
-        return;
-    }
+        element.textContent =
+            "••••••••";
 
-    const password =
-        newPassword.trim();
+        element.dataset.visible =
+            "false";
 
-    if (!password) {
+    } else {
 
-        alert(
-            "Parol bo‘sh bo‘lishi mumkin emas."
-        );
+        element.textContent =
+            user.password;
 
-        return;
-    }
-
-    try {
-
-        const {
-            error
-        } = await supabase
-            .from("users")
-            .update({
-                password: password
-            })
-            .eq("id", id);
-
-        if (error) {
-
-            console.error(
-                "CHANGE PASSWORD ERROR:",
-                error
-            );
-
-            alert(
-                "❌ Parol o‘zgartirilmadi:\n" +
-                error.message
-            );
-
-            return;
-        }
-
-        alert(
-            "✅ Parol yangilandi."
-        );
-
-        await getUsers();
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "❌ Xatolik:\n" +
-            error.message
-        );
+        element.dataset.visible =
+            "true";
     }
 }
 
@@ -2938,32 +3529,34 @@ async function changePassword(id) {
 
 async function changeUsername(id) {
 
-    if (currentRole !== "admin") {
+    if (
+        currentRole !==
+        "admin"
+    ) {
         return;
     }
 
     const user =
         allUsers.find(
-            item => item.id == id
+            item =>
+                item.id == id
         );
 
     if (!user) {
         return;
     }
 
-    const newUsername =
+    const username =
         prompt(
-            `Yangi loginni kiriting:\n${user.username}`
+            "Yangi login:",
+            user.username
         );
 
-    if (newUsername === null) {
+    if (username === null) {
         return;
     }
 
-    const username =
-        newUsername.trim();
-
-    if (!username) {
+    if (!username.trim()) {
 
         alert(
             "Login bo‘sh bo‘lishi mumkin emas."
@@ -2976,53 +3569,103 @@ async function changeUsername(id) {
 
         const {
             error
-        } = await supabase
-            .from("users")
-            .update({
-                username: username
-            })
-            .eq("id", id);
+        } =
+            await supabase
+                .from("users")
+                .update({
+                    username:
+                        username.trim()
+                })
+                .eq(
+                    "id",
+                    id
+                );
 
         if (error) {
 
-            console.error(
-                "CHANGE USERNAME ERROR:",
-                error
+            alert(
+                "❌ Login o‘zgartirilmadi:\n" +
+                error.message
             );
-
-            if (
-                error.code === "23505"
-            ) {
-
-                alert(
-                    "❌ Bu login allaqachon mavjud."
-                );
-
-            } else {
-
-                alert(
-                    "❌ Login o‘zgartirilmadi:\n" +
-                    error.message
-                );
-            }
 
             return;
         }
-
-        alert(
-            "✅ Login yangilandi."
-        );
 
         await getUsers();
 
     } catch (error) {
 
         console.error(error);
+    }
+}
+
+
+/* =========================================================
+   CHANGE PASSWORD
+========================================================= */
+
+async function changePassword(id) {
+
+    if (
+        currentRole !==
+        "admin"
+    ) {
+        return;
+    }
+
+    const password =
+        prompt(
+            "Yangi parol:"
+        );
+
+    if (password === null) {
+        return;
+    }
+
+    if (!password.trim()) {
 
         alert(
-            "❌ Xatolik:\n" +
-            error.message
+            "Parol bo‘sh bo‘lishi mumkin emas."
         );
+
+        return;
+    }
+
+    try {
+
+        const {
+            error
+        } =
+            await supabase
+                .from("users")
+                .update({
+                    password:
+                        password.trim()
+                })
+                .eq(
+                    "id",
+                    id
+                );
+
+        if (error) {
+
+            alert(
+                "❌ Parol o‘zgartirilmadi:\n" +
+                error.message
+            );
+
+            return;
+        }
+
+        await getUsers();
+
+        alert(
+            "✅ Parol yangilandi."
+        );
+
+    } catch (error) {
+
+        console.error(error);
     }
 }
 
@@ -3033,13 +3676,17 @@ async function changeUsername(id) {
 
 async function deleteUser(id) {
 
-    if (currentRole !== "admin") {
+    if (
+        currentRole !==
+        "admin"
+    ) {
         return;
     }
 
     if (
         currentUser &&
-        currentUser.id == id
+        currentUser.id ==
+        id
     ) {
 
         alert(
@@ -3049,21 +3696,11 @@ async function deleteUser(id) {
         return;
     }
 
-    const user =
-        allUsers.find(
-            item => item.id == id
-        );
-
-    if (!user) {
-        return;
-    }
-
-    const confirmDelete =
-        confirm(
-            `"${user.username}" userini o‘chirmoqchimisiz?`
-        );
-
-    if (!confirmDelete) {
+    if (
+        !confirm(
+            "Bu userni o‘chirmoqchimisiz?"
+        )
+    ) {
         return;
     }
 
@@ -3071,17 +3708,16 @@ async function deleteUser(id) {
 
         const {
             error
-        } = await supabase
-            .from("users")
-            .delete()
-            .eq("id", id);
+        } =
+            await supabase
+                .from("users")
+                .delete()
+                .eq(
+                    "id",
+                    id
+                );
 
         if (error) {
-
-            console.error(
-                "DELETE USER ERROR:",
-                error
-            );
 
             alert(
                 "❌ User o‘chirilmadi:\n" +
@@ -3091,73 +3727,20 @@ async function deleteUser(id) {
             return;
         }
 
-        alert(
-            "✅ User o‘chirildi."
-        );
-
         await getUsers();
 
     } catch (error) {
 
         console.error(error);
-
-        alert(
-            "❌ Xatolik:\n" +
-            error.message
-        );
     }
 }
 
 
 /* =========================================================
-   HELPERS
+   RESTORE USER
 ========================================================= */
 
-function setText(id, text) {
-
-    const element =
-        document.getElementById(id);
-
-    if (element) {
-        element.textContent =
-            text;
-    }
-}
-
-
-function formatMoney(value) {
-
-    const number =
-        Number(value || 0);
-
-    return new Intl.NumberFormat(
-        "uz-UZ"
-    ).format(number);
-}
-
-
-function escapeHTML(value) {
-
-    return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-
-function escapeAttribute(value) {
-
-    return escapeHTML(value);
-}
-
-
-/* =========================================================
-   RESTORE LOGIN
-========================================================= */
-
-function restoreSavedUser() {
+async function restoreUser() {
 
     const saved =
         localStorage.getItem(
@@ -3171,19 +3754,52 @@ function restoreSavedUser() {
     try {
 
         const user =
-            JSON.parse(saved);
+            JSON.parse(
+                saved
+            );
 
         if (!user || !user.id) {
             return;
         }
 
+        const {
+            data,
+            error
+        } =
+            await supabase
+                .from("users")
+                .select("*")
+                .eq(
+                    "id",
+                    user.id
+                )
+                .maybeSingle();
+
+        if (
+            error ||
+            !data
+        ) {
+
+            localStorage.removeItem(
+                "goldshow_user"
+            );
+
+            return;
+        }
+
         currentUser =
-            user;
+            data;
 
         currentRole =
-            user.role;
+            data.role;
+
+        await openMainPage(
+            data.role
+        );
 
     } catch (error) {
+
+        console.error(error);
 
         localStorage.removeItem(
             "goldshow_user"
@@ -3193,102 +3809,88 @@ function restoreSavedUser() {
 
 
 /* =========================================================
-   DOM CONTENT LOADED
+   EVENTS IMAGE INPUT
+========================================================= */
+
+const eventImageInput =
+    document.getElementById(
+        "eventImage"
+    );
+
+if (eventImageInput) {
+
+    eventImageInput.addEventListener(
+        "change",
+        function () {
+
+            const file =
+                this.files &&
+                this.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            if (
+                file.size >
+                2 * 1024 * 1024
+            ) {
+
+                alert(
+                    "Rasm hajmi 2 MB dan oshmasin."
+                );
+
+                this.value =
+                    "";
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   DOM LOADED
 ========================================================= */
 
 document.addEventListener(
     "DOMContentLoaded",
-    async function () {
+    function () {
 
         updateDate();
 
-        restoreSavedUser();
-
-        /* -----------------------------------------
-           LOGIN FORM
-        ----------------------------------------- */
+        /* LOGIN */
 
         const loginForm =
-            document.getElementById("loginForm");
+            document.getElementById(
+                "loginForm"
+            );
 
         if (loginForm) {
 
             loginForm.addEventListener(
                 "submit",
-                loginUser
+                login
             );
         }
 
 
-        /* -----------------------------------------
-           ORDER FORM
-        ----------------------------------------- */
+        /* ORDER */
 
         const orderForm =
-            document.getElementById("orderForm");
+            document.getElementById(
+                "orderForm"
+            );
 
         if (orderForm) {
 
             orderForm.addEventListener(
                 "submit",
-                saveOrderFromForm
+                saveOrder
             );
         }
 
 
-        /* -----------------------------------------
-           EVENT FORM
-        ----------------------------------------- */
-
-        const eventForm =
-            document.getElementById("eventForm");
-
-        if (eventForm) {
-
-            eventForm.addEventListener(
-                "submit",
-                saveEventFromForm
-            );
-        }
-
-
-        /* -----------------------------------------
-           USER FORM
-        ----------------------------------------- */
-
-        const userForm =
-            document.getElementById("userForm");
-
-        if (userForm) {
-
-            userForm.addEventListener(
-                "submit",
-                createUser
-            );
-        }
-
-
-        /* -----------------------------------------
-           APPLICATION FORM
-        ----------------------------------------- */
-
-        const applicationForm =
-            document.getElementById(
-                "applicationForm"
-            );
-
-        if (applicationForm) {
-
-            applicationForm.addEventListener(
-                "submit",
-                submitApplication
-            );
-        }
-
-
-        /* -----------------------------------------
-           SEARCH
-        ----------------------------------------- */
+        /* SEARCH */
 
         const searchInput =
             document.getElementById(
@@ -3299,14 +3901,12 @@ document.addEventListener(
 
             searchInput.addEventListener(
                 "input",
-                searchOrders
+                displayOrders
             );
         }
 
 
-        /* -----------------------------------------
-           MONEY
-        ----------------------------------------- */
+        /* PAYMENT */
 
         const totalPrice =
             document.getElementById(
@@ -3335,52 +3935,55 @@ document.addEventListener(
         }
 
 
-        /* -----------------------------------------
-           EVENT IMAGE
-        ----------------------------------------- */
+        /* EVENT FORM */
 
-        const eventImage =
+        const eventForm =
             document.getElementById(
-                "eventImage"
+                "eventForm"
             );
 
-        if (eventImage) {
+        if (eventForm) {
 
-            eventImage.addEventListener(
-                "change",
-                handleEventImage
+            eventForm.addEventListener(
+                "submit",
+                saveEvent
             );
         }
 
 
-        /* -----------------------------------------
-           CANCEL EDIT
-        ----------------------------------------- */
+        /* USER FORM */
 
-        const cancelEditButton =
+        const userForm =
             document.getElementById(
-                "cancelEditBtn"
+                "userForm"
             );
 
-        if (cancelEditButton) {
+        if (userForm) {
 
-            cancelEditButton.addEventListener(
-                "click",
-                function () {
-
-                    resetOrderForm();
-
-                    showPageSection(
-                        "orderFormSection"
-                    );
-                }
+            userForm.addEventListener(
+                "submit",
+                createUser
             );
         }
 
 
-        /* -----------------------------------------
-           CLOSE MODAL BY CLICKING OUTSIDE
-        ----------------------------------------- */
+        /* APPLICATION FORM */
+
+        const applicationForm =
+            document.getElementById(
+                "applicationForm"
+            );
+
+        if (applicationForm) {
+
+            applicationForm.addEventListener(
+                "submit",
+                submitApplication
+            );
+        }
+
+
+        /* MODAL BACKGROUND */
 
         const modal =
             document.getElementById(
@@ -3403,75 +4006,31 @@ document.addEventListener(
                 }
             );
         }
-
-
-        /* -----------------------------------------
-           INIT EVENTS
-        ----------------------------------------- */
-
-        await getEvents();
-
-        /* -----------------------------------------
-           AUTO LOGIN
-        ----------------------------------------- */
-
-        if (
-            currentUser &&
-            currentUser.role
-        ) {
-
-            if (
-                currentUser.role ===
-                "admin"
-            ) {
-
-                await openAdminPage();
-
-            } else {
-
-                await openWorkerPage();
-            }
-        }
     }
 );
 
 
 /* =========================================================
-   WINDOW FUNCTIONS
+   GLOBAL FUNCTIONS
 ========================================================= */
 
 window.openCustomerPage =
     openCustomerPage;
 
-window.openLoginPage =
-    openLoginPage;
+window.openWorkerLogin =
+    openWorkerLogin;
 
 window.backToLanding =
     backToLanding;
 
-window.loginUser =
-    loginUser;
+window.login =
+    login;
 
 window.logout =
     logout;
 
-window.openDashboard =
-    openDashboard;
-
-window.openOrdersPage =
-    openOrdersPage;
-
-window.openOrderFormPage =
-    openOrderFormPage;
-
-window.openApplicationsPage =
-    openApplicationsPage;
-
-window.openUsersPage =
-    openUsersPage;
-
-window.openEventsPage =
-    openEventsPage;
+window.showPage =
+    showPage;
 
 window.openOrderModal =
     openOrderModal;
@@ -3479,14 +4038,26 @@ window.openOrderModal =
 window.closeOrderModal =
     closeOrderModal;
 
+window.saveOrder =
+    saveOrder;
+
+window.calculateRemaining =
+    calculateRemaining;
+
 window.editOrder =
     editOrder;
+
+window.cancelEditOrder =
+    cancelEditOrder;
 
 window.deleteOrder =
     deleteOrder;
 
 window.deleteEvent =
     deleteEvent;
+
+window.goToEventPage =
+    goToEventPage;
 
 window.acceptApplication =
     acceptApplication;
@@ -3500,20 +4071,18 @@ window.deleteApplication =
 window.showUserPassword =
     showUserPassword;
 
-window.changePassword =
-    changePassword;
-
 window.changeUsername =
     changeUsername;
+
+window.changePassword =
+    changePassword;
 
 window.deleteUser =
     deleteUser;
 
-window.goToEventPage =
-    goToEventPage;
 
-window.calculateRemaining =
-    calculateRemaining;
+/* =========================================================
+   RESTORE SESSION AFTER PAGE RELOAD
+========================================================= */
 
-window.createUser =
-    createUser;
+restoreUser();
