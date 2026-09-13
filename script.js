@@ -1,39 +1,40 @@
 /* =========================================================
-   GOLD SHOW - FINAL SCRIPT
-========================================================= */
-
-const SUPABASE_URL =
-    "https://mvrrftlhjlbrsiexnwjq.supabase.co";
-
-const SUPABASE_PUBLISHABLE_KEY =
-    "sb_publishable_MFI3LFGRmSviFv6ygJnXyg_wFktEpyP";
-
-let supabaseClient = null;
-let currentUser = null;
-
-let customerEventsPage = 1;
-let workerEventsPage = 1;
-
-const EVENTS_PER_PAGE = 10;
-
-let applicationTimer = null;
-
-/* =========================================================
    SUPABASE
 ========================================================= */
 
-if (
-    window.supabase &&
-    typeof window.supabase.createClient === "function"
-) {
-    supabaseClient = window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_PUBLISHABLE_KEY
-    );
-}
+const SUPABASE_URL = "https://mvrrftlhjlbrsiexnwjq.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_MFI3LFGRmSviFv6ygJnXyg_wFktEpyP";
+
+const supabase = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
 
 /* =========================================================
-   HELPERS
+   GLOBAL VARIABLES
+========================================================= */
+
+let currentUser = null;
+let currentRole = null;
+
+let allOrders = [];
+let allEvents = [];
+let allApplications = [];
+let allUsers = [];
+
+let currentEventPage = 1;
+const eventsPerPage = 6;
+
+let eventImageData = "";
+
+let applicationCheckTimer = null;
+
+
+/* =========================================================
+   UZBEK MONTHS
 ========================================================= */
 
 const UZ_MONTHS = [
@@ -51,93 +52,83 @@ const UZ_MONTHS = [
     "dekabr"
 ];
 
-function escapeHTML(value) {
-    return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
 
-function formatMoney(value) {
-    return (
-        Number(value || 0).toLocaleString("uz-UZ") +
-        " so‘m"
-    );
-}
-
-function getToday() {
-    const now = new Date();
-
-    const year = now.getFullYear();
-
-    const month = String(
-        now.getMonth() + 1
-    ).padStart(2, "0");
-
-    const day = String(
-        now.getDate()
-    ).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-}
+/* =========================================================
+   DATE FORMAT
+========================================================= */
 
 function formatDate(value) {
+
     if (!value) {
-        return "—";
-    }
-
-    const parts = String(value).split("-");
-
-    if (parts.length !== 3) {
-        return String(value);
-    }
-
-    const year = Number(parts[0]);
-    const month = Number(parts[1]);
-    const day = Number(parts[2]);
-
-    if (!year || !month || !day) {
-        return String(value);
-    }
-
-    return `${day}-${UZ_MONTHS[month - 1]} ${year}-yil`;
-}
-
-function formatDateTime(value) {
-    if (!value) {
-        return "—";
+        return "";
     }
 
     const date = new Date(value);
 
-    if (Number.isNaN(date.getTime())) {
-        return "—";
+    if (isNaN(date.getTime())) {
+        return value;
     }
 
-    const day = String(
-        date.getDate()
-    ).padStart(2, "0");
-
-    const month = String(
-        date.getMonth() + 1
-    ).padStart(2, "0");
-
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = UZ_MONTHS[date.getMonth()];
     const year = date.getFullYear();
 
-    const hour = String(
-        date.getHours()
-    ).padStart(2, "0");
-
-    const minute = String(
-        date.getMinutes()
-    ).padStart(2, "0");
-
-    return `${day}.${month}.${year} ${hour}:${minute}`;
+    return `${day}-${month} ${year}-yil`;
 }
 
+
+function formatDateShort(value) {
+
+    if (!value) {
+        return "";
+    }
+
+    const date = new Date(value);
+
+    if (isNaN(date.getTime())) {
+        return value;
+    }
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+
+    return `${day}.${month}.${year}`;
+}
+
+
+function formatDateTime(dateValue, timeValue = "") {
+
+    if (!dateValue) {
+        return "";
+    }
+
+    const date = new Date(dateValue);
+
+    if (isNaN(date.getTime())) {
+        return `${dateValue} ${timeValue}`;
+    }
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+
+    let time = "";
+
+    if (timeValue) {
+        time = String(timeValue).slice(0, 5);
+    }
+
+    return `${day}.${month}.${year} ${time}`;
+}
+
+
+/* =========================================================
+   TODAY DATE
+========================================================= */
+
 function updateDate() {
+
     const element = document.getElementById("todayDate");
 
     if (!element) {
@@ -153,589 +144,395 @@ function updateDate() {
     element.textContent =
         `${day}-${month} ${year}-yil`;
 }
-}
+
 
 /* =========================================================
    PAGE
 ========================================================= */
 
-function hideAllPages() {
-    [
-        "landingPage",
-        "loginPage",
-        "customerPage",
-        "mainPage"
-    ].forEach(function(id) {
+function showPage(pageId) {
 
-        const element =
-            document.getElementById(id);
-
-        if (element) {
-            element.classList.add("hidden");
-        }
-
+    document.querySelectorAll(".page").forEach(page => {
+        page.classList.remove("active");
     });
-}
 
-function backToLanding() {
-    currentUser = null;
-
-    if (applicationTimer) {
-        clearInterval(applicationTimer);
-    }
-
-    applicationTimer = null;
-
-    hideAllPages();
-
-    const landing =
-        document.getElementById("landingPage");
-
-    if (landing) {
-        landing.classList.remove("hidden");
-    }
-
-    closeOrderModal();
-}
-
-async function openCustomerPage() {
-    hideAllPages();
-
-    const page =
-        document.getElementById("customerPage");
+    const page = document.getElementById(pageId);
 
     if (page) {
-        page.classList.remove("hidden");
+        page.classList.add("active");
     }
-
-    customerEventsPage = 1;
-
-    await loadCustomerEvents();
-
-    restoreApplicationStatus();
 }
 
-function openWorkerLogin() {
-    hideAllPages();
 
-    const login =
-        document.getElementById("loginPage");
+/* =========================================================
+   LANDING PAGE
+========================================================= */
 
-    if (login) {
-        login.classList.remove("hidden");
-    }
+function openCustomerPage() {
+
+    showPage("customerPage");
+
+    loadCustomerEvents();
+}
+
+
+function openLoginPage() {
+
+    showPage("loginPage");
 
     const username =
-        document.getElementById("username");
+        document.getElementById("loginUsername");
+
+    const password =
+        document.getElementById("loginPassword");
 
     if (username) {
-        username.focus();
+        username.value = "";
+    }
+
+    if (password) {
+        password.value = "";
     }
 }
+
+
+function backToLanding() {
+
+    showPage("landingPage");
+}
+
 
 /* =========================================================
    LOGIN
 ========================================================= */
 
-async function login(event) {
+async function loginUser(event) {
 
     if (event) {
         event.preventDefault();
     }
 
-    const usernameElement =
-        document.getElementById("username");
+    const usernameInput =
+        document.getElementById("username") ||
+        document.getElementById("loginUsername");
 
-    const passwordElement =
-        document.getElementById("password");
-
-    const errorElement =
-        document.getElementById("loginError");
-
-    if (
-        !usernameElement ||
-        !passwordElement ||
-        !errorElement
-    ) {
-        return;
-    }
+    const passwordInput =
+        document.getElementById("password") ||
+        document.getElementById("loginPassword");
 
     const username =
-        usernameElement.value.trim();
+        usernameInput ? usernameInput.value.trim() : "";
 
     const password =
-        passwordElement.value.trim();
-
-    errorElement.textContent = "";
+        passwordInput ? passwordInput.value.trim() : "";
 
     if (!username || !password) {
-        errorElement.textContent =
-            "❌ Login va parolni kiriting.";
-        return;
-    }
 
-    if (!supabaseClient) {
-        errorElement.textContent =
-            "❌ Supabase ulanmagan.";
+        alert("Login va parolni kiriting.");
+
         return;
     }
 
     try {
 
-        const result =
-            await supabaseClient
-                .from("users")
-                .select(
-                    "id,name,username,password,role"
-                )
-                .eq(
-                    "username",
-                    username
-                )
-                .eq(
-                    "password",
-                    password
-                )
-                .limit(1);
+        const {
+            data,
+            error
+        } = await supabase
+            .from("users")
+            .select("*")
+            .eq("username", username)
+            .eq("password", password)
+            .maybeSingle();
 
-        if (result.error) {
+        if (error) {
 
-            console.error(
-                "LOGIN ERROR:",
-                result.error
+            console.error("LOGIN ERROR:", error);
+
+            alert(
+                "Login vaqtida xatolik:\n" +
+                error.message
             );
 
-            errorElement.textContent =
-                "❌ " +
-                result.error.message;
+            return;
+        }
+
+        if (!data) {
+
+            alert(
+                "Login yoki parol noto‘g‘ri."
+            );
 
             return;
         }
 
-        if (
-            !result.data ||
-            result.data.length === 0
-        ) {
+        currentUser = data;
+        currentRole = data.role;
 
-            errorElement.textContent =
-                "❌ Login yoki parol noto‘g‘ri.";
+        localStorage.setItem(
+            "goldshow_user",
+            JSON.stringify(data)
+        );
 
-            return;
-        }
+        if (data.role === "admin") {
 
-        const user =
-            result.data[0];
-
-        const role =
-            String(
-                user.role || ""
-            )
-            .trim()
-            .toLowerCase();
-
-        if (
-            role !== "admin" &&
-            role !== "user"
-        ) {
-
-            errorElement.textContent =
-                "❌ User roli noto‘g‘ri.";
-
-            return;
-        }
-
-        currentUser = {
-            id: user.id,
-            name: user.name,
-            username: user.username,
-            role: role
-        };
-
-        usernameElement.value = "";
-        passwordElement.value = "";
-
-        if (role === "admin") {
             await openAdminPage();
+
         } else {
+
             await openWorkerPage();
         }
 
-    }
-    catch (error) {
+    } catch (error) {
 
-        console.error(
-            "LOGIN EXCEPTION:",
-            error
+        console.error(error);
+
+        alert(
+            "Kutilmagan xatolik:\n" +
+            error.message
         );
-
-        errorElement.textContent =
-            "❌ " +
-            (
-                error.message ||
-                "Kirishda xatolik."
-            );
     }
 }
 
+
 /* =========================================================
-   ADMIN / WORKER
+   LOGOUT
+========================================================= */
+
+function logout() {
+
+    currentUser = null;
+    currentRole = null;
+
+    localStorage.removeItem("goldshow_user");
+
+    if (applicationCheckTimer) {
+        clearInterval(applicationCheckTimer);
+        applicationCheckTimer = null;
+    }
+
+    showPage("landingPage");
+}
+
+
+/* =========================================================
+   ROLE MENUS
+========================================================= */
+
+function toggleRoleMenus(isAdmin) {
+
+    const addOrderMenu =
+        document.getElementById("addOrderMenu");
+
+    const applicationsMenu =
+        document.getElementById("applicationsMenu");
+
+    const usersMenu =
+        document.getElementById("usersMenu");
+
+    const eventAdminForm =
+        document.getElementById("workerEventAdminForm");
+
+    if (addOrderMenu) {
+        addOrderMenu.style.display =
+            isAdmin ? "" : "none";
+    }
+
+    if (applicationsMenu) {
+        applicationsMenu.style.display =
+            isAdmin ? "" : "none";
+    }
+
+    if (usersMenu) {
+        usersMenu.style.display =
+            isAdmin ? "" : "none";
+    }
+
+    if (eventAdminForm) {
+        eventAdminForm.style.display =
+            isAdmin ? "" : "none";
+    }
+}
+
+
+/* =========================================================
+   OPEN ADMIN PAGE
 ========================================================= */
 
 async function openAdminPage() {
 
-    await prepareMainPage(
-        "ADMIN PANEL"
-    );
+    currentRole = "admin";
 
     toggleRoleMenus(true);
 
-    await showPage(
-        "dashboardPage"
-    );
+    await prepareMainPage();
+
+    showPage("mainPage");
+
+    toggleRoleMenus(true);
+
+    await updateDashboard();
 }
+
+
+/* =========================================================
+   OPEN WORKER PAGE
+========================================================= */
 
 async function openWorkerPage() {
 
-    await prepareMainPage(
-        "ISHCHI PANEL"
-    );
+    currentRole = "user";
 
     toggleRoleMenus(false);
 
-    await showPage(
-        "dashboardPage"
-    );
+    await prepareMainPage();
+
+    showPage("mainPage");
+
+    toggleRoleMenus(false);
 }
 
-function toggleRoleMenus(isAdmin) {
 
-    [
-        "addOrderMenu",
-        "applicationsMenu",
-        "usersMenu"
-    ].forEach(function(id) {
+/* =========================================================
+   PREPARE MAIN PAGE
+========================================================= */
 
-        const element =
-            document.getElementById(id);
-
-        if (element) {
-            element.style.display =
-                isAdmin ? "block" : "none";
-        }
-
-    });
-
-    const eventForm =
-        document.getElementById(
-            "workerEventAdminForm"
-        );
-
-    if (eventForm) {
-        eventForm.classList.toggle(
-            "hidden",
-            !isAdmin
-        );
-    }
-}
-
-async function prepareMainPage(
-    panelTitle
-) {
-
-    hideAllPages();
-
-    const mainPage =
-        document.getElementById("mainPage");
-
-    if (!mainPage) {
-        return;
-    }
-
-    mainPage.classList.remove("hidden");
-
-    if (currentUser) {
-
-        const currentUserElement =
-            document.getElementById(
-                "currentUser"
-            );
-
-        if (currentUserElement) {
-            currentUserElement.textContent =
-                currentUser.name;
-        }
-
-        const roleElement =
-            document.getElementById(
-                "userRole"
-            );
-
-        if (roleElement) {
-            roleElement.textContent =
-                currentUser.role === "admin"
-                    ? "ADMIN"
-                    : "ISHCHI";
-        }
-
-        const avatar =
-            document.getElementById(
-                "userAvatar"
-            );
-
-        if (avatar) {
-            avatar.textContent =
-                (
-                    currentUser.name ||
-                    "G"
-                )
-                .charAt(0)
-                .toUpperCase();
-        }
-    }
-
-    const pageTitle =
-        document.getElementById(
-            "pageTitle"
-        );
-
-    if (pageTitle) {
-        pageTitle.textContent =
-            panelTitle;
-    }
+async function prepareMainPage() {
 
     updateDate();
 
     await updateDashboard();
 
-    await displayOrders();
+    await getOrders();
 
-    await loadWorkerEvents();
+    await getEvents();
 
-    if (
-        currentUser &&
-        currentUser.role === "admin"
-    ) {
+    if (currentRole === "admin") {
 
-        await displayUsers();
+        await getApplications();
 
-        await loadApplications();
+        await getUsers();
     }
 }
 
-async function openMainPage() {
-
-    if (!currentUser) {
-        return;
-    }
-
-    if (
-        currentUser.role === "admin"
-    ) {
-        await openAdminPage();
-    }
-    else {
-        await openWorkerPage();
-    }
-}
-
-function logout() {
-
-    if (applicationTimer) {
-        clearInterval(applicationTimer);
-    }
-
-    applicationTimer = null;
-
-    backToLanding();
-}
 
 /* =========================================================
    MENU
 ========================================================= */
 
-async function showPage(
-    pageId,
-    button = null
-) {
+function openDashboard() {
 
-    const adminOnlyPages = [
-        "usersPage",
-        "applicationsPage",
-        "addOrderPage"
-    ];
+    showPageSection("dashboardSection");
 
-    if (
-        adminOnlyPages.includes(pageId) &&
-        (
-            !currentUser ||
-            currentUser.role !== "admin"
-        )
-    ) {
+    updateDashboard();
+}
 
-        alert(
-            "❌ Bu sahifa faqat admin uchun."
-        );
 
+function openOrdersPage() {
+
+    showPageSection("ordersSection");
+
+    getOrders();
+}
+
+
+function openOrderFormPage() {
+
+    showPageSection("orderFormSection");
+
+    resetOrderForm();
+}
+
+
+function openApplicationsPage() {
+
+    if (currentRole !== "admin") {
         return;
     }
 
-    document
-        .querySelectorAll(
-            "#mainPage .page"
-        )
-        .forEach(function(page) {
+    showPageSection("applicationsPage");
 
-            page.classList.add(
-                "hidden"
-            );
+    getApplications();
+}
 
-        });
 
-    const target =
-        document.getElementById(pageId);
+function openUsersPage() {
 
-    if (!target) {
+    if (currentRole !== "admin") {
         return;
     }
 
-    target.classList.remove("hidden");
+    showPageSection("usersPage");
 
-    const titles = {
+    getUsers();
+}
 
-        dashboardPage:
-            currentUser &&
-            currentUser.role === "admin"
-                ? "ADMIN PANEL"
-                : "ISHCHI PANEL",
 
-        ordersPage:
-            "Zakaslar",
+function openEventsPage() {
 
-        addOrderPage:
-            "Zakas qo‘shish",
+    showPageSection("workerEventsPage");
 
-        workerEventsPage:
-            "Tadbirlar",
+    getEvents();
+}
 
-        applicationsPage:
-            "Arizalar",
 
-        usersPage:
-            "Userlar"
-
-    };
-
-    const pageTitle =
-        document.getElementById(
-            "pageTitle"
-        );
-
-    if (pageTitle) {
-        pageTitle.textContent =
-            titles[pageId] ||
-            "Gold Show";
-    }
+function showPageSection(sectionId) {
 
     document
-        .querySelectorAll(
-            "#mainPage .menu-btn"
-        )
-        .forEach(function(btn) {
+        .querySelectorAll(".main-section")
+        .forEach(section => {
 
-            btn.classList.remove(
-                "active"
-            );
-
+            section.classList.remove("active");
+            section.style.display = "none";
         });
 
-    if (button) {
-        button.classList.add("active");
-    }
+    const section =
+        document.getElementById(sectionId);
 
-    if (pageId === "dashboardPage") {
-        await updateDashboard();
-    }
+    if (section) {
 
-    if (pageId === "ordersPage") {
-        await displayOrders();
-    }
-
-    if (pageId === "addOrderPage") {
-        calculateRemaining();
-    }
-
-    if (pageId === "workerEventsPage") {
-        await loadWorkerEvents();
-    }
-
-    if (pageId === "applicationsPage") {
-        await loadApplications();
-    }
-
-    if (pageId === "usersPage") {
-        await displayUsers();
+        section.classList.add("active");
+        section.style.display = "block";
     }
 }
+
 
 /* =========================================================
-   ORDER
+   ORDER FORM
 ========================================================= */
 
-function calculateRemaining() {
+function getValue(id) {
 
-    const total =
-        Number(
-            document.getElementById(
-                "totalPrice"
-            )?.value
-        ) || 0;
+    const element =
+        document.getElementById(id);
 
-    const paid =
-        Number(
-            document.getElementById(
-                "paid"
-            )?.value
-        ) || 0;
-
-    const remaining =
-        document.getElementById(
-            "remaining"
-        );
-
-    if (remaining) {
-        remaining.textContent =
-            formatMoney(
-                total - paid
-            );
-    }
+    return element
+        ? element.value
+        : "";
 }
 
+
+function getNumberValue(id) {
+
+    const value =
+        parseFloat(getValue(id));
+
+    return isNaN(value) ? 0 : value;
+}
+
+
 function getOrderFromForm() {
-
-    const getValue =
-        function(id) {
-
-            const element =
-                document.getElementById(id);
-
-            return element
-                ? element.value
-                : "";
-        };
 
     return {
 
         client_name:
-            getValue("clientName")
-                .trim(),
+            getValue("clientName").trim(),
 
         client_phone:
-            getValue("clientPhone")
-                .trim(),
+            getValue("clientPhone").trim(),
 
         location:
-            getValue("location")
-                .trim(),
+            getValue("location").trim(),
 
         event_date:
             getValue("eventDate"),
@@ -744,110 +541,73 @@ function getOrderFromForm() {
             getValue("eventTime"),
 
         screen_height:
-            Number(
-                getValue("screenHeight")
-            ) || 0,
+            getNumberValue("screenHeight"),
 
         screen_width:
-            Number(
-                getValue("screenWidth")
-            ) || 0,
+            getNumberValue("screenWidth"),
 
         stage_width:
-            Number(
-                getValue("stageWidth")
-            ) || 0,
+            getNumberValue("stageWidth"),
 
         stage_length:
-            Number(
-                getValue("stageLength")
-            ) || 0,
+            getNumberValue("stageLength"),
 
         curtain:
-            getValue("curtain") ||
-            "Yo‘q",
+            getValue("curtain") || "Yo‘q",
 
         lights:
-            Number(
-                getValue("lights")
-            ) || 0,
+            parseInt(getNumberValue("lights")) || 0,
 
         galava:
-            Number(
-                getValue("galava")
-            ) || 0,
+            parseInt(getNumberValue("galava")) || 0,
 
         ledwash:
-            Number(
-                getValue("ledwash")
-            ) || 0,
+            parseInt(getNumberValue("ledwash")) || 0,
 
         confetti:
-            Number(
-                getValue("confetti")
-            ) || 0,
+            parseInt(getNumberValue("confetti")) || 0,
 
         dim:
-            Number(
-                getValue("dim")
-            ) || 0,
+            parseInt(getNumberValue("dim")) || 0,
 
         firework:
-            Number(
-                getValue("firework")
-            ) || 0,
+            parseInt(getNumberValue("firework")) || 0,
 
         side_screens:
-            Number(
-                getValue("sideScreens")
-            ) || 0,
+            parseInt(getNumberValue("sideScreens")) || 0,
 
         side_height:
-            Number(
-                getValue("sideHeight")
-            ) || 0,
+            getNumberValue("sideHeight"),
 
         side_width:
-            Number(
-                getValue("sideWidth")
-            ) || 0,
+            getNumberValue("sideWidth"),
 
         paid:
-            Number(
-                getValue("paid")
-            ) || 0,
+            getNumberValue("paid"),
 
         total_price:
-            Number(
-                getValue("totalPrice")
-            ) || 0
+            getNumberValue("totalPrice"),
+
+        remaining:
+            getNumberValue("remaining")
     };
 }
 
-async function saveOrderFromForm(
-    event
-) {
 
-    event.preventDefault();
+/* =========================================================
+   SAVE ORDER
+========================================================= */
 
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
+async function saveOrderFromForm(event) {
 
-        alert(
-            "❌ Faqat admin zakas qo‘sha oladi."
-        );
-
-        return;
+    if (event) {
+        event.preventDefault();
     }
 
-    if (!supabaseClient) {
+    const form =
+        document.getElementById("orderForm");
 
-        alert(
-            "❌ Supabase ulanmagan."
-        );
-
+    if (!form) {
         return;
     }
 
@@ -855,785 +615,253 @@ async function saveOrderFromForm(
         getOrderFromForm();
 
     if (!order.client_name) {
-        alert(
-            "❌ Mijoz ismini kiriting."
-        );
+
+        alert("Buyurtmachi ismini kiriting.");
+
         return;
     }
 
     if (!order.client_phone) {
-        alert(
-            "❌ Telefon raqamini kiriting."
-        );
+
+        alert("Telefon raqamini kiriting.");
+
         return;
     }
 
     if (!order.location) {
-        alert(
-            "❌ Manzilni kiriting."
-        );
+
+        alert("Manzilni kiriting.");
+
         return;
     }
 
     if (!order.event_date) {
-        alert(
-            "❌ Tadbir sanasini tanlang."
-        );
+
+        alert("Tadbir sanasini tanlang.");
+
         return;
     }
 
     if (!order.event_time) {
-        alert(
-            "❌ Tadbir vaqtini tanlang."
-        );
+
+        alert("Tadbir vaqtini tanlang.");
+
         return;
     }
 
-    order.remaining =
-        order.total_price -
-        order.paid;
-
     const editingId =
-        document.getElementById(
-            "editingOrderId"
-        )?.value.trim();
+        getValue("editingOrderId");
+
+    const button =
+        document.getElementById("orderSubmitBtn");
 
     try {
+
+        if (button) {
+            button.disabled = true;
+            button.textContent =
+                "Saqlanmoqda...";
+        }
 
         let result;
 
         if (editingId) {
 
-            result =
-                await supabaseClient
-                    .from("orders")
-                    .update(order)
-                    .eq(
-                        "id",
-                        Number(editingId)
-                    )
-                    .select()
-                    .single();
+            result = await supabase
+                .from("orders")
+                .update(order)
+                .eq("id", editingId);
 
-        }
-        else {
+        } else {
 
-            result =
-                await supabaseClient
-                    .from("orders")
-                    .insert(order)
-                    .select()
-                    .single();
+            result = await supabase
+                .from("orders")
+                .insert([order]);
         }
 
         if (result.error) {
-            throw result.error;
+
+            console.error(
+                "ORDER ERROR:",
+                result.error
+            );
+
+            alert(
+                "❌ Buyurtma saqlanmadi:\n" +
+                result.error.message
+            );
+
+            return;
         }
-
-        resetOrderForm();
-
-        await displayOrders();
-
-        await updateDashboard();
-
-        await showPage(
-            "ordersPage"
-        );
 
         alert(
             editingId
-                ? "✅ Zakas yangilandi."
-                : "✅ Zakas muvaffaqiyatli qo‘shildi."
+                ? "✅ Buyurtma yangilandi."
+                : "✅ Buyurtma qo‘shildi."
         );
 
-    }
-    catch (error) {
+        resetOrderForm();
 
-        console.error(
-            "ORDER ERROR:",
-            error
-        );
-
-        alert(
-            "❌ Zakas qo‘shilmadi:\n" +
-            (
-                error.message ||
-                "Noma'lum xatolik"
-            )
-        );
-    }
-}
-
-async function getOrders() {
-
-    if (!supabaseClient) {
-        return [];
-    }
-
-    const result =
-        await supabaseClient
-            .from("orders")
-            .select("*")
-            .order(
-                "event_date",
-                {
-                    ascending: false
-                }
-            )
-            .order(
-                "event_time",
-                {
-                    ascending: false
-                }
-            );
-
-    if (result.error) {
-
-        console.error(
-            "ORDERS ERROR:",
-            result.error
-        );
-
-        return [];
-    }
-
-    return result.data || [];
-}
-
-async function displayOrders() {
-
-    const container =
-        document.getElementById(
-            "ordersList"
-        );
-
-    if (!container) {
-        return;
-    }
-
-    let orders =
         await getOrders();
 
-    const search =
-        (
-            document.getElementById(
-                "searchInput"
-            )?.value || ""
-        )
-        .toLowerCase()
-        .trim();
+        await updateDashboard();
 
-    if (search) {
+        showPageSection("ordersSection");
 
-        orders =
-            orders.filter(function(order) {
+    } catch (error) {
 
-                return (
-
-                    String(
-                        order.client_name
-                    )
-                    .toLowerCase()
-                    .includes(search)
-
-                    ||
-
-                    String(
-                        order.client_phone
-                    )
-                    .toLowerCase()
-                    .includes(search)
-
-                    ||
-
-                    String(
-                        order.location
-                    )
-                    .toLowerCase()
-                    .includes(search)
-                );
-
-            });
-    }
-
-    if (!orders.length) {
-
-        container.innerHTML = `
-            <div class="no-orders">
-                <h3>📭 Zakas topilmadi</h3>
-                <p>Hozircha zakas mavjud emas.</p>
-            </div>
-        `;
-
-        return;
-    }
-
-    container.innerHTML =
-        orders
-            .map(createOrderHTML)
-            .join("");
-}
-
-function createOrderHTML(order) {
-
-    let adminButtons = "";
-
-    if (
-        currentUser &&
-        currentUser.role === "admin"
-    ) {
-
-        adminButtons = `
-            <div
-                style="
-                    display:flex;
-                    gap:8px;
-                    flex-wrap:wrap;
-                    margin-top:15px;
-                "
-            >
-                <button
-                    type="button"
-                    class="btn-edit"
-                    onclick="editOrder(${Number(order.id)})"
-                >
-                    ✏️ Tahrirlash
-                </button>
-
-                <button
-                    type="button"
-                    class="btn-delete"
-                    onclick="deleteOrder(${Number(order.id)})"
-                >
-                    🗑 O‘chirish
-                </button>
-            </div>
-        `;
-    }
-
-    return `
-        <div class="order-card">
-
-            <div class="order-header">
-
-                <div>
-
-                    <div class="order-client">
-                        👤 ${escapeHTML(
-                            order.client_name
-                        )}
-                    </div>
-
-                    <div>
-                        📞 ${escapeHTML(
-                            order.client_phone
-                        )}
-                    </div>
-
-                </div>
-
-                <div class="order-date">
-
-                    📅 ${formatDate(
-                        order.event_date
-                    )}
-
-                    <br>
-
-                    ⏰ ${escapeHTML(
-                        order.event_time || ""
-                    )}
-
-                </div>
-
-            </div>
-
-            <div class="order-grid">
-
-                <div class="info">
-                    <span>📍 Manzil</span>
-                    <strong>
-                        ${escapeHTML(
-                            order.location
-                        )}
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>🖥 Ekran</span>
-                    <strong>
-                        ${order.screen_height || 0}m
-                        ×
-                        ${order.screen_width || 0}m
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>🎭 Sahna</span>
-                    <strong>
-                        ${order.stage_width || 0}m
-                        ×
-                        ${order.stage_length || 0}m
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>💡 Chiroq</span>
-                    <strong>
-                        ${order.lights || 0}
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>🔆 Galava</span>
-                    <strong>
-                        ${order.galava || 0}
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>💡 LED Wash</span>
-                    <strong>
-                        ${order.ledwash || 0}
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>🎉 Konfetti</span>
-                    <strong>
-                        ${order.confetti || 0}
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>💡 Dim</span>
-                    <strong>
-                        ${order.dim || 0}
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>🎆 Firework</span>
-                    <strong>
-                        ${order.firework || 0}
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>🖥 Yon ekran</span>
-                    <strong>
-                        ${order.side_screens || 0} dona
-                        <br>
-                        ${order.side_height || 0}m
-                        ×
-                        ${order.side_width || 0}m
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>🎭 Parda</span>
-                    <strong>
-                        ${escapeHTML(
-                            order.curtain || "Yo‘q"
-                        )}
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>💰 Jami</span>
-                    <strong class="money">
-                        ${formatMoney(
-                            order.total_price
-                        )}
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>💵 To‘langan</span>
-                    <strong class="money">
-                        ${formatMoney(
-                            order.paid
-                        )}
-                    </strong>
-                </div>
-
-                <div class="info">
-                    <span>⚠️ Qolgan</span>
-                    <strong class="remaining-money">
-                        ${formatMoney(
-                            order.remaining
-                        )}
-                    </strong>
-                </div>
-
-            </div>
-
-            ${adminButtons}
-
-        </div>
-    `;
-}
-
-/* =========================================
-   EDIT ORDER
-========================================= */
-
-async function editOrder(id) {
-
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
+        console.error(error);
 
         alert(
-            "❌ Faqat admin."
+            "❌ Buyurtma qo‘shishda xatolik:\n" +
+            error.message
         );
 
-        return;
+    } finally {
+
+        if (button) {
+
+            button.disabled = false;
+
+            button.textContent =
+                "Saqlash";
+        }
     }
-
-    const result =
-        await supabaseClient
-            .from("orders")
-            .select("*")
-            .eq("id", id)
-            .single();
-
-    if (
-        result.error ||
-        !result.data
-    ) {
-
-        alert(
-            "❌ Zakas topilmadi."
-        );
-
-        return;
-    }
-
-    const order =
-        result.data;
-
-    const fields = {
-
-        editingOrderId: "id",
-        clientName: "client_name",
-        clientPhone: "client_phone",
-        location: "location",
-        eventDate: "event_date",
-        eventTime: "event_time",
-        screenHeight: "screen_height",
-        screenWidth: "screen_width",
-        stageWidth: "stage_width",
-        stageLength: "stage_length",
-        curtain: "curtain",
-        lights: "lights",
-        galava: "galava",
-        ledwash: "ledwash",
-        confetti: "confetti",
-        dim: "dim",
-        firework: "firework",
-        sideScreens: "side_screens",
-        sideHeight: "side_height",
-        sideWidth: "side_width",
-        paid: "paid",
-        totalPrice: "total_price"
-    };
-
-    Object.entries(fields)
-        .forEach(function([elementId, field]) {
-
-            const element =
-                document.getElementById(
-                    elementId
-                );
-
-            if (element) {
-                element.value =
-                    order[field] ?? "";
-            }
-
-        });
-
-    document
-        .getElementById("editBadge")
-        ?.classList.remove("hidden");
-
-    document
-        .getElementById("cancelEditBtn")
-        ?.classList.remove("hidden");
-
-    const title =
-        document.getElementById(
-            "orderFormTitle"
-        );
-
-    if (title) {
-        title.textContent =
-            "✏️ Zakasni tahrirlash";
-    }
-
-    const submitButton =
-        document.getElementById(
-            "orderSubmitBtn"
-        );
-
-    if (submitButton) {
-        submitButton.textContent =
-            "💾 O‘zgarishlarni saqlash";
-    }
-
-    calculateRemaining();
-
-    await showPage(
-        "addOrderPage"
-    );
 }
+
+
+/* =========================================================
+   RESET ORDER FORM
+========================================================= */
 
 function resetOrderForm() {
 
     const form =
-        document.getElementById(
-            "orderForm"
-        );
+        document.getElementById("orderForm");
 
     if (form) {
         form.reset();
     }
 
     const editing =
-        document.getElementById(
-            "editingOrderId"
-        );
+        document.getElementById("editingOrderId");
 
     if (editing) {
         editing.value = "";
     }
 
-    document
-        .getElementById("editBadge")
-        ?.classList.add("hidden");
+    const cancelButton =
+        document.getElementById("cancelEditBtn");
 
-    document
-        .getElementById("cancelEditBtn")
-        ?.classList.add("hidden");
-
-    const title =
-        document.getElementById(
-            "orderFormTitle"
-        );
-
-    if (title) {
-        title.textContent =
-            "➕ Yangi zakas qo‘shish";
+    if (cancelButton) {
+        cancelButton.style.display = "none";
     }
 
-    const button =
-        document.getElementById(
-            "orderSubmitBtn"
-        );
+    const badge =
+        document.getElementById("editBadge");
 
-    if (button) {
-        button.textContent =
-            "💾 Zakasni saqlash";
+    if (badge) {
+        badge.style.display = "none";
+    }
+
+    const submitButton =
+        document.getElementById("orderSubmitBtn");
+
+    if (submitButton) {
+        submitButton.textContent =
+            "Saqlash";
     }
 
     calculateRemaining();
 }
 
-function cancelEditOrder() {
 
-    resetOrderForm();
+/* =========================================================
+   CALCULATE REMAINING
+========================================================= */
 
-    showPage(
-        "ordersPage"
-    );
+function calculateRemaining() {
+
+    const total =
+        getNumberValue("totalPrice");
+
+    const paid =
+        getNumberValue("paid");
+
+    const remaining =
+        Math.max(0, total - paid);
+
+    const remainingInput =
+        document.getElementById("remaining");
+
+    if (remainingInput) {
+
+        remainingInput.value =
+            remaining;
+    }
 }
 
-async function deleteOrder(id) {
 
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
-        alert("❌ Faqat admin.");
-        return;
-    }
+/* =========================================================
+   GET ORDERS
+========================================================= */
 
-    if (
-        !confirm(
-            "Bu zakasni o‘chirmoqchimisiz?"
-        )
-    ) {
-        return;
-    }
+async function getOrders() {
 
-    const result =
-        await supabaseClient
+    try {
+
+        const {
+            data,
+            error
+        } = await supabase
             .from("orders")
-            .delete()
-            .eq(
-                "id",
-                id
+            .select("*")
+            .order("event_date", {
+                ascending: true
+            })
+            .order("event_time", {
+                ascending: true
+            });
+
+        if (error) {
+
+            console.error(
+                "GET ORDERS ERROR:",
+                error
             );
 
-    if (result.error) {
+            return;
+        }
 
-        alert(
-            "❌ " +
-            result.error.message
-        );
+        allOrders = data || [];
 
-        return;
+        displayOrders(allOrders);
+
+    } catch (error) {
+
+        console.error(error);
     }
-
-    await displayOrders();
-    await updateDashboard();
-
-    alert(
-        "✅ Zakas o‘chirildi."
-    );
 }
 
-/* =========================================
-   DASHBOARD
-========================================= */
 
-async function updateDashboard() {
+/* =========================================================
+   DISPLAY ORDERS
+========================================================= */
 
-    const orders =
-        await getOrders();
-
-    const today =
-        getToday();
-
-    const todayOrders =
-        orders.filter(function(order) {
-            return order.event_date === today;
-        });
-
-    const now =
-        new Date();
-
-    const upcoming =
-        orders.filter(function(order) {
-
-            if (
-                !order.event_date ||
-                !order.event_time
-            ) {
-                return false;
-            }
-
-            const date =
-                new Date(
-                    `${order.event_date}T${order.event_time}`
-                );
-
-            const difference =
-                date.getTime() -
-                now.getTime();
-
-            return (
-                difference > 0 &&
-                difference <=
-                7 *
-                24 *
-                60 *
-                60 *
-                1000
-            );
-        });
-
-    const totalMoney =
-        orders.reduce(
-            function(sum, order) {
-
-                return sum +
-                    Number(
-                        order.total_price || 0
-                    );
-
-            },
-            0
-        );
-
-    const totalOrders =
-        document.getElementById(
-            "totalOrders"
-        );
-
-    const todayOrdersElement =
-        document.getElementById(
-            "todayOrders"
-        );
-
-    const upcomingOrders =
-        document.getElementById(
-            "upcomingOrders"
-        );
-
-    const totalMoneyElement =
-        document.getElementById(
-            "totalMoney"
-        );
-
-    if (totalOrders) {
-        totalOrders.textContent =
-            orders.length;
-    }
-
-    if (todayOrdersElement) {
-        todayOrdersElement.textContent =
-            todayOrders.length;
-    }
-
-    if (upcomingOrders) {
-        upcomingOrders.textContent =
-            upcoming.length;
-    }
-
-    if (totalMoneyElement) {
-        totalMoneyElement.textContent =
-            formatMoney(totalMoney);
-    }
-
-    await displayTodayOrders();
-    await checkNotifications();
-}
-
-async function displayTodayOrders() {
+function displayOrders(orders) {
 
     const container =
-        document.getElementById(
-            "todayOrdersList"
-        );
+        document.getElementById("ordersList");
 
     if (!container) {
         return;
     }
-
-    const orders =
-        (
-            await getOrders()
-        )
-        .filter(function(order) {
-
-            return (
-                order.event_date ===
-                getToday()
-            );
-
-        });
 
     if (!orders.length) {
 
         container.innerHTML = `
-            <div class="no-orders">
-                <h3>🎉 Bugun zakas yo‘q</h3>
-                <p>
-                    Bugungi kun uchun zakas mavjud emas.
-                </p>
+            <div class="empty-state">
+                Buyurtmalar hali mavjud emas.
             </div>
         `;
 
@@ -1641,259 +869,822 @@ async function displayTodayOrders() {
     }
 
     container.innerHTML =
-        orders
-            .map(createOrderHTML)
-            .join("");
+        orders.map(createOrderHTML).join("");
 }
 
-async function checkNotifications() {
+
+/* =========================================================
+   ORDER HTML
+========================================================= */
+
+function createOrderHTML(order) {
+
+    return `
+        <div class="order-card">
+
+            <div class="order-card-header">
+
+                <div>
+                    <h3>
+                        ${escapeHTML(order.client_name || "-")}
+                    </h3>
+
+                    <p>
+                        📞 ${escapeHTML(order.client_phone || "-")}
+                    </p>
+                </div>
+
+                <div class="order-date">
+                    ${formatDate(order.event_date)}
+                </div>
+
+            </div>
+
+            <div class="order-info-grid">
+
+                <div>
+                    <strong>📍 Manzil:</strong>
+                    ${escapeHTML(order.location || "-")}
+                </div>
+
+                <div>
+                    <strong>🕒 Vaqt:</strong>
+                    ${escapeHTML(
+                        String(order.event_time || "").slice(0, 5)
+                    )}
+                </div>
+
+                <div>
+                    <strong>💰 Jami:</strong>
+                    ${formatMoney(order.total_price)} so‘m
+                </div>
+
+                <div>
+                    <strong>💵 To‘langan:</strong>
+                    ${formatMoney(order.paid)} so‘m
+                </div>
+
+                <div>
+                    <strong>💳 Qolgan:</strong>
+                    ${formatMoney(order.remaining)} so‘m
+                </div>
+
+                <div>
+                    <strong>🪟 Parda:</strong>
+                    ${escapeHTML(order.curtain || "Yo‘q")}
+                </div>
+
+            </div>
+
+            <div class="order-buttons">
+
+                <button
+                    type="button"
+                    onclick="editOrder(${order.id})"
+                    class="btn-edit">
+                    ✏️ Tahrirlash
+                </button>
+
+                <button
+                    type="button"
+                    onclick="deleteOrder(${order.id})"
+                    class="btn-delete">
+                    🗑️ O‘chirish
+                </button>
+
+            </div>
+
+        </div>
+    `;
+}
+
+
+/* =========================================================
+   EDIT ORDER
+========================================================= */
+
+function editOrder(id) {
+
+    const order =
+        allOrders.find(item => item.id == id);
+
+    if (!order) {
+        return;
+    }
+
+    showPageSection("orderFormSection");
+
+    setValue("editingOrderId", order.id);
+
+    setValue("clientName", order.client_name);
+    setValue("clientPhone", order.client_phone);
+    setValue("location", order.location);
+
+    setValue("eventDate", order.event_date);
+    setValue(
+        "eventTime",
+        String(order.event_time || "").slice(0, 5)
+    );
+
+    setValue("screenHeight", order.screen_height);
+    setValue("screenWidth", order.screen_width);
+
+    setValue("stageWidth", order.stage_width);
+    setValue("stageLength", order.stage_length);
+
+    setValue("curtain", order.curtain);
+
+    setValue("sideScreens", order.side_screens);
+
+    setValue("sideHeight", order.side_height);
+    setValue("sideWidth", order.side_width);
+
+    setValue("lights", order.lights);
+    setValue("galava", order.galava);
+    setValue("ledwash", order.ledwash);
+    setValue("confetti", order.confetti);
+    setValue("dim", order.dim);
+    setValue("firework", order.firework);
+
+    setValue("totalPrice", order.total_price);
+    setValue("paid", order.paid);
+    setValue("remaining", order.remaining);
+
+    const cancelButton =
+        document.getElementById("cancelEditBtn");
+
+    if (cancelButton) {
+        cancelButton.style.display = "inline-block";
+    }
+
+    const badge =
+        document.getElementById("editBadge");
+
+    if (badge) {
+        badge.style.display = "inline-block";
+    }
+
+    const submitButton =
+        document.getElementById("orderSubmitBtn");
+
+    if (submitButton) {
+        submitButton.textContent =
+            "Yangilash";
+    }
+
+    calculateRemaining();
+}
+
+
+/* =========================================================
+   SET INPUT VALUE
+========================================================= */
+
+function setValue(id, value) {
+
+    const element =
+        document.getElementById(id);
+
+    if (element) {
+        element.value =
+            value === null ||
+            value === undefined
+                ? ""
+                : value;
+    }
+}
+
+
+/* =========================================================
+   DELETE ORDER
+========================================================= */
+
+async function deleteOrder(id) {
+
+    const confirmDelete =
+        confirm(
+            "Bu buyurtmani o‘chirmoqchimisiz?"
+        );
+
+    if (!confirmDelete) {
+        return;
+    }
+
+    try {
+
+        const {
+            error
+        } = await supabase
+            .from("orders")
+            .delete()
+            .eq("id", id);
+
+        if (error) {
+
+            console.error(
+                "DELETE ORDER ERROR:",
+                error
+            );
+
+            alert(
+                "❌ O‘chirishda xatolik:\n" +
+                error.message
+            );
+
+            return;
+        }
+
+        alert(
+            "✅ Buyurtma o‘chirildi."
+        );
+
+        await getOrders();
+
+        await updateDashboard();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "❌ Xatolik:\n" +
+            error.message
+        );
+    }
+}
+
+
+/* =========================================================
+   SEARCH ORDERS
+========================================================= */
+
+function searchOrders() {
+
+    const input =
+        document.getElementById("searchInput");
+
+    const query =
+        input
+            ? input.value.trim().toLowerCase()
+            : "";
+
+    if (!query) {
+
+        displayOrders(allOrders);
+
+        return;
+    }
+
+    const filtered =
+        allOrders.filter(order => {
+
+            return (
+                String(order.client_name || "")
+                    .toLowerCase()
+                    .includes(query)
+
+                ||
+
+                String(order.client_phone || "")
+                    .toLowerCase()
+                    .includes(query)
+
+                ||
+
+                String(order.location || "")
+                    .toLowerCase()
+                    .includes(query)
+            );
+        });
+
+    displayOrders(filtered);
+}
+
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
+async function updateDashboard() {
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabase
+            .from("orders")
+            .select("*");
+
+        if (error) {
+
+            console.error(
+                "DASHBOARD ERROR:",
+                error
+            );
+
+            return;
+        }
+
+        const orders =
+            data || [];
+
+        allOrders =
+            orders;
+
+        const totalOrders =
+            orders.length;
+
+        const today =
+            new Date();
+
+        const todayString =
+            `${today.getFullYear()}-` +
+            `${String(today.getMonth() + 1).padStart(2, "0")}-` +
+            `${String(today.getDate()).padStart(2, "0")}`;
+
+        const todayOrders =
+            orders.filter(
+                order =>
+                    order.event_date === todayString
+            ).length;
+
+        const upcomingOrders =
+            orders.filter(
+                order =>
+                    order.event_date > todayString
+            ).length;
+
+        const totalMoney =
+            orders.reduce(
+                (sum, order) =>
+                    sum +
+                    Number(order.total_price || 0),
+                0
+            );
+
+        setText(
+            "totalOrders",
+            totalOrders
+        );
+
+        setText(
+            "todayOrders",
+            todayOrders
+        );
+
+        setText(
+            "upcomingOrders",
+            upcomingOrders
+        );
+
+        setText(
+            "totalMoney",
+            formatMoney(totalMoney) +
+            " so‘m"
+        );
+
+        displayTodayOrders(orders);
+
+        checkNotifications(orders);
+
+    } catch (error) {
+
+        console.error(error);
+    }
+}
+
+
+/* =========================================================
+   TODAY ORDERS
+========================================================= */
+
+function displayTodayOrders(orders) {
 
     const container =
-        document.getElementById(
-            "notifications"
-        );
+        document.getElementById("todayOrdersList");
 
     if (!container) {
         return;
     }
 
-    const orders =
-        await getOrders();
-
-    const now =
+    const today =
         new Date();
 
-    let html = "";
+    const todayString =
+        `${today.getFullYear()}-` +
+        `${String(today.getMonth() + 1).padStart(2, "0")}-` +
+        `${String(today.getDate()).padStart(2, "0")}`;
 
-    orders.forEach(function(order) {
+    const todayOrders =
+        orders.filter(
+            order =>
+                order.event_date === todayString
+        );
 
-        if (
-            !order.event_date ||
-            !order.event_time
-        ) {
+    if (!todayOrders.length) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                Bugun buyurtma yo‘q.
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        todayOrders.map(order => {
+
+            return `
+                <div class="today-order-item">
+
+                    <strong>
+                        ${escapeHTML(order.client_name || "-")}
+                    </strong>
+
+                    <span>
+                        ${escapeHTML(
+                            String(order.event_time || "")
+                                .slice(0, 5)
+                        )}
+                    </span>
+
+                    <small>
+                        ${escapeHTML(order.location || "-")}
+                    </small>
+
+                </div>
+            `;
+
+        }).join("");
+}
+
+
+/* =========================================================
+   NOTIFICATIONS
+========================================================= */
+
+function checkNotifications(orders = allOrders) {
+
+    const element =
+        document.getElementById("notifications");
+
+    if (!element) {
+        return;
+    }
+
+    const today =
+        new Date();
+
+    const todayString =
+        `${today.getFullYear()}-` +
+        `${String(today.getMonth() + 1).padStart(2, "0")}-` +
+        `${String(today.getDate()).padStart(2, "0")}`;
+
+    const todayOrders =
+        orders.filter(
+            order =>
+                order.event_date === todayString
+        );
+
+    const upcomingOrders =
+        orders.filter(
+            order =>
+                order.event_date > todayString
+        );
+
+    let message = "";
+
+    if (todayOrders.length) {
+
+        message +=
+            `Bugun ${todayOrders.length} ta tadbir bor. `;
+    }
+
+    if (upcomingOrders.length) {
+
+        message +=
+            `Kelgusi ${upcomingOrders.length} ta buyurtma bor.`;
+    }
+
+    if (!message) {
+        message = "Yangi xabar yo‘q.";
+    }
+
+    element.textContent = message;
+}
+
+
+/* =========================================================
+   EVENTS
+========================================================= */
+
+async function getEvents() {
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabase
+            .from("events")
+            .select("*")
+            .order("created_at", {
+                ascending: false
+            });
+
+        if (error) {
+
+            console.error(
+                "GET EVENTS ERROR:",
+                error
+            );
+
             return;
         }
 
-        const eventDate =
-            new Date(
-                `${order.event_date}T${order.event_time}`
-            );
+        allEvents =
+            data || [];
 
-        const hours =
-            (
-                eventDate.getTime() -
-                now.getTime()
-            ) / 3600000;
+        displayWorkerEvents();
+        displayCustomerEvents();
 
-        if (
-            hours > 0 &&
-            hours <= 24
-        ) {
+    } catch (error) {
 
-            html += `
-                <div class="notification">
-                    <strong>
-                        🔔 Tadbir yaqinlashmoqda!
-                    </strong>
-
-                    👤
-                    ${escapeHTML(
-                        order.client_name
-                    )}
-
-                    <br>
-
-                    📅
-                    ${formatDate(
-                        order.event_date
-                    )}
-
-                    <br>
-
-                    ⏰
-                    ${escapeHTML(
-                        order.event_time
-                    )}
-
-                    <br>
-
-                    📍
-                    ${escapeHTML(
-                        order.location
-                    )}
-                </div>
-            `;
-        }
-
-    });
-
-    container.innerHTML =
-        html;
+        console.error(error);
+    }
 }
 
-/* =========================================
-   USERS
-========================================= */
 
-async function displayUsers() {
+/* =========================================================
+   EVENT IMAGE
+========================================================= */
 
-    const container =
-        document.getElementById(
-            "usersList"
+function handleEventImage(event) {
+
+    const file =
+        event.target.files &&
+        event.target.files[0];
+
+    if (!file) {
+        eventImageData = "";
+        return;
+    }
+
+    const maxSize =
+        2 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+
+        alert(
+            "Rasm hajmi 2 MB dan oshmasin."
         );
 
-    if (
-        !container ||
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
+        event.target.value = "";
+
+        eventImageData = "";
+
         return;
     }
 
-    const result =
-        await supabaseClient
-            .from("users")
-            .select(
-                "id,name,username,password,role,created_at"
-            )
-            .order(
-                "id",
-                {
-                    ascending: true
-                }
+    const reader =
+        new FileReader();
+
+    reader.onload = function(e) {
+
+        eventImageData =
+            e.target.result;
+    };
+
+    reader.readAsDataURL(file);
+}
+
+
+/* =========================================================
+   SAVE EVENT
+========================================================= */
+
+async function saveEventFromForm(event) {
+
+    if (event) {
+        event.preventDefault();
+    }
+
+    if (currentRole !== "admin") {
+
+        alert(
+            "Faqat admin tadbir qo‘sha oladi."
+        );
+
+        return;
+    }
+
+    const title =
+        getValue("eventTitle").trim();
+
+    const description =
+        getValue("eventDescription").trim();
+
+    const imageInput =
+        document.getElementById("eventImage");
+
+    if (!title) {
+
+        alert("Tadbir nomini kiriting.");
+
+        return;
+    }
+
+    let image_url =
+        eventImageData || "";
+
+    if (
+        imageInput &&
+        imageInput.files &&
+        imageInput.files[0]
+    ) {
+
+        const file =
+            imageInput.files[0];
+
+        const maxSize =
+            2 * 1024 * 1024;
+
+        if (file.size > maxSize) {
+
+            alert(
+                "Rasm hajmi 2 MB dan oshmasin."
             );
 
-    if (result.error) {
+            return;
+        }
 
-        container.innerHTML = `
-            <div class="no-orders">
-                ❌ ${escapeHTML(
-                    result.error.message
-                )}
-            </div>
-        `;
+        image_url =
+            await fileToDataURL(file);
+    }
 
+    try {
+
+        const {
+            error
+        } = await supabase
+            .from("events")
+            .insert([
+                {
+                    title: title,
+                    description: description,
+                    image_url: image_url
+                }
+            ]);
+
+        if (error) {
+
+            console.error(
+                "SAVE EVENT ERROR:",
+                error
+            );
+
+            alert(
+                "❌ Tadbir qo‘shilmadi:\n" +
+                error.message
+            );
+
+            return;
+        }
+
+        alert(
+            "✅ Tadbir muvaffaqiyatli qo‘shildi."
+        );
+
+        const form =
+            document.getElementById("eventForm");
+
+        if (form) {
+            form.reset();
+        }
+
+        eventImageData = "";
+
+        await getEvents();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "❌ Xatolik:\n" +
+            error.message
+        );
+    }
+}
+
+
+/* =========================================================
+   FILE TO DATA URL
+========================================================= */
+
+function fileToDataURL(file) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const reader =
+                new FileReader();
+
+            reader.onload =
+                () => resolve(
+                    reader.result
+                );
+
+            reader.onerror =
+                reject;
+
+            reader.readAsDataURL(file);
+        }
+    );
+}
+
+
+/* =========================================================
+   WORKER EVENTS
+========================================================= */
+
+function displayWorkerEvents() {
+
+    const container =
+        document.getElementById("workerEventsList");
+
+    if (!container) {
         return;
     }
 
-    const users =
-        result.data || [];
+    const start =
+        (currentEventPage - 1) *
+        eventsPerPage;
 
-    if (!users.length) {
+    const end =
+        start +
+        eventsPerPage;
+
+    const events =
+        allEvents.slice(start, end);
+
+    if (!events.length) {
 
         container.innerHTML = `
-            <div class="no-orders">
-                <h3>👥 Userlar yo‘q</h3>
+            <div class="empty-state">
+                Tadbirlar mavjud emas.
             </div>
         `;
+
+        renderEventPagination();
 
         return;
     }
 
     container.innerHTML =
-        users.map(function(user) {
-
-            const role =
-                String(
-                    user.role || ""
-                ).toLowerCase();
+        events.map(event => {
 
             return `
-                <div class="user-card">
+                <div class="event-card">
 
-                    <div class="user-card-header">
+                    ${
+                        event.image_url
+                            ? `
+                                <img
+                                    src="${escapeAttribute(event.image_url)}"
+                                    alt="${escapeAttribute(event.title)}"
+                                    class="event-image"
+                                >
+                            `
+                            : ""
+                    }
 
-                        <div>
+                    <div class="event-content">
 
-                            <div class="user-card-name">
-                                👤
-                                ${escapeHTML(
-                                    user.name
-                                )}
-                            </div>
+                        <h3>
+                            ${escapeHTML(event.title)}
+                        </h3>
 
-                            <span class="user-role">
-                                ${
-                                    role === "admin"
-                                        ? "ADMIN"
-                                        : "ISHCHI"
-                                }
-                            </span>
+                        <p>
+                            ${escapeHTML(
+                                event.description || ""
+                            )}
+                        </p>
 
-                        </div>
-
-                    </div>
-
-                    <div class="user-grid">
-
-                        <div class="user-detail">
-
-                            <span>
-                                🔑 Login
-                            </span>
-
-                            <strong>
-                                ${escapeHTML(
-                                    user.username
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div class="user-detail">
-
-                            <span>
-                                🔒 Parol
-                            </span>
-
-                            <strong
-                                id="password-${user.id}"
-                                data-visible="false"
-                            >
-                                ••••••••
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-                    <div class="user-actions">
-
-                        <button
-                            type="button"
-                            class="btn-view"
-                            onclick="showUserPassword(${Number(user.id)})"
-                        >
-                            👁 Ko‘rish
-                        </button>
-
-                        <button
-                            type="button"
-                            class="btn-edit"
-                            onclick="changeUserPassword(${Number(user.id)})"
-                        >
-                            🔑 Parol
-                        </button>
-
-                        <button
-                            type="button"
-                            class="btn-edit"
-                            onclick="changeUsername(${Number(user.id)})"
-                        >
-                            ✏️ Login
-                        </button>
+                        <small>
+                            ${formatDate(event.created_at)}
+                        </small>
 
                         ${
-                            Number(user.id) !==
-                            Number(currentUser.id)
-
+                            currentRole === "admin"
                                 ? `
                                     <button
                                         type="button"
-                                        class="btn-delete"
-                                        onclick="deleteUser(${Number(user.id)})"
-                                    >
-                                        🗑 O‘chirish
+                                        onclick="deleteEvent(${event.id})"
+                                        class="btn-delete">
+                                        🗑️ O‘chirish
                                     </button>
                                 `
                                 : ""
@@ -1905,49 +1696,1022 @@ async function displayUsers() {
             `;
 
         }).join("");
+
+    renderEventPagination();
 }
 
-async function getUser(id) {
 
-    const result =
-        await supabaseClient
-            .from("users")
-            .select("*")
-            .eq(
-                "id",
-                id
-            )
-            .single();
+/* =========================================================
+   CUSTOMER EVENTS
+========================================================= */
 
-    if (result.error) {
-        console.error(result.error);
-        return null;
+function displayCustomerEvents() {
+
+    const container =
+        document.getElementById("customerEventsList");
+
+    if (!container) {
+        return;
     }
 
-    return result.data;
+    if (!allEvents.length) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                Hozircha tadbirlar mavjud emas.
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        allEvents.map(event => {
+
+            return `
+                <div class="customer-event-card">
+
+                    ${
+                        event.image_url
+                            ? `
+                                <img
+                                    src="${escapeAttribute(event.image_url)}"
+                                    alt="${escapeAttribute(event.title)}"
+                                >
+                            `
+                            : ""
+                    }
+
+                    <div class="customer-event-content">
+
+                        <h3>
+                            ${escapeHTML(event.title)}
+                        </h3>
+
+                        <p>
+                            ${escapeHTML(
+                                event.description || ""
+                            )}
+                        </p>
+
+                        <button
+                            type="button"
+                            onclick="openOrderModal(${event.id})"
+                            class="btn-primary">
+                            Buyurtma berish
+                        </button>
+
+                    </div>
+
+                </div>
+            `;
+
+        }).join("");
 }
+
+
+function loadCustomerEvents() {
+
+    getEvents();
+}
+
+
+/* =========================================================
+   EVENT PAGINATION
+========================================================= */
+
+function renderEventPagination() {
+
+    const container =
+        document.getElementById("workerPagination");
+
+    if (!container) {
+        return;
+    }
+
+    const totalPages =
+        Math.ceil(
+            allEvents.length /
+            eventsPerPage
+        );
+
+    if (totalPages <= 1) {
+
+        container.innerHTML = "";
+
+        return;
+    }
+
+    let html = "";
+
+    for (
+        let i = 1;
+        i <= totalPages;
+        i++
+    ) {
+
+        html += `
+            <button
+                type="button"
+                class="${
+                    i === currentEventPage
+                        ? "active"
+                        : ""
+                }"
+                onclick="goToEventPage(${i})">
+                ${i}
+            </button>
+        `;
+    }
+
+    container.innerHTML =
+        html;
+}
+
+
+function goToEventPage(page) {
+
+    currentEventPage =
+        page;
+
+    displayWorkerEvents();
+}
+
+
+/* =========================================================
+   DELETE EVENT
+========================================================= */
+
+async function deleteEvent(id) {
+
+    if (currentRole !== "admin") {
+        return;
+    }
+
+    const result =
+        confirm(
+            "Bu tadbirni o‘chirmoqchimisiz?"
+        );
+
+    if (!result) {
+        return;
+    }
+
+    try {
+
+        const {
+            error
+        } = await supabase
+            .from("events")
+            .delete()
+            .eq("id", id);
+
+        if (error) {
+
+            console.error(
+                "DELETE EVENT ERROR:",
+                error
+            );
+
+            alert(
+                "❌ Tadbir o‘chirilmadi:\n" +
+                error.message
+            );
+
+            return;
+        }
+
+        alert(
+            "✅ Tadbir o‘chirildi."
+        );
+
+        await getEvents();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "❌ Xatolik:\n" +
+            error.message
+        );
+    }
+}
+
+
+/* =========================================================
+   CUSTOMER ORDER MODAL
+========================================================= */
+
+function openOrderModal(eventId = null) {
+
+    const modal =
+        document.getElementById("orderModal");
+
+    if (!modal) {
+        return;
+    }
+
+    modal.style.display = "flex";
+
+    const form =
+        document.getElementById("applicationForm");
+
+    if (form) {
+        form.reset();
+    }
+
+    const message =
+        document.getElementById("applicationMessage");
+
+    if (message) {
+        message.textContent = "";
+    }
+
+    const selectedEvent =
+        allEvents.find(
+            event =>
+                event.id == eventId
+        );
+
+    if (selectedEvent) {
+
+        const title =
+            document.getElementById("selectedEventTitle");
+
+        if (title) {
+
+            title.textContent =
+                selectedEvent.title;
+        }
+    }
+}
+
+
+function closeOrderModal() {
+
+    const modal =
+        document.getElementById("orderModal");
+
+    if (modal) {
+        modal.style.display = "none";
+    }
+}
+
+
+/* =========================================================
+   APPLICATION
+========================================================= */
+
+async function submitApplication(event) {
+
+    if (event) {
+        event.preventDefault();
+    }
+
+    const name =
+        getValue("applicationName").trim();
+
+    const phone =
+        getValue("applicationPhone").trim();
+
+    const message =
+        document.getElementById("applicationMessage");
+
+    if (!name) {
+
+        showApplicationMessage(
+            "Ismingizni kiriting.",
+            "error"
+        );
+
+        return;
+    }
+
+    if (!phone) {
+
+        showApplicationMessage(
+            "Telefon raqamingizni kiriting.",
+            "error"
+        );
+
+        return;
+    }
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabase
+            .from("applications")
+            .insert([
+                {
+                    full_name: name,
+                    phone: phone,
+                    status: "new"
+                }
+            ])
+            .select()
+            .single();
+
+        if (error) {
+
+            console.error(
+                "APPLICATION ERROR:",
+                error
+            );
+
+            showApplicationMessage(
+                "Ariza yuborishda xatolik:\n" +
+                error.message,
+                "error"
+            );
+
+            return;
+        }
+
+        localStorage.setItem(
+            "goldshow_application_id",
+            data.id
+        );
+
+        localStorage.setItem(
+            "goldshow_application_phone",
+            phone
+        );
+
+        showApplicationMessage(
+            "✅ Arizangiz muvaffaqiyatli yuborildi.",
+            "success"
+        );
+
+        const statusBox =
+            document.getElementById("customerStatusBox");
+
+        if (statusBox) {
+
+            statusBox.innerHTML = `
+                <div class="status-success">
+                    Ariza qabul qilindi.
+                    Admin javobini kuting.
+                </div>
+            `;
+        }
+
+        startApplicationStatusCheck(data.id);
+
+    } catch (error) {
+
+        console.error(error);
+
+        showApplicationMessage(
+            "Ariza yuborishda xatolik:\n" +
+            error.message,
+            "error"
+        );
+    }
+}
+
+
+/* =========================================================
+   APPLICATION MESSAGE
+========================================================= */
+
+function showApplicationMessage(
+    text,
+    type = "success"
+) {
+
+    const element =
+        document.getElementById(
+            "applicationMessage"
+        );
+
+    if (!element) {
+        alert(text);
+        return;
+    }
+
+    element.textContent =
+        text;
+
+    element.className =
+        type === "error"
+            ? "error-message"
+            : "success-message";
+}
+
+
+/* =========================================================
+   CHECK APPLICATION STATUS
+========================================================= */
+
+function startApplicationStatusCheck(id) {
+
+    if (applicationCheckTimer) {
+
+        clearInterval(
+            applicationCheckTimer
+        );
+    }
+
+    checkApplicationStatus(id);
+
+    applicationCheckTimer =
+        setInterval(
+            () => {
+
+                checkApplicationStatus(
+                    id
+                );
+
+            },
+            8000
+        );
+}
+
+
+async function checkApplicationStatus(id) {
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabase
+            .from("applications")
+            .select("*")
+            .eq("id", id)
+            .maybeSingle();
+
+        if (error) {
+
+            console.error(
+                "STATUS CHECK ERROR:",
+                error
+            );
+
+            return;
+        }
+
+        if (!data) {
+            return;
+        }
+
+        const statusBox =
+            document.getElementById(
+                "customerStatusBox"
+            );
+
+        if (!statusBox) {
+            return;
+        }
+
+        if (data.status === "accepted") {
+
+            statusBox.innerHTML = `
+                <div class="status-success">
+                    ✅ Arizangiz tasdiqlandi.
+                </div>
+            `;
+
+            if (applicationCheckTimer) {
+
+                clearInterval(
+                    applicationCheckTimer
+                );
+
+                applicationCheckTimer =
+                    null;
+            }
+
+        } else if (
+            data.status === "rejected"
+        ) {
+
+            statusBox.innerHTML = `
+                <div class="status-error">
+                    ❌ Arizangiz rad etildi.
+                </div>
+            `;
+
+            if (applicationCheckTimer) {
+
+                clearInterval(
+                    applicationCheckTimer
+                );
+
+                applicationCheckTimer =
+                    null;
+            }
+
+        } else {
+
+            statusBox.innerHTML = `
+                <div class="status-pending">
+                    ⏳ Arizangiz ko‘rib chiqilmoqda...
+                </div>
+            `;
+        }
+
+    } catch (error) {
+
+        console.error(error);
+    }
+}
+
+
+/* =========================================================
+   GET APPLICATIONS
+========================================================= */
+
+async function getApplications() {
+
+    if (currentRole !== "admin") {
+        return;
+    }
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabase
+            .from("applications")
+            .select("*")
+            .order("created_at", {
+                ascending: false
+            });
+
+        if (error) {
+
+            console.error(
+                "GET APPLICATIONS ERROR:",
+                error
+            );
+
+            return;
+        }
+
+        allApplications =
+            data || [];
+
+        displayApplications();
+
+    } catch (error) {
+
+        console.error(error);
+    }
+}
+
+
+/* =========================================================
+   DISPLAY APPLICATIONS
+========================================================= */
+
+function displayApplications() {
+
+    const container =
+        document.getElementById(
+            "applicationsList"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    if (!allApplications.length) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                Arizalar mavjud emas.
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        allApplications.map(
+            application => {
+
+                let statusText =
+                    "Yangi";
+
+                if (
+                    application.status ===
+                    "accepted"
+                ) {
+                    statusText =
+                        "Tasdiqlangan";
+                }
+
+                if (
+                    application.status ===
+                    "rejected"
+                ) {
+                    statusText =
+                        "Rad etilgan";
+                }
+
+                return `
+                    <div class="application-card">
+
+                        <div>
+
+                            <h3>
+                                ${escapeHTML(
+                                    application.full_name
+                                )}
+                            </h3>
+
+                            <p>
+                                📞 ${escapeHTML(
+                                    application.phone
+                                )}
+                            </p>
+
+                            <small>
+                                ${formatDate(
+                                    application.created_at
+                                )}
+                            </small>
+
+                        </div>
+
+                        <div class="application-status">
+
+                            <strong>
+                                ${statusText}
+                            </strong>
+
+                            <div class="application-buttons">
+
+                                <button
+                                    type="button"
+                                    onclick="acceptApplication(${application.id})">
+                                    ✅ Tasdiqlash
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onclick="rejectApplication(${application.id})">
+                                    ❌ Rad etish
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onclick="deleteApplication(${application.id})"
+                                    class="btn-delete">
+                                    🗑️
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                `;
+            }
+        ).join("");
+}
+
+
+/* =========================================================
+   ACCEPT APPLICATION
+========================================================= */
+
+async function acceptApplication(id) {
+
+    if (currentRole !== "admin") {
+        return;
+    }
+
+    await changeApplicationStatus(
+        id,
+        "accepted"
+    );
+}
+
+
+/* =========================================================
+   REJECT APPLICATION
+========================================================= */
+
+async function rejectApplication(id) {
+
+    if (currentRole !== "admin") {
+        return;
+    }
+
+    await changeApplicationStatus(
+        id,
+        "rejected"
+    );
+}
+
+
+/* =========================================================
+   CHANGE APPLICATION STATUS
+========================================================= */
+
+async function changeApplicationStatus(
+    id,
+    status
+) {
+
+    try {
+
+        const updateData = {
+            status: status
+        };
+
+        if (status === "accepted") {
+
+            updateData.accepted_at =
+                new Date().toISOString();
+        }
+
+        const {
+            error
+        } = await supabase
+            .from("applications")
+            .update(updateData)
+            .eq("id", id);
+
+        if (error) {
+
+            console.error(
+                "STATUS UPDATE ERROR:",
+                error
+            );
+
+            alert(
+                "❌ Xatolik:\n" +
+                error.message
+            );
+
+            return;
+        }
+
+        await getApplications();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "❌ Xatolik:\n" +
+            error.message
+        );
+    }
+}
+
+
+/* =========================================================
+   DELETE APPLICATION
+========================================================= */
+
+async function deleteApplication(id) {
+
+    if (currentRole !== "admin") {
+        return;
+    }
+
+    const confirmDelete =
+        confirm(
+            "Bu arizani o‘chirmoqchimisiz?"
+        );
+
+    if (!confirmDelete) {
+        return;
+    }
+
+    try {
+
+        const {
+            error
+        } = await supabase
+            .from("applications")
+            .delete()
+            .eq("id", id);
+
+        if (error) {
+
+            console.error(
+                "DELETE APPLICATION ERROR:",
+                error
+            );
+
+            alert(
+                "❌ Xatolik:\n" +
+                error.message
+            );
+
+            return;
+        }
+
+        await getApplications();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "❌ Xatolik:\n" +
+            error.message
+        );
+    }
+}
+
+
+/* =========================================================
+   USERS
+========================================================= */
+
+async function getUsers() {
+
+    if (currentRole !== "admin") {
+        return;
+    }
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabase
+            .from("users")
+            .select("*")
+            .order("created_at", {
+                ascending: false
+            });
+
+        if (error) {
+
+            console.error(
+                "GET USERS ERROR:",
+                error
+            );
+
+            return;
+        }
+
+        allUsers =
+            data || [];
+
+        displayUsers();
+
+    } catch (error) {
+
+        console.error(error);
+    }
+}
+
+
+/* =========================================================
+   DISPLAY USERS
+========================================================= */
+
+function displayUsers() {
+
+    const container =
+        document.getElementById(
+            "usersList"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    if (!allUsers.length) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                Userlar mavjud emas.
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        allUsers.map(user => {
+
+            const isCurrent =
+                currentUser &&
+                currentUser.id === user.id;
+
+            return `
+                <div class="user-card">
+
+                    <div class="user-main-info">
+
+                        <h3>
+                            ${escapeHTML(
+                                user.name || "-"
+                            )}
+                        </h3>
+
+                        <p>
+                            Login:
+                            <strong>
+                                ${escapeHTML(
+                                    user.username
+                                )}
+                            </strong>
+                        </p>
+
+                        <p>
+                            Rol:
+                            <strong>
+                                ${escapeHTML(
+                                    user.role
+                                )}
+                            </strong>
+                        </p>
+
+                        <p>
+                            Parol:
+                            <span id="password-${user.id}">
+                                ••••••••
+                            </span>
+
+                            <button
+                                type="button"
+                                onclick="showUserPassword(${user.id})">
+                                👁️
+                            </button>
+                        </p>
+
+                    </div>
+
+                    <div class="user-actions">
+
+                        <button
+                            type="button"
+                            onclick="changeUsername(${user.id})">
+                            ✏️ Login
+                        </button>
+
+                        <button
+                            type="button"
+                            onclick="changePassword(${user.id})">
+                            🔑 Parol
+                        </button>
+
+                        ${
+                            !isCurrent
+                                ? `
+                                    <button
+                                        type="button"
+                                        onclick="deleteUser(${user.id})"
+                                        class="btn-delete">
+                                        🗑️ O‘chirish
+                                    </button>
+                                `
+                                : ""
+                        }
+
+                    </div>
+
+                </div>
+            `;
+        }).join("");
+}
+
+
+/* =========================================================
+   SHOW USER PASSWORD
+========================================================= */
 
 async function showUserPassword(id) {
 
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
+    if (currentRole !== "admin") {
         return;
     }
 
     const element =
         document.getElementById(
-            "password-" + id
+            `password-${id}`
         );
 
     if (!element) {
         return;
     }
 
+    const user =
+        allUsers.find(
+            item => item.id == id
+        );
+
+    if (!user) {
+        return;
+    }
+
     if (
-        element.dataset.visible ===
-        "true"
+        element.dataset.visible === "true"
     ) {
 
         element.textContent =
@@ -1959,219 +2723,229 @@ async function showUserPassword(id) {
         return;
     }
 
-    const result =
-        await supabaseClient
-            .from("users")
-            .select("password")
-            .eq(
-                "id",
-                id
-            )
-            .single();
-
-    if (result.error) {
-
-        alert(
-            "❌ Parolni olishda xatolik:\n" +
-            result.error.message
-        );
-
-        return;
-    }
-
     element.textContent =
-        result.data.password ||
-        "Parol mavjud emas";
+        user.password || "";
 
     element.dataset.visible =
         "true";
 }
 
+
+/* =========================================================
+   CREATE USER
+========================================================= */
+
 async function createUser(event) {
 
-    event.preventDefault();
+    if (event) {
+        event.preventDefault();
+    }
 
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
-        alert(
-            "❌ Faqat admin user yaratadi."
-        );
-
+    if (currentRole !== "admin") {
         return;
     }
 
     const name =
-        document.getElementById(
-            "newUserName"
-        ).value.trim();
+        getValue("newUserName").trim();
 
     const username =
-        document.getElementById(
-            "newUsername"
-        ).value.trim();
+        getValue("newUsername").trim();
 
     const password =
-        document.getElementById(
-            "newUserPassword"
-        ).value.trim();
+        getValue("newUserPassword").trim();
 
     const role =
-        document.getElementById(
-            "newUserRole"
-        ).value.trim()
-        .toLowerCase();
+        getValue("newUserRole") ||
+        "user";
 
-    if (!name || !username || !password) {
+    if (!name) {
 
-        alert(
-            "❌ Barcha maydonlarni to‘ldiring."
-        );
+        alert("User ismini kiriting.");
 
         return;
     }
 
-    const check =
-        await supabaseClient
+    if (!username) {
+
+        alert("Login kiriting.");
+
+        return;
+    }
+
+    if (!password) {
+
+        alert("Parol kiriting.");
+
+        return;
+    }
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabase
             .from("users")
-            .select("id")
-            .eq(
-                "username",
-                username
-            )
-            .limit(1);
+            .insert([
+                {
+                    name: name,
+                    username: username,
+                    password: password,
+                    role: role
+                }
+            ])
+            .select()
+            .single();
 
-    if (check.error) {
+        if (error) {
 
-        alert(
-            "❌ " +
-            check.error.message
-        );
-
-        return;
-    }
-
-    if (
-        check.data &&
-        check.data.length
-    ) {
-
-        alert(
-            "❌ Bu login allaqachon mavjud."
-        );
-
-        return;
-    }
-
-    const result =
-        await supabaseClient
-            .from("users")
-            .insert({
-
-                name:
-                    name,
-
-                username:
-                    username,
-
-                password:
-                    password,
-
-                role:
-                    role
-
-            });
-
-    if (result.error) {
-
-        alert(
-            "❌ " +
-            result.error.message
-        );
-
-        return;
-    }
-
-    document
-        .getElementById("userForm")
-        .reset();
-
-    await displayUsers();
-
-    alert(
-        "✅ User muvaffaqiyatli yaratildi."
-    );
-}
-
-async function changeUserPassword(id) {
-
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
-        return;
-    }
-
-    const password =
-        prompt(
-            "Yangi parolni kiriting:",
-            ""
-        );
-
-    if (password === null) {
-        return;
-    }
-
-    if (!password.trim()) {
-
-        alert(
-            "❌ Parol bo‘sh bo‘lmasligi kerak."
-        );
-
-        return;
-    }
-
-    const result =
-        await supabaseClient
-            .from("users")
-            .update({
-                password:
-                    password.trim()
-            })
-            .eq(
-                "id",
-                id
+            console.error(
+                "CREATE USER ERROR:",
+                error
             );
 
-    if (result.error) {
+            if (
+                error.code === "23505"
+            ) {
+
+                alert(
+                    "❌ Bu login allaqachon mavjud."
+                );
+
+            } else {
+
+                alert(
+                    "❌ User yaratishda xatolik:\n" +
+                    error.message
+                );
+            }
+
+            return;
+        }
 
         alert(
-            "❌ " +
-            result.error.message
+            "✅ Yangi user yaratildi."
         );
 
-        return;
+        const form =
+            document.getElementById("userForm");
+
+        if (form) {
+            form.reset();
+        }
+
+        await getUsers();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "❌ Xatolik:\n" +
+            error.message
+        );
     }
-
-    await displayUsers();
-
-    alert(
-        "✅ Parol o‘zgartirildi."
-    );
 }
 
-async function changeUsername(id) {
 
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
+/* =========================================================
+   CHANGE PASSWORD
+========================================================= */
+
+async function changePassword(id) {
+
+    if (currentRole !== "admin") {
         return;
     }
 
     const user =
-        await getUser(id);
+        allUsers.find(
+            item => item.id == id
+        );
+
+    if (!user) {
+        return;
+    }
+
+    const newPassword =
+        prompt(
+            `Yangi parolni kiriting:\n${user.username}`
+        );
+
+    if (newPassword === null) {
+        return;
+    }
+
+    const password =
+        newPassword.trim();
+
+    if (!password) {
+
+        alert(
+            "Parol bo‘sh bo‘lishi mumkin emas."
+        );
+
+        return;
+    }
+
+    try {
+
+        const {
+            error
+        } = await supabase
+            .from("users")
+            .update({
+                password: password
+            })
+            .eq("id", id);
+
+        if (error) {
+
+            console.error(
+                "CHANGE PASSWORD ERROR:",
+                error
+            );
+
+            alert(
+                "❌ Parol o‘zgartirilmadi:\n" +
+                error.message
+            );
+
+            return;
+        }
+
+        alert(
+            "✅ Parol yangilandi."
+        );
+
+        await getUsers();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "❌ Xatolik:\n" +
+            error.message
+        );
+    }
+}
+
+
+/* =========================================================
+   CHANGE USERNAME
+========================================================= */
+
+async function changeUsername(id) {
+
+    if (currentRole !== "admin") {
+        return;
+    }
+
+    const user =
+        allUsers.find(
+            item => item.id == id
+        );
 
     if (!user) {
         return;
@@ -2179,8 +2953,7 @@ async function changeUsername(id) {
 
     const newUsername =
         prompt(
-            "Yangi loginni kiriting:",
-            user.username
+            `Yangi loginni kiriting:\n${user.username}`
         );
 
     if (newUsername === null) {
@@ -2193,1449 +2966,311 @@ async function changeUsername(id) {
     if (!username) {
 
         alert(
-            "❌ Login bo‘sh bo‘lmasligi kerak."
+            "Login bo‘sh bo‘lishi mumkin emas."
         );
 
         return;
     }
-
-    const check =
-        await supabaseClient
-            .from("users")
-            .select("id")
-            .eq(
-                "username",
-                username
-            )
-            .neq(
-                "id",
-                id
-            )
-            .limit(1);
-
-    if (check.error) {
-
-        alert(
-            "❌ " +
-            check.error.message
-        );
-
-        return;
-    }
-
-    if (
-        check.data &&
-        check.data.length
-    ) {
-
-        alert(
-            "❌ Bu login allaqachon mavjud."
-        );
-
-        return;
-    }
-
-    const result =
-        await supabaseClient
-            .from("users")
-            .update({
-                username:
-                    username
-            })
-            .eq(
-                "id",
-                id
-            );
-
-    if (result.error) {
-
-        alert(
-            "❌ " +
-            result.error.message
-        );
-
-        return;
-    }
-
-    if (
-        Number(id) ===
-        Number(currentUser.id)
-    ) {
-        currentUser.username =
-            username;
-    }
-
-    await displayUsers();
-
-    alert(
-        "✅ Login o‘zgartirildi."
-    );
-}
-
-async function deleteUser(id) {
-
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
-        return;
-    }
-
-    if (
-        Number(id) ===
-        Number(currentUser.id)
-    ) {
-
-        alert(
-            "❌ O‘zingizni o‘chira olmaysiz."
-        );
-
-        return;
-    }
-
-    if (
-        !confirm(
-            "Bu userni o‘chirmoqchimisiz?"
-        )
-    ) {
-        return;
-    }
-
-    const result =
-        await supabaseClient
-            .from("users")
-            .delete()
-            .eq(
-                "id",
-                id
-            );
-
-    if (result.error) {
-
-        alert(
-            "❌ " +
-            result.error.message
-        );
-
-        return;
-    }
-
-    await displayUsers();
-
-    alert(
-        "✅ User o‘chirildi."
-    );
-}
-
-/* =========================================
-   EVENTS
-========================================= */
-
-async function getEvents() {
-
-    const result =
-        await supabaseClient
-            .from("events")
-            .select("*")
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            );
-
-    if (result.error) {
-
-        console.error(
-            "EVENT ERROR:",
-            result.error
-        );
-
-        return [];
-    }
-
-    return result.data || [];
-}
-
-function eventImage(event) {
-
-    if (
-        event.image_url
-    ) {
-
-        return `
-            <img
-                src="${escapeHTML(
-                    event.image_url
-                )}"
-                alt="${escapeHTML(
-                    event.title
-                )}"
-                class="event-card-image"
-            >
-        `;
-
-    }
-
-    return `
-        <div
-            class="event-card-image"
-            style="
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                font-size:55px;
-            "
-        >
-            🎪
-        </div>
-    `;
-}
-
-function createEventHTML(event) {
-
-    return `
-        <article class="event-card">
-
-            ${eventImage(event)}
-
-            <div class="event-card-body">
-
-                <div class="event-card-title">
-                    ${escapeHTML(
-                        event.title
-                    )}
-                </div>
-
-                <div class="event-card-description">
-                    ${escapeHTML(
-                        event.description ||
-                        "Tavsif mavjud emas."
-                    )}
-                </div>
-
-                <div class="event-card-date">
-                    ${formatDateTime(
-                        event.created_at
-                    )}
-                </div>
-
-            </div>
-
-        </article>
-    `;
-}
-
-function createWorkerEventHTML(event) {
-
-    const deleteButton =
-        currentUser &&
-        currentUser.role === "admin"
-
-            ? `
-                <div class="event-admin-actions">
-
-                    <button
-                        type="button"
-                        class="btn-delete"
-                        onclick="deleteEvent(${Number(event.id)})"
-                    >
-                        🗑 O‘chirish
-                    </button>
-
-                </div>
-            `
-            : "";
-
-    return `
-        <article class="event-card">
-
-            ${eventImage(event)}
-
-            <div class="event-card-body">
-
-                <div class="event-card-title">
-                    ${escapeHTML(
-                        event.title
-                    )}
-                </div>
-
-                <div class="event-card-description">
-                    ${escapeHTML(
-                        event.description ||
-                        "Tavsif mavjud emas."
-                    )}
-                </div>
-
-                <div class="event-card-date">
-                    ${formatDateTime(
-                        event.created_at
-                    )}
-                </div>
-
-                ${deleteButton}
-
-            </div>
-
-        </article>
-    `;
-}
-
-async function loadCustomerEvents() {
-
-    const container =
-        document.getElementById(
-            "customerEventsList"
-        );
-
-    const pagination =
-        document.getElementById(
-            "customerPagination"
-        );
-
-    if (
-        !container ||
-        !pagination
-    ) {
-        return;
-    }
-
-    const events =
-        await getEvents();
-
-    const totalPages =
-        Math.max(
-            1,
-            Math.ceil(
-                events.length /
-                EVENTS_PER_PAGE
-            )
-        );
-
-    customerEventsPage =
-        Math.min(
-            customerEventsPage,
-            totalPages
-        );
-
-    const start =
-        (
-            customerEventsPage -
-            1
-        ) *
-        EVENTS_PER_PAGE;
-
-    const pageEvents =
-        events.slice(
-            start,
-            start + EVENTS_PER_PAGE
-        );
-
-    if (pageEvents.length) {
-
-        container.innerHTML =
-            pageEvents
-                .map(createEventHTML)
-                .join("");
-
-    }
-    else {
-
-        container.innerHTML = `
-            <div class="no-orders">
-
-                <h3>
-                    🎪 Hozircha tadbirlar yo‘q
-                </h3>
-
-                <p>
-                    Tez orada yangi tadbirlar qo‘shiladi.
-                </p>
-
-            </div>
-        `;
-    }
-
-    renderPagination(
-        pagination,
-        totalPages,
-        customerEventsPage,
-        function(page) {
-
-            customerEventsPage =
-                page;
-
-            loadCustomerEvents();
-
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
-        }
-    );
-}
-
-async function loadWorkerEvents() {
-
-    const container =
-        document.getElementById(
-            "workerEventsList"
-        );
-
-    const pagination =
-        document.getElementById(
-            "workerPagination"
-        );
-
-    if (
-        !container ||
-        !pagination
-    ) {
-        return;
-    }
-
-    const events =
-        await getEvents();
-
-    const totalPages =
-        Math.max(
-            1,
-            Math.ceil(
-                events.length /
-                EVENTS_PER_PAGE
-            )
-        );
-
-    workerEventsPage =
-        Math.min(
-            workerEventsPage,
-            totalPages
-        );
-
-    const start =
-        (
-            workerEventsPage -
-            1
-        ) *
-        EVENTS_PER_PAGE;
-
-    const pageEvents =
-        events.slice(
-            start,
-            start + EVENTS_PER_PAGE
-        );
-
-    container.innerHTML =
-        pageEvents.length
-            ? pageEvents
-                .map(createWorkerEventHTML)
-                .join("")
-            : `
-                <div class="no-orders">
-                    <h3>🎪 Tadbirlar yo‘q</h3>
-                </div>
-            `;
-
-    renderPagination(
-        pagination,
-        totalPages,
-        workerEventsPage,
-        function(page) {
-
-            workerEventsPage =
-                page;
-
-            loadWorkerEvents();
-        }
-    );
-}
-
-function renderPagination(
-    container,
-    totalPages,
-    currentPage,
-    onPage
-) {
-
-    if (
-        totalPages <= 1
-    ) {
-
-        container.innerHTML =
-            "";
-
-        return;
-    }
-
-    let html = "";
-
-    html += `
-        <button
-            type="button"
-            data-page="${currentPage - 1}"
-            ${currentPage === 1 ? "disabled" : ""}
-        >
-            ← Oldingi
-        </button>
-    `;
-
-    for (
-        let i = 1;
-        i <= totalPages;
-        i++
-    ) {
-
-        html += `
-            <button
-                type="button"
-                data-page="${i}"
-                class="${i === currentPage ? "active" : ""}"
-            >
-                ${i}
-            </button>
-        `;
-    }
-
-    html += `
-        <button
-            type="button"
-            data-page="${currentPage + 1}"
-            ${currentPage === totalPages ? "disabled" : ""}
-        >
-            Keyingi sahifa →
-        </button>
-
-        <span>
-            ${currentPage}/${totalPages}
-        </span>
-    `;
-
-    container.innerHTML =
-        html;
-
-    container
-        .querySelectorAll(
-            "button[data-page]"
-        )
-        .forEach(function(button) {
-
-            button.addEventListener(
-                "click",
-                function() {
-
-                    const page =
-                        Number(
-                            button.dataset.page
-                        );
-
-                    if (
-                        page >= 1 &&
-                        page <= totalPages
-                    ) {
-
-                        onPage(page);
-                    }
-                }
-            );
-        });
-}
-
-function fileToDataURL(file) {
-
-    return new Promise(
-        function(resolve, reject) {
-
-            const reader =
-                new FileReader();
-
-            reader.onload =
-                function() {
-                    resolve(
-                        reader.result
-                    );
-                };
-
-            reader.onerror =
-                function() {
-
-                    reject(
-                        new Error(
-                            "Rasm o‘qilmadi."
-                        )
-                    );
-                };
-
-            reader.readAsDataURL(file);
-        }
-    );
-}
-
-async function saveEventFromForm(
-    event
-) {
-
-    event.preventDefault();
-
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
-
-        alert(
-            "❌ Faqat admin tadbir qo‘sha oladi."
-        );
-
-        return;
-    }
-
-    const titleElement =
-        document.getElementById(
-            "eventTitle"
-        );
-
-    const descriptionElement =
-        document.getElementById(
-            "eventDescription"
-        );
-
-    const imageElement =
-        document.getElementById(
-            "eventImage"
-        );
-
-    if (
-        !titleElement ||
-        !descriptionElement ||
-        !imageElement
-    ) {
-
-        alert(
-            "❌ Tadbir formasi topilmadi."
-        );
-
-        return;
-    }
-
-    const title =
-        titleElement.value.trim();
-
-    const description =
-        descriptionElement.value.trim();
-
-    const file =
-        imageElement.files[0];
-
-    if (!title) {
-
-        alert(
-            "❌ Tadbir nomini kiriting."
-        );
-
-        return;
-    }
-
-    let imageUrl = "";
 
     try {
 
-        if (file) {
+        const {
+            error
+        } = await supabase
+            .from("users")
+            .update({
+                username: username
+            })
+            .eq("id", id);
+
+        if (error) {
+
+            console.error(
+                "CHANGE USERNAME ERROR:",
+                error
+            );
 
             if (
-                !file.type.startsWith(
-                    "image/"
-                )
+                error.code === "23505"
             ) {
 
                 alert(
-                    "❌ Faqat rasm fayli yuklang."
+                    "❌ Bu login allaqachon mavjud."
                 );
 
-                return;
-            }
-
-            if (
-                file.size >
-                2 * 1024 * 1024
-            ) {
+            } else {
 
                 alert(
-                    "❌ Rasm hajmi 2 MB dan kichik bo‘lsin."
+                    "❌ Login o‘zgartirilmadi:\n" +
+                    error.message
                 );
-
-                return;
             }
 
-            imageUrl =
-                await fileToDataURL(
-                    file
-                );
+            return;
         }
 
-        const result =
-            await supabaseClient
-                .from("events")
-                .insert({
-                    title:
-                        title,
+        alert(
+            "✅ Login yangilandi."
+        );
 
-                    description:
-                        description ||
-                        null,
+        await getUsers();
 
-                    image_url:
-                        imageUrl ||
-                        null
-                })
-                .select()
-                .single();
+    } catch (error) {
 
-        if (result.error) {
+        console.error(error);
+
+        alert(
+            "❌ Xatolik:\n" +
+            error.message
+        );
+    }
+}
+
+
+/* =========================================================
+   DELETE USER
+========================================================= */
+
+async function deleteUser(id) {
+
+    if (currentRole !== "admin") {
+        return;
+    }
+
+    if (
+        currentUser &&
+        currentUser.id == id
+    ) {
+
+        alert(
+            "O‘zingizni o‘chira olmaysiz."
+        );
+
+        return;
+    }
+
+    const user =
+        allUsers.find(
+            item => item.id == id
+        );
+
+    if (!user) {
+        return;
+    }
+
+    const confirmDelete =
+        confirm(
+            `"${user.username}" userini o‘chirmoqchimisiz?`
+        );
+
+    if (!confirmDelete) {
+        return;
+    }
+
+    try {
+
+        const {
+            error
+        } = await supabase
+            .from("users")
+            .delete()
+            .eq("id", id);
+
+        if (error) {
+
+            console.error(
+                "DELETE USER ERROR:",
+                error
+            );
 
             alert(
-                "❌ Tadbir qo‘shilmadi:\n" +
-                result.error.message
+                "❌ User o‘chirilmadi:\n" +
+                error.message
             );
 
             return;
         }
 
-        document
-            .getElementById(
-                "eventForm"
-            )
-            .reset();
+        alert(
+            "✅ User o‘chirildi."
+        );
 
-        workerEventsPage = 1;
+        await getUsers();
 
-        await loadWorkerEvents();
+    } catch (error) {
+
+        console.error(error);
 
         alert(
-            "✅ Tadbir muvaffaqiyatli qo‘shildi."
-        );
-
-    }
-    catch (error) {
-
-        console.error(
-            "EVENT ERROR:",
-            error
-        );
-
-        alert(
-            "❌ Tadbir qo‘shishda xatolik:\n" +
-            (
-                error.message ||
-                "Noma'lum xatolik"
-            )
+            "❌ Xatolik:\n" +
+            error.message
         );
     }
 }
 
-async function deleteEvent(id) {
 
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
-        return;
-    }
+/* =========================================================
+   HELPERS
+========================================================= */
 
-    if (
-        !confirm(
-            "Bu tadbirni o‘chirmoqchimisiz?"
-        )
-    ) {
-        return;
-    }
+function setText(id, text) {
 
-    const result =
-        await supabaseClient
-            .from("events")
-            .delete()
-            .eq(
-                "id",
-                id
-            );
+    const element =
+        document.getElementById(id);
 
-    if (result.error) {
-
-        alert(
-            "❌ " +
-            result.error.message
-        );
-
-        return;
-    }
-
-    await loadWorkerEvents();
-
-    alert(
-        "✅ Tadbir o‘chirildi."
-    );
-}
-
-/* =========================================
-   APPLICATION
-========================================= */
-
-function openOrderModal() {
-
-    const modal =
-        document.getElementById(
-            "orderModal"
-        );
-
-    if (!modal) {
-        return;
-    }
-
-    modal.classList.remove(
-        "hidden"
-    );
-
-    const message =
-        document.getElementById(
-            "applicationMessage"
-        );
-
-    if (message) {
-        message.innerHTML = "";
-    }
-
-    document
-        .getElementById(
-            "applicationName"
-        )
-        ?.focus();
-}
-
-function closeOrderModal() {
-
-    const modal =
-        document.getElementById(
-            "orderModal"
-        );
-
-    if (modal) {
-        modal.classList.add(
-            "hidden"
-        );
+    if (element) {
+        element.textContent =
+            text;
     }
 }
 
-async function submitApplication(
-    event
-) {
 
-    event.preventDefault();
+function formatMoney(value) {
 
-    const name =
-        document.getElementById(
-            "applicationName"
-        ).value.trim();
+    const number =
+        Number(value || 0);
 
-    const phone =
-        document.getElementById(
-            "applicationPhone"
-        ).value.trim();
+    return new Intl.NumberFormat(
+        "uz-UZ"
+    ).format(number);
+}
 
-    const message =
-        document.getElementById(
-            "applicationMessage"
+
+function escapeHTML(value) {
+
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+function escapeAttribute(value) {
+
+    return escapeHTML(value);
+}
+
+
+/* =========================================================
+   RESTORE LOGIN
+========================================================= */
+
+function restoreSavedUser() {
+
+    const saved =
+        localStorage.getItem(
+            "goldshow_user"
         );
 
-    if (
-        !name ||
-        !phone
-    ) {
-
-        message.innerHTML = `
-            <div class="error">
-                ❌ Ism va telefon raqamini kiriting.
-            </div>
-        `;
-
+    if (!saved) {
         return;
     }
 
     try {
 
-        const result =
-            await supabaseClient
-                .from("applications")
-                .insert({
-                    full_name:
-                        name,
+        const user =
+            JSON.parse(saved);
 
-                    phone:
-                        phone,
-
-                    status:
-                        "new"
-                })
-                .select()
-                .single();
-
-        if (result.error) {
-            throw result.error;
+        if (!user || !user.id) {
+            return;
         }
 
-        const application =
-            result.data;
+        currentUser =
+            user;
 
-        localStorage.setItem(
-            "goldshow_application_id",
-            String(application.id)
-        );
+        currentRole =
+            user.role;
 
-        localStorage.setItem(
-            "goldshow_application_phone",
-            phone
-        );
+    } catch (error) {
 
-        message.innerHTML = `
-            <div
-                style="
-                    padding:15px;
-                    border-radius:10px;
-                    background:#dcfce7;
-                    color:#15803d
-                "
-            >
-                ✅ Arizangiz yuborildi!
-
-                <br><br>
-
-                <strong>
-                    Ariza raqami:
-                    #${application.id}
-                </strong>
-
-                <br><br>
-
-                Biz siz bilan bog‘lanamiz.
-            </div>
-        `;
-
-        document
-            .getElementById(
-                "applicationForm"
-            )
-            .reset();
-
-        startApplicationPolling(
-            application.id,
-            phone
-        );
-
-    }
-    catch (error) {
-
-        console.error(
-            "APPLICATION ERROR:",
-            error
-        );
-
-        message.innerHTML = `
-            <div class="error">
-                ❌ Ariza yuborishda xatolik:
-                <br>
-                ${escapeHTML(
-                    error.message ||
-                    "Noma'lum xatolik"
-                )}
-            </div>
-        `;
-    }
-}
-
-function startApplicationPolling(
-    id,
-    phone
-) {
-
-    if (applicationTimer) {
-        clearInterval(
-            applicationTimer
-        );
-    }
-
-    checkApplicationStatus(
-        id,
-        phone
-    );
-
-    applicationTimer =
-        setInterval(
-            function() {
-
-                checkApplicationStatus(
-                    id,
-                    phone
-                );
-
-            },
-            8000
-        );
-}
-
-function restoreApplicationStatus() {
-
-    const id =
-        localStorage.getItem(
-            "goldshow_application_id"
-        );
-
-    const phone =
-        localStorage.getItem(
-            "goldshow_application_phone"
-        );
-
-    if (
-        id &&
-        phone
-    ) {
-
-        startApplicationPolling(
-            id,
-            phone
+        localStorage.removeItem(
+            "goldshow_user"
         );
     }
 }
 
-async function checkApplicationStatus(
-    id,
-    phone
-) {
 
-    const result =
-        await supabaseClient
-            .from("applications")
-            .select(
-                "id,status,full_name,phone,created_at"
-            )
-            .eq(
-                "id",
-                id
-            )
-            .eq(
-                "phone",
-                phone
-            )
-            .maybeSingle();
-
-    if (
-        result.error ||
-        !result.data
-    ) {
-        return;
-    }
-
-    const application =
-        result.data;
-
-    const box =
-        document.getElementById(
-            "customerStatusBox"
-        );
-
-    if (!box) {
-        return;
-    }
-
-    if (
-        application.status ===
-        "accepted"
-    ) {
-
-        box.classList.remove(
-            "hidden"
-        );
-
-        box.style.borderLeftColor =
-            "#16a34a";
-
-        box.innerHTML = `
-            <strong>
-                ✅ Sizning arizangiz qabul qilindi
-            </strong>
-
-            <br><br>
-
-            Tez orada siz bilan bog‘lanamiz.
-
-            <br><br>
-
-            Ariza:
-            #${application.id}
-        `;
-
-        clearInterval(
-            applicationTimer
-        );
-
-        applicationTimer = null;
-    }
-
-    else if (
-        application.status ===
-        "rejected"
-    ) {
-
-        box.classList.remove(
-            "hidden"
-        );
-
-        box.style.borderLeftColor =
-            "#dc2626";
-
-        box.innerHTML = `
-            <strong>
-                ❌ Arizangiz rad etildi.
-            </strong>
-
-            <br><br>
-
-            Ariza:
-            #${application.id}
-        `;
-
-        clearInterval(
-            applicationTimer
-        );
-
-        applicationTimer = null;
-    }
-}
-
-/* =========================================
-   ADMIN APPLICATIONS
-========================================= */
-
-async function loadApplications() {
-
-    const container =
-        document.getElementById(
-            "applicationsList"
-        );
-
-    if (
-        !container ||
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
-        return;
-    }
-
-    const result =
-        await supabaseClient
-            .from("applications")
-            .select("*")
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            );
-
-    if (result.error) {
-
-        container.innerHTML = `
-            <div class="no-orders">
-                ❌
-                ${escapeHTML(
-                    result.error.message
-                )}
-            </div>
-        `;
-
-        return;
-    }
-
-    const applications =
-        result.data || [];
-
-    if (!applications.length) {
-
-        container.innerHTML = `
-            <div class="no-orders">
-
-                <h3>
-                    📭 Arizalar yo‘q
-                </h3>
-
-                <p>
-                    Hozircha buyurtmachi arizasi kelmagan.
-                </p>
-
-            </div>
-        `;
-
-        return;
-    }
-
-    container.innerHTML =
-        applications
-            .map(createApplicationHTML)
-            .join("");
-}
-
-function createApplicationHTML(
-    application
-) {
-
-    const statuses = {
-
-        new: [
-            "status-new",
-            "Yangi"
-        ],
-
-        accepted: [
-            "status-accepted",
-            "Qabul qilingan"
-        ],
-
-        rejected: [
-            "status-rejected",
-            "Rad etilgan"
-        ]
-
-    };
-
-    const status =
-        statuses[
-            application.status
-        ] ||
-        statuses.new;
-
-    let buttons = "";
-
-    if (
-        application.status ===
-        "new"
-    ) {
-
-        buttons = `
-            <div class="application-actions">
-
-                <button
-                    type="button"
-                    class="accept-btn"
-                    onclick="
-                        updateApplicationStatus(
-                            ${Number(application.id)},
-                            'accepted'
-                        )
-                    "
-                >
-                    ✅ Qabul qilish
-                </button>
-
-                <button
-                    type="button"
-                    class="reject-btn"
-                    onclick="
-                        updateApplicationStatus(
-                            ${Number(application.id)},
-                            'rejected'
-                        )
-                    "
-                >
-                    ❌ Rad etish
-                </button>
-
-            </div>
-        `;
-    }
-
-    return `
-        <div class="application-card">
-
-            <div class="application-header">
-
-                <div>
-
-                    <div class="application-name">
-                        👤
-                        ${escapeHTML(
-                            application.full_name
-                        )}
-                    </div>
-
-                </div>
-
-                <div class="application-time">
-                    ${formatDateTime(
-                        application.created_at
-                    )}
-                </div>
-
-            </div>
-
-            <div class="application-info">
-
-                <div class="application-detail">
-
-                    <span>
-                        📞 Telefon
-                    </span>
-
-                    <strong>
-                        ${escapeHTML(
-                            application.phone
-                        )}
-                    </strong>
-
-                </div>
-
-                <div class="application-detail">
-
-                    <span>
-                        🆔 Ariza
-                    </span>
-
-                    <strong>
-                        #${Number(
-                            application.id
-                        )}
-                    </strong>
-
-                </div>
-
-            </div>
-
-            <span
-                class="application-status ${status[0]}"
-            >
-                ${status[1]}
-            </span>
-
-            ${buttons}
-
-        </div>
-    `;
-}
-
-async function updateApplicationStatus(
-    id,
-    status
-) {
-
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
-        return;
-    }
-
-    const question =
-        status === "accepted"
-            ? "Bu arizani qabul qilasizmi?"
-            : "Bu arizani rad qilasizmi?";
-
-    if (!confirm(question)) {
-        return;
-    }
-
-    const updateData = {
-        status: status
-    };
-
-    if (
-        status === "accepted"
-    ) {
-
-        updateData.accepted_at =
-            new Date()
-                .toISOString();
-    }
-
-    const result =
-        await supabaseClient
-            .from("applications")
-            .update(updateData)
-            .eq(
-                "id",
-                id
-            );
-
-    if (result.error) {
-
-        alert(
-            "❌ " +
-            result.error.message
-        );
-
-        return;
-    }
-
-    await loadApplications();
-
-    alert(
-        status === "accepted"
-            ? "✅ Ariza qabul qilindi."
-            : "❌ Ariza rad etildi."
-    );
-}
-
-/* =========================================
-   START
-========================================= */
+/* =========================================================
+   DOM CONTENT LOADED
+========================================================= */
 
 document.addEventListener(
     "DOMContentLoaded",
-    function() {
+    async function () {
 
         updateDate();
 
+        restoreSavedUser();
+
+        /* -----------------------------------------
+           LOGIN FORM
+        ----------------------------------------- */
+
         const loginForm =
-            document.getElementById(
-                "loginForm"
-            );
+            document.getElementById("loginForm");
 
         if (loginForm) {
+
             loginForm.addEventListener(
                 "submit",
-                login
+                loginUser
             );
         }
 
+
+        /* -----------------------------------------
+           ORDER FORM
+        ----------------------------------------- */
+
         const orderForm =
-            document.getElementById(
-                "orderForm"
-            );
+            document.getElementById("orderForm");
 
         if (orderForm) {
+
             orderForm.addEventListener(
                 "submit",
                 saveOrderFromForm
             );
         }
 
-        const userForm =
-            document.getElementById(
-                "userForm"
+
+        /* -----------------------------------------
+           EVENT FORM
+        ----------------------------------------- */
+
+        const eventForm =
+            document.getElementById("eventForm");
+
+        if (eventForm) {
+
+            eventForm.addEventListener(
+                "submit",
+                saveEventFromForm
             );
+        }
+
+
+        /* -----------------------------------------
+           USER FORM
+        ----------------------------------------- */
+
+        const userForm =
+            document.getElementById("userForm");
 
         if (userForm) {
+
             userForm.addEventListener(
                 "submit",
                 createUser
             );
         }
 
-        const eventForm =
-            document.getElementById(
-                "eventForm"
-            );
 
-        if (eventForm) {
-            eventForm.addEventListener(
-                "submit",
-                saveEventFromForm
-            );
-        }
+        /* -----------------------------------------
+           APPLICATION FORM
+        ----------------------------------------- */
 
         const applicationForm =
             document.getElementById(
@@ -3643,11 +3278,17 @@ document.addEventListener(
             );
 
         if (applicationForm) {
+
             applicationForm.addEventListener(
                 "submit",
                 submitApplication
             );
         }
+
+
+        /* -----------------------------------------
+           SEARCH
+        ----------------------------------------- */
 
         const searchInput =
             document.getElementById(
@@ -3655,35 +3296,91 @@ document.addEventListener(
             );
 
         if (searchInput) {
+
             searchInput.addEventListener(
                 "input",
-                displayOrders
+                searchOrders
             );
         }
+
+
+        /* -----------------------------------------
+           MONEY
+        ----------------------------------------- */
 
         const totalPrice =
             document.getElementById(
                 "totalPrice"
             );
 
+        const paid =
+            document.getElementById(
+                "paid"
+            );
+
         if (totalPrice) {
+
             totalPrice.addEventListener(
                 "input",
                 calculateRemaining
             );
         }
 
-        const paid =
-            document.getElementById(
-                "paid"
-            );
-
         if (paid) {
+
             paid.addEventListener(
                 "input",
                 calculateRemaining
             );
         }
+
+
+        /* -----------------------------------------
+           EVENT IMAGE
+        ----------------------------------------- */
+
+        const eventImage =
+            document.getElementById(
+                "eventImage"
+            );
+
+        if (eventImage) {
+
+            eventImage.addEventListener(
+                "change",
+                handleEventImage
+            );
+        }
+
+
+        /* -----------------------------------------
+           CANCEL EDIT
+        ----------------------------------------- */
+
+        const cancelEditButton =
+            document.getElementById(
+                "cancelEditBtn"
+            );
+
+        if (cancelEditButton) {
+
+            cancelEditButton.addEventListener(
+                "click",
+                function () {
+
+                    resetOrderForm();
+
+                    showPageSection(
+                        "orderFormSection"
+                    );
+                }
+            );
+        }
+
+
+        /* -----------------------------------------
+           CLOSE MODAL BY CLICKING OUTSIDE
+        ----------------------------------------- */
 
         const modal =
             document.getElementById(
@@ -3694,7 +3391,7 @@ document.addEventListener(
 
             modal.addEventListener(
                 "click",
-                function(event) {
+                function (event) {
 
                     if (
                         event.target ===
@@ -3703,12 +3400,120 @@ document.addEventListener(
 
                         closeOrderModal();
                     }
-
                 }
             );
         }
 
-        calculateRemaining();
 
+        /* -----------------------------------------
+           INIT EVENTS
+        ----------------------------------------- */
+
+        await getEvents();
+
+        /* -----------------------------------------
+           AUTO LOGIN
+        ----------------------------------------- */
+
+        if (
+            currentUser &&
+            currentUser.role
+        ) {
+
+            if (
+                currentUser.role ===
+                "admin"
+            ) {
+
+                await openAdminPage();
+
+            } else {
+
+                await openWorkerPage();
+            }
+        }
     }
 );
+
+
+/* =========================================================
+   WINDOW FUNCTIONS
+========================================================= */
+
+window.openCustomerPage =
+    openCustomerPage;
+
+window.openLoginPage =
+    openLoginPage;
+
+window.backToLanding =
+    backToLanding;
+
+window.loginUser =
+    loginUser;
+
+window.logout =
+    logout;
+
+window.openDashboard =
+    openDashboard;
+
+window.openOrdersPage =
+    openOrdersPage;
+
+window.openOrderFormPage =
+    openOrderFormPage;
+
+window.openApplicationsPage =
+    openApplicationsPage;
+
+window.openUsersPage =
+    openUsersPage;
+
+window.openEventsPage =
+    openEventsPage;
+
+window.openOrderModal =
+    openOrderModal;
+
+window.closeOrderModal =
+    closeOrderModal;
+
+window.editOrder =
+    editOrder;
+
+window.deleteOrder =
+    deleteOrder;
+
+window.deleteEvent =
+    deleteEvent;
+
+window.acceptApplication =
+    acceptApplication;
+
+window.rejectApplication =
+    rejectApplication;
+
+window.deleteApplication =
+    deleteApplication;
+
+window.showUserPassword =
+    showUserPassword;
+
+window.changePassword =
+    changePassword;
+
+window.changeUsername =
+    changeUsername;
+
+window.deleteUser =
+    deleteUser;
+
+window.goToEventPage =
+    goToEventPage;
+
+window.calculateRemaining =
+    calculateRemaining;
+
+window.createUser =
+    createUser;
