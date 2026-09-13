@@ -4,98 +4,316 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Goldshow - Zakaslar tizimi</title>
+    <title>Gold Show</title>
 
     <link rel="stylesheet" href="style.css">
 
-    <!-- SUPABASE -->
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
 
-<!-- =========================
-     LOGIN
-========================= -->
+<!-- =========================================
+     BOSHLANG‘ICH TANLOV
+========================================= -->
 
-<div id="loginPage" class="login-page">
+<section id="landingPage" class="landing-page">
+
+    <div class="landing-box">
+
+        <div class="landing-logo">
+            GOLD <span>SHOW</span>
+        </div>
+
+        <p class="landing-subtitle">
+            Gold Show rasmiy tizimi
+        </p>
+
+        <div class="landing-buttons">
+
+            <button
+                class="landing-btn customer-btn"
+                onclick="openCustomerPage()"
+            >
+                👤 Buyurtmachi
+            </button>
+
+            <button
+                class="landing-btn worker-btn"
+                onclick="openWorkerLogin()"
+            >
+                👷 Ishchi
+            </button>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================
+     LOGIN
+========================================= -->
+
+<section
+    id="loginPage"
+    class="login-page hidden"
+>
 
     <div class="login-box">
 
         <div class="logo">
-            GOLD<span>SHOW</span>
+            GOLD <span>SHOW</span>
         </div>
 
         <p class="login-title">
-            Zakaslar boshqaruv tizimi
+            Ishchi / Admin tizimiga kirish
         </p>
 
-        <input
-            type="text"
-            id="username"
-            placeholder="Login"
-            autocomplete="username"
-        >
+        <form onsubmit="login(event)">
 
-        <input
-            type="password"
-            id="password"
-            placeholder="Parol"
-            autocomplete="current-password"
-        >
+            <input
+                type="text"
+                id="username"
+                placeholder="Login"
+                autocomplete="username"
+                required
+            >
 
-        <button onclick="login()">
-            Kirish
+            <input
+                type="password"
+                id="password"
+                placeholder="Parol"
+                autocomplete="current-password"
+                required
+            >
+
+            <button type="submit">
+                🔐 Kirish
+            </button>
+
+        </form>
+
+        <div
+            id="loginError"
+            class="error"
+        ></div>
+
+        <button
+            class="back-home-btn"
+            onclick="backToLanding()"
+        >
+            ← Bosh sahifaga
         </button>
 
-        <p id="loginError" class="error"></p>
+    </div>
 
-        <div class="demo-login">
-            <strong>Demo admin:</strong>
-            Otabek / goldshow
-            <br>
+</section>
 
-            <strong>Demo user:</strong>
-            user / user123
+
+<!-- =========================================
+     BUYURTMACHI SAHIFASI
+========================================= -->
+
+<section
+    id="customerPage"
+    class="customer-page hidden"
+>
+
+    <header class="customer-header">
+
+        <div class="customer-logo">
+            GOLD <span>SHOW</span>
         </div>
+
+        <button
+            class="customer-order-btn"
+            onclick="openOrderModal()"
+        >
+            📩 Buyurtma berish
+        </button>
+
+    </header>
+
+
+    <main class="customer-container">
+
+        <div class="customer-title-row">
+
+            <div>
+
+                <h1>Tadbirlar</h1>
+
+                <p>
+                    Gold Show xizmatlaridan eng yangi tadbirlar
+                </p>
+
+            </div>
+
+            <button
+                class="customer-back-btn"
+                onclick="backToLanding()"
+            >
+                ← Orqaga
+            </button>
+
+        </div>
+
+
+        <div
+            id="customerEventsList"
+            class="customer-events-grid"
+        ></div>
+
+
+        <div
+            id="customerPagination"
+            class="pagination"
+        ></div>
+
+    </main>
+
+
+    <!-- Ariza holati -->
+
+    <div
+        id="customerStatusBox"
+        class="customer-status-box hidden"
+    ></div>
+
+</section>
+
+
+<!-- =========================================
+     ARIZA MODALI
+========================================= -->
+
+div
+    class="modal-overlay hidden"
+    id="orderModal"
+>
+
+    <div class="modal-box">
+
+        <button
+            class="modal-close"
+            onclick="closeOrderModal()"
+        >
+            ×
+        </button>
+
+        <h2>
+            Buyurtma berish uchun ariza qoldirish
+        </h2>
+
+        <p class="modal-subtitle">
+            Biz siz bilan bog‘lanamiz
+        </p>
+
+        <div class="trust-number">
+
+            <span>
+                Qisqa ishonch raqami
+            </span>
+
+            <strong>
+                3599
+            </strong>
+
+        </div>
+
+
+        <form
+            id="applicationForm"
+        >
+
+            <div class="form-group">
+
+                <label>
+                    Ism va familya
+                </label>
+
+                <input
+                    type="text"
+                    id="applicationName"
+                    placeholder="Masalan: Ali Valiyev"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Telefon raqami
+                </label>
+
+                <input
+                    type="tel"
+                    id="applicationPhone"
+                    placeholder="+998 90 123 45 67"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="save-btn"
+            >
+                📩 Ariza yuborish
+            </button>
+
+        </form>
+
+
+        <div
+            id="applicationMessage"
+            class="application-message"
+        ></div>
 
     </div>
 
 </div>
 
 
-<!-- =========================
-     ASOSIY SAYT
-========================= -->
+<!-- =========================================
+     ISHCHI / ADMIN PANEL
+========================================= -->
 
-<div id="mainPage" class="main-page hidden">
-
-    <!-- SIDEBAR -->
+<section
+    id="mainPage"
+    class="main-page hidden"
+>
 
     <aside class="sidebar">
 
         <div class="sidebar-logo">
-            GOLD<span>SHOW</span>
+            GOLD <span>SHOW</span>
         </div>
 
 
         <div class="user-info">
 
             <div
-                class="avatar"
                 id="userAvatar"
+                class="avatar"
             >
-                O
+                G
             </div>
 
             <div>
 
                 <strong id="currentUser">
-                    Otabek
+                    User
                 </strong>
 
                 <small id="userRole">
-                    Admin
+                    User
                 </small>
 
             </div>
@@ -121,8 +339,6 @@
             </button>
 
 
-            <!-- FAQAT ADMIN -->
-
             <button
                 id="addOrderMenu"
                 class="menu-btn"
@@ -132,7 +348,22 @@
             </button>
 
 
-            <!-- FAQAT ADMIN -->
+            <button
+                class="menu-btn"
+                onclick="showPage('workerEventsPage', this)"
+            >
+                🎪 Tadbirlar
+            </button>
+
+
+            <button
+                id="applicationsMenu"
+                class="menu-btn"
+                onclick="showPage('applicationsPage', this)"
+            >
+                📩 Arizalar
+            </button>
+
 
             <button
                 id="usersMenu"
@@ -155,16 +386,9 @@
     </aside>
 
 
-    <!-- =========================
-         CONTENT
-    ========================= -->
-
     <main class="content">
 
-
-        <!-- HEADER -->
-
-        <header class="top-header">
+        <div class="top-header">
 
             <div>
 
@@ -173,7 +397,7 @@
                 </h1>
 
                 <p>
-                    Goldshow zakaslarini boshqarish tizimi
+                    Gold Show boshqaruv tizimi
                 </p>
 
             </div>
@@ -185,24 +409,23 @@
                     Bugun
                 </span>
 
-                <strong id="todayDate"></strong>
+                <strong id="todayDate">
+                    —
+                </strong>
 
             </div>
 
-        </header>
+        </div>
 
 
-        <!-- =========================
+        <!-- =========================================
              DASHBOARD
-        ========================= -->
+        ========================================= -->
 
         <section
             id="dashboardPage"
             class="page"
         >
-
-            <div id="notifications"></div>
-
 
             <div class="stats">
 
@@ -227,7 +450,7 @@
                 </div>
 
 
-                <div class="stat-card today-card">
+                <div class="stat-card">
 
                     <div class="stat-icon">
                         📅
@@ -251,7 +474,7 @@
                 <div class="stat-card">
 
                     <div class="stat-icon">
-                        ⏰
+                        🔔
                     </div>
 
                     <div>
@@ -278,7 +501,7 @@
                     <div>
 
                         <span>
-                            Umumiy summa
+                            Jami summa
                         </span>
 
                         <strong id="totalMoney">
@@ -292,17 +515,18 @@
             </div>
 
 
-            <div class="section-header">
+            <div id="notifications"></div>
 
-                <h2>
-                    📅 Bugungi zakaslar
-                </h2>
 
-                <button
-                    onclick="showPage('ordersPage')"
-                >
-                    Barcha zakaslar
-                </button>
+            <div class="section-header compact">
+
+                <div>
+
+                    <h2>
+                        Bugungi zakaslar
+                    </h2>
+
+                </div>
 
             </div>
 
@@ -315,9 +539,9 @@
         </section>
 
 
-        <!-- =========================
+        <!-- =========================================
              ZAKASLAR
-        ========================= -->
+        ========================================= -->
 
         <section
             id="ordersPage"
@@ -329,20 +553,19 @@
                 <div>
 
                     <h2>
-                        📋 Barcha zakaslar
+                        Zakaslar
                     </h2>
 
                     <p>
-                        Admin tomonidan kiritilgan buyurtmalar
+                        Barcha buyurtmalar
                     </p>
 
                 </div>
 
-
                 <input
-                    type="text"
+                    type="search"
                     id="searchInput"
-                    placeholder="🔎 Buyurtmachi yoki manzil..."
+                    placeholder="🔎 Qidirish..."
                     oninput="displayOrders()"
                 >
 
@@ -357,9 +580,9 @@
         </section>
 
 
-        <!-- =========================
-             ZAKAS QO‘SHISH / TAHRIRLASH
-        ========================= -->
+        <!-- =========================================
+             ZAKAS QO‘SHISH
+        ========================================= -->
 
         <section
             id="addOrderPage"
@@ -375,7 +598,7 @@
                     </h2>
 
                     <p>
-                        Tadbir haqida barcha ma'lumotlarni kiriting
+                        Tadbir ma’lumotlarini kiriting
                     </p>
 
                 </div>
@@ -385,7 +608,7 @@
                     id="editBadge"
                     class="edit-badge hidden"
                 >
-                    ✏️ Zakas tahrirlanmoqda
+                    ✏️ Tahrirlash rejimi
                 </div>
 
 
@@ -394,29 +617,25 @@
                     <input
                         type="hidden"
                         id="editingOrderId"
-                        value=""
                     >
 
 
-                    <!-- MIJOZ -->
-
                     <h3>
-                        👤 Buyurtmachi ma'lumotlari
+                        👤 Mijoz ma’lumotlari
                     </h3>
+
 
                     <div class="form-grid">
 
                         <div class="form-group">
 
                             <label>
-                                Buyurtmachi ismi *
+                                Mijoz ismi
                             </label>
 
                             <input
-                                type="text"
                                 id="clientName"
                                 required
-                                placeholder="Masalan: Ali Valiyev"
                             >
 
                         </div>
@@ -425,14 +644,12 @@
                         <div class="form-group">
 
                             <label>
-                                Telefon raqami *
+                                Telefon
                             </label>
 
                             <input
-                                type="tel"
                                 id="clientPhone"
                                 required
-                                placeholder="+998 90 123 45 67"
                             >
 
                         </div>
@@ -441,33 +658,21 @@
                         <div class="form-group full">
 
                             <label>
-                                Montaj qilinadigan joy *
+                                Manzil
                             </label>
 
                             <input
-                                type="text"
                                 id="location"
                                 required
-                                placeholder="Masalan: Toshkent, Yunusobod..."
                             >
 
                         </div>
 
-                    </div>
-
-
-                    <!-- TADBIR -->
-
-                    <h3>
-                        📅 Tadbir ma'lumotlari
-                    </h3>
-
-                    <div class="form-grid">
 
                         <div class="form-group">
 
                             <label>
-                                Tadbir sanasi *
+                                Tadbir sanasi
                             </label>
 
                             <input
@@ -482,7 +687,7 @@
                         <div class="form-group">
 
                             <label>
-                                Boshlanish vaqti *
+                                Tadbir vaqti
                             </label>
 
                             <input
@@ -496,26 +701,23 @@
                     </div>
 
 
-                    <!-- EKRAN -->
-
                     <h3>
-                        🖥️ Asosiy ekran
+                        🖥️ Ekran va sahna
                     </h3>
+
 
                     <div class="form-grid">
 
                         <div class="form-group">
 
                             <label>
-                                Ekran balandligi (m)
+                                Ekran balandligi
                             </label>
 
                             <input
                                 type="number"
+                                step="0.1"
                                 id="screenHeight"
-                                step="0.1"
-                                min="0"
-                                placeholder="Masalan: 4"
                             >
 
                         </div>
@@ -524,41 +726,28 @@
                         <div class="form-group">
 
                             <label>
-                                Ekran uzunligi (m)
+                                Ekran eni
                             </label>
 
                             <input
                                 type="number"
+                                step="0.1"
                                 id="screenWidth"
-                                step="0.1"
-                                min="0"
-                                placeholder="Masalan: 8"
                             >
 
                         </div>
 
-                    </div>
-
-
-                    <!-- SAHNA -->
-
-                    <h3>
-                        🎭 Sahna
-                    </h3>
-
-                    <div class="form-grid">
 
                         <div class="form-group">
 
                             <label>
-                                Sahna kengligi (m)
+                                Sahna eni
                             </label>
 
                             <input
                                 type="number"
+                                step="0.1"
                                 id="stageWidth"
-                                step="0.1"
-                                min="0"
                             >
 
                         </div>
@@ -567,14 +756,13 @@
                         <div class="form-group">
 
                             <label>
-                                Sahna uzunligi (m)
+                                Sahna uzunligi
                             </label>
 
                             <input
                                 type="number"
-                                id="stageLength"
                                 step="0.1"
-                                min="0"
+                                id="stageLength"
                             >
 
                         </div>
@@ -583,150 +771,33 @@
                         <div class="form-group">
 
                             <label>
-                                Sahna pardasi
+                                Parda
                             </label>
 
                             <select id="curtain">
 
-                                <option value="Yo‘q">
+                                <option>
                                     Yo‘q
                                 </option>
 
-                                <option value="Ha">
-                                    Ha
+                                <option>
+                                    Bor
                                 </option>
 
                             </select>
 
                         </div>
 
-                    </div>
-
-
-                    <!-- TEXNIKA -->
-
-                    <h3>
-                        💡 Texnika
-                    </h3>
-
-                    <div class="form-grid">
 
                         <div class="form-group">
 
                             <label>
-                                Chiroqlar soni
-                            </label>
-
-                            <input
-                                type="number"
-                                id="lights"
-                                min="0"
-                                value="0"
-                            >
-
-                        </div>
-
-
-                        <div class="form-group">
-
-                            <label>
-                                Galava soni
-                            </label>
-
-                            <input
-                                type="number"
-                                id="galava"
-                                min="0"
-                                value="0"
-                            >
-
-                        </div>
-
-
-                        <div class="form-group">
-
-                            <label>
-                                LED Wash soni
-                            </label>
-
-                            <input
-                                type="number"
-                                id="ledwash"
-                                min="0"
-                                value="0"
-                            >
-
-                        </div>
-
-
-                        <div class="form-group">
-
-                            <label>
-                                Kanfeti soni
-                            </label>
-
-                            <input
-                                type="number"
-                                id="confetti"
-                                min="0"
-                                value="0"
-                            >
-
-                        </div>
-
-
-                        <div class="form-group">
-
-                            <label>
-                                Dim apparat soni
-                            </label>
-
-                            <input
-                                type="number"
-                                id="dim"
-                                min="0"
-                                value="0"
-                            >
-
-                        </div>
-
-
-                        <div class="form-group">
-
-                            <label>
-                                Firework soni
-                            </label>
-
-                            <input
-                                type="number"
-                                id="firework"
-                                min="0"
-                                value="0"
-                            >
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- QO‘SHIMCHA EKRAN -->
-
-                    <h3>
-                        🖥️ Qo‘shimcha yon ekranlar
-                    </h3>
-
-                    <div class="form-grid">
-
-                        <div class="form-group">
-
-                            <label>
-                                Yon ekranlar soni
+                                Yon ekran soni
                             </label>
 
                             <input
                                 type="number"
                                 id="sideScreens"
-                                min="0"
                                 value="0"
                             >
 
@@ -736,14 +807,14 @@
                         <div class="form-group">
 
                             <label>
-                                Yon ekran balandligi (m)
+                                Yon ekran balandligi
                             </label>
 
                             <input
                                 type="number"
-                                id="sideHeight"
                                 step="0.1"
-                                min="0"
+                                id="sideHeight"
+                                value="0"
                             >
 
                         </div>
@@ -752,14 +823,14 @@
                         <div class="form-group">
 
                             <label>
-                                Yon ekran uzunligi (m)
+                                Yon ekran eni
                             </label>
 
                             <input
                                 type="number"
-                                id="sideWidth"
                                 step="0.1"
-                                min="0"
+                                id="sideWidth"
+                                value="0"
                             >
 
                         </div>
@@ -767,26 +838,23 @@
                     </div>
 
 
-                    <!-- PUL -->
-
                     <h3>
-                        💰 To‘lov ma'lumotlari
+                        💡 Texnika
                     </h3>
+
 
                     <div class="form-grid">
 
                         <div class="form-group">
 
                             <label>
-                                Oldindan to‘langan summa
+                                Chiroqlar
                             </label>
 
                             <input
                                 type="number"
-                                id="paid"
-                                min="0"
+                                id="lights"
                                 value="0"
-                                oninput="calculateRemaining()"
                             >
 
                         </div>
@@ -795,13 +863,96 @@
                         <div class="form-group">
 
                             <label>
-                                Jami olinadigan summa
+                                Galava
+                            </label>
+
+                            <input
+                                type="number"
+                                id="galava"
+                                value="0"
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                LED Wash
+                            </label>
+
+                            <input
+                                type="number"
+                                id="ledwash"
+                                value="0"
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                Kanfeti
+                            </label>
+
+                            <input
+                                type="number"
+                                id="confetti"
+                                value="0"
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                Dim apparat
+                            </label>
+
+                            <input
+                                type="number"
+                                id="dim"
+                                value="0"
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                Firework
+                            </label>
+
+                            <input
+                                type="number"
+                                id="firework"
+                                value="0"
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <h3>
+                        💰 To‘lov
+                    </h3>
+
+
+                    <div class="form-grid">
+
+                        <div class="form-group">
+
+                            <label>
+                                Jami summa
                             </label>
 
                             <input
                                 type="number"
                                 id="totalPrice"
-                                min="0"
                                 value="0"
                                 oninput="calculateRemaining()"
                             >
@@ -812,14 +963,29 @@
                         <div class="form-group">
 
                             <label>
-                                Qolgan summa
+                                To‘langan
                             </label>
 
-                            <div
-                                id="remaining"
-                                class="remaining"
+                            <input
+                                type="number"
+                                id="paid"
+                                value="0"
+                                oninput="calculateRemaining()"
                             >
-                                0 so‘m
+
+                        </div>
+
+
+                        <div class="form-group full">
+
+                            <div class="remaining">
+
+                                Qolgan:
+
+                                <span id="remaining">
+                                    0 so‘m
+                                </span>
+
                             </div>
 
                         </div>
@@ -842,7 +1008,7 @@
                         class="cancel-btn hidden"
                         onclick="cancelEditOrder()"
                     >
-                        ❌ Tahrirlashni bekor qilish
+                        Bekor qilish
                     </button>
 
                 </form>
@@ -852,12 +1018,12 @@
         </section>
 
 
-        <!-- =========================
-             USERLAR
-        ========================= -->
+        <!-- =========================================
+             TADBIRLAR
+        ========================================= -->
 
         <section
-            id="usersPage"
+            id="workerEventsPage"
             class="page hidden"
         >
 
@@ -866,11 +1032,11 @@
                 <div>
 
                     <h2>
-                        👥 Userlar
+                        🎪 Tadbirlar
                     </h2>
 
                     <p>
-                        Userlarni boshqarish va yangi login yaratish
+                        Gold Show tadbirlari
                     </p>
 
                 </div>
@@ -878,16 +1044,149 @@
             </div>
 
 
+            <div
+                id="workerEventAdminForm"
+                class="event-admin-form hidden"
+            >
+
+                <h3>
+                    ➕ Yangi tadbir qo‘shish
+                </h3>
+
+
+                <form id="eventForm">
+
+                    <div class="form-grid">
+
+                        <div class="form-group">
+
+                            <label>
+                                Tadbir nomi
+                            </label>
+
+                            <input
+                                id="eventTitle"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="form-group full">
+
+                            <label>
+                                Tavsif
+                            </label>
+
+                            <textarea
+                                id="eventDescription"
+                                rows="5"
+                                placeholder="Tadbir haqida yozing..."
+                            ></textarea>
+
+                        </div>
+
+
+                        <div class="form-group full">
+
+                            <label>
+                                Tadbir rasmi
+                            </label>
+
+                            <input
+                                type="file"
+                                id="eventImage"
+                                accept="image/*"
+                            >
+
+                            <small class="form-help">
+                                JPG, PNG yoki WEBP tavsiya qilinadi.
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    <button
+                        type="submit"
+                        class="save-btn"
+                    >
+                        ➕ Tadbirni qo‘shish
+                    </button>
+
+                </form>
+
+            </div>
+
+
+            <div
+                id="workerEventsList"
+                class="customer-events-grid"
+            ></div>
+
+
+            <div
+                id="workerPagination"
+                class="pagination"
+            ></div>
+
+        </section>
+
+
+        <!-- =========================================
+             ARIZALAR
+        ========================================= -->
+
+        <section
+            id="applicationsPage"
+            class="page hidden"
+        >
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        📩 Arizalar
+                    </h2>
+
+                    <p>
+                        Buyurtmachi tomonidan yuborilgan arizalar
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div
+                id="applicationsList"
+                class="applications-list"
+            ></div>
+
+        </section>
+
+
+        <!-- =========================================
+             USERLAR
+        ========================================= -->
+
+        <section
+            id="usersPage"
+            class="page hidden"
+        >
+
             <div class="form-container">
 
                 <div class="form-title">
 
                     <h2>
-                        ➕ Yangi user qo‘shish
+                        👥 User yaratish
                     </h2>
 
                     <p>
-                        Yangi foydalanuvchi uchun ism, login va parol yarating
+                        Ishchi yoki admin hisobini yaratish
                     </p>
 
                 </div>
@@ -900,14 +1199,12 @@
                         <div class="form-group">
 
                             <label>
-                                Foydalanuvchi ismi *
+                                Ism
                             </label>
 
                             <input
-                                type="text"
                                 id="newUserName"
                                 required
-                                placeholder="Masalan: Anvar"
                             >
 
                         </div>
@@ -916,14 +1213,12 @@
                         <div class="form-group">
 
                             <label>
-                                Login *
+                                Login
                             </label>
 
                             <input
-                                type="text"
                                 id="newUsername"
                                 required
-                                placeholder="Masalan: anvar"
                             >
 
                         </div>
@@ -932,14 +1227,13 @@
                         <div class="form-group">
 
                             <label>
-                                Parol *
+                                Parol
                             </label>
 
                             <input
                                 type="password"
                                 id="newUserPassword"
                                 required
-                                placeholder="Parol yarating"
                             >
 
                         </div>
@@ -954,7 +1248,7 @@
                             <select id="newUserRole">
 
                                 <option value="user">
-                                    Oddiy user
+                                    Ishchi
                                 </option>
 
                                 <option value="admin">
@@ -984,13 +1278,9 @@
 
                 <div class="section-header compact">
 
-                    <div>
-
-                        <h2>
-                            👥 Mavjud userlar
-                        </h2>
-
-                    </div>
+                    <h2>
+                        Mavjud userlar
+                    </h2>
 
                 </div>
 
@@ -1004,13 +1294,11 @@
 
         </section>
 
-
     </main>
 
-</div>
+</section>
 
 
-<!-- SCRIPT -->
 <script src="script.js"></script>
 
 </body>

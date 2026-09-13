@@ -1,6 +1,6 @@
 /* =========================================
    GOLD SHOW
-   SUPABASE ONLINE VERSION
+   Supabase + Buyurtmachi + Ishchi + Admin
 ========================================= */
 
 
@@ -10,6 +10,11 @@
 
 const SUPABASE_URL =
     "https://mvrrftlhjlbrsiexnwjq.supabase.co";
+
+/*
+   BU YERGA SUPABASE'DAGI
+   PUBLISHABLE KEY'NI QO'YING.
+*/
 
 const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_MFI3LFGRmSviFv6ygJnXyg_wFktEpyP";
@@ -22,82 +27,149 @@ const supabaseClient =
     );
 
 
-/* =========================================
-   GLOBAL
-========================================= */
-
 let currentUser = null;
 
+let customerEventsPage = 1;
+let workerEventsPage = 1;
+
+const EVENTS_PER_PAGE = 10;
+
+let applicationPollTimer = null;
+
 
 /* =========================================
-   USERLAR
+   UMUMIY YORDAMCHI
 ========================================= */
 
-async function getUsers() {
+function escapeHTML(value){
 
-    const {
-        data,
-        error
-    } = await supabaseClient
-        .from("users")
-        .select("*")
-        .order("id", {
-            ascending: true
-        });
+    return String(value ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+}
 
 
-    if (error) {
+function formatMoney(value){
 
-        console.error(
-            "Users error:",
-            error
-        );
+    return Number(value || 0)
+        .toLocaleString("uz-UZ")
+        + " so‘m";
+}
 
-        alert(
-            "❌ Userlarni olishda xatolik!"
-        );
 
-        return [];
+function getToday(){
+
+    const date = new Date();
+
+    const year =
+        date.getFullYear();
+
+    const month =
+        String(
+            date.getMonth() + 1
+        ).padStart(2,"0");
+
+    const day =
+        String(
+            date.getDate()
+        ).padStart(2,"0");
+
+    return `${year}-${month}-${day}`;
+}
+
+
+function updateDate(){
+
+    const element =
+        document.getElementById("todayDate");
+
+    if(!element){
+        return;
     }
 
-
-    return data || [];
+    element.textContent =
+        new Date().toLocaleDateString(
+            "uz-UZ",
+            {
+                day:"2-digit",
+                month:"long",
+                year:"numeric"
+            }
+        );
 }
 
 
 /* =========================================
-   ZAKASLAR
+   EKRAN ALMASHTIRISH
 ========================================= */
 
-async function getOrders() {
+function hideAllMainSections(){
 
-    const {
-        data,
-        error
-    } = await supabaseClient
-        .from("orders")
-        .select("*")
-        .order("event_date", {
-            ascending: false
-        });
+    [
+        "landingPage",
+        "loginPage",
+        "customerPage",
+        "mainPage"
+    ].forEach(id => {
 
+        const element =
+            document.getElementById(id);
 
-    if (error) {
+        if(element){
+            element.classList.add("hidden");
+        }
 
-        console.error(
-            "Orders error:",
-            error
-        );
-
-        alert(
-            "❌ Zakaslarni olishda xatolik!"
-        );
-
-        return [];
-    }
+    });
+}
 
 
-    return data || [];
+function backToLanding(){
+
+    hideAllMainSections();
+
+    document
+        .getElementById("landingPage")
+        .classList
+        .remove("hidden");
+
+    closeOrderModal();
+
+    stopApplicationPolling();
+}
+
+
+function openWorkerLogin(){
+
+    hideAllMainSections();
+
+    document
+        .getElementById("loginPage")
+        .classList
+        .remove("hidden");
+
+    document
+        .getElementById("username")
+        .focus();
+}
+
+
+async function openCustomerPage(){
+
+    hideAllMainSections();
+
+    document
+        .getElementById("customerPage")
+        .classList
+        .remove("hidden");
+
+    customerEventsPage = 1;
+
+    await loadCustomerEvents();
+
+    restoreCustomerApplicationStatus();
 }
 
 
@@ -105,7 +177,11 @@ async function getOrders() {
    LOGIN
 ========================================= */
 
-async function login() {
+async function login(event){
+
+    if(event){
+        event.preventDefault();
+    }
 
     const username =
         document
@@ -113,13 +189,11 @@ async function login() {
         .value
         .trim();
 
-
     const password =
         document
         .getElementById("password")
         .value
         .trim();
-
 
     const error =
         document
@@ -129,63 +203,79 @@ async function login() {
     error.textContent = "";
 
 
-    if (
-        !username ||
-        !password
-    ) {
+    if(!username || !password){
 
         error.textContent =
-            "❌ Login va parolni kiriting!";
+            "❌ Login va parolni kiriting.";
 
         return;
     }
 
 
-    const users =
-        await getUsers();
+    try{
+
+        const { data, error: dbError } =
+            await supabaseClient
+            .from("users")
+            .select("*")
+            .ilike("username", username)
+            .eq("password", password)
+            .limit(1);
+
+        if(dbError){
+            throw dbError;
+        }
 
 
-    const user =
-        users.find(
-
-            item =>
-
-                item.username
-                    .toLowerCase()
-                    ===
-                username.toLowerCase()
-
-                &&
-
-                item.password ===
-                password
-
-        );
+        const user =
+            data && data.length
+                ? data[0]
+                : null;
 
 
-    if (!user) {
+        if(!user){
+
+            error.textContent =
+                "❌ Login yoki parol noto‘g‘ri!";
+
+            return;
+        }
+
+
+        currentUser = {
+
+            id: user.id,
+
+            name: user.name,
+
+            username: user.username,
+
+            role: user.role
+
+        };
+
+
+        document
+            .getElementById("username")
+            .value = "";
+
+        document
+            .getElementById("password")
+            .value = "";
+
+
+        openMainPage();
+
+    }
+    catch(dbError){
+
+        console.error(dbError);
 
         error.textContent =
-            "❌ Login yoki parol noto‘g‘ri!";
+            "❌ Server bilan ulanishda xatolik.";
 
-        return;
     }
 
-
-    currentUser = {
-
-        id: user.id,
-
-        name: user.name,
-
-        username: user.username,
-
-        role: user.role
-
-    };
-
-
-    openMainPage();
 }
 
 
@@ -193,13 +283,9 @@ async function login() {
    MAIN PAGE
 ========================================= */
 
-async function openMainPage() {
+async function openMainPage(){
 
-    document
-        .getElementById("loginPage")
-        .classList
-        .add("hidden");
-
+    hideAllMainSections();
 
     document
         .getElementById("mainPage")
@@ -216,16 +302,14 @@ async function openMainPage() {
     document
         .getElementById("userRole")
         .textContent =
-
         currentUser.role === "admin"
             ? "Admin"
-            : "Oddiy user";
+            : "Ishchi";
 
 
     document
         .getElementById("userAvatar")
         .textContent =
-
         currentUser.name
             .charAt(0)
             .toUpperCase();
@@ -238,17 +322,27 @@ async function openMainPage() {
     document
         .getElementById("addOrderMenu")
         .style.display =
-        isAdmin
-            ? "block"
-            : "none";
+        isAdmin ? "block" : "none";
+
+
+    document
+        .getElementById("applicationsMenu")
+        .style.display =
+        isAdmin ? "block" : "none";
 
 
     document
         .getElementById("usersMenu")
         .style.display =
-        isAdmin
-            ? "block"
-            : "none";
+        isAdmin ? "block" : "none";
+
+
+    document
+        .getElementById("workerEventAdminForm")
+        .classList.toggle(
+            "hidden",
+            !isAdmin
+        );
 
 
     updateDate();
@@ -260,6 +354,13 @@ async function openMainPage() {
     await checkNotifications();
 
     await displayUsers();
+
+    await loadWorkerEvents();
+
+    if(isAdmin){
+        await loadApplications();
+    }
+
 }
 
 
@@ -267,106 +368,92 @@ async function openMainPage() {
    LOGOUT
 ========================================= */
 
-function logout() {
+function logout(){
 
     currentUser = null;
 
+    stopApplicationPolling();
 
-    document
-        .getElementById("mainPage")
-        .classList
-        .add("hidden");
-
-
-    document
-        .getElementById("loginPage")
-        .classList
-        .remove("hidden");
-
-
-    document
-        .getElementById("username")
-        .value = "";
-
-
-    document
-        .getElementById("password")
-        .value = "";
-
-
-    document
-        .getElementById("loginError")
-        .textContent = "";
-
+    backToLanding();
 }
 
 
 /* =========================================
-   SAHIFA
+   SAHIFA ALMASHTIRISH
 ========================================= */
 
-function showPage(
+async function showPage(
     pageId,
     button = null
-) {
+){
 
-    if (
-
-        pageId === "usersPage"
-
-        &&
-
+    if(
+        pageId === "usersPage" &&
         (
-            !currentUser
-            ||
+            !currentUser ||
             currentUser.role !== "admin"
         )
-
-    ) {
+    ){
 
         alert(
-            "❌ Bu sahifa faqat admin uchun!"
+            "❌ Bu sahifa faqat admin uchun."
         );
 
         return;
     }
 
 
-    const pages =
-        document.querySelectorAll(
-            ".page"
+    if(
+        pageId === "applicationsPage" &&
+        (
+            !currentUser ||
+            currentUser.role !== "admin"
+        )
+    ){
+
+        alert(
+            "❌ Bu sahifa faqat admin uchun."
         );
 
+        return;
+    }
 
-    pages.forEach(
-        page => {
 
-            page.classList
-                .add("hidden");
+    if(
+        pageId === "addOrderPage" &&
+        (
+            !currentUser ||
+            currentUser.role !== "admin"
+        )
+    ){
 
-        }
-    );
+        alert(
+            "❌ Faqat admin zakas qo‘sha oladi."
+        );
+
+        return;
+    }
+
+
+    document
+        .querySelectorAll("#mainPage .page")
+        .forEach(page => {
+
+            page.classList.add("hidden");
+
+        });
 
 
     const page =
-        document.getElementById(
-            pageId
-        );
+        document.getElementById(pageId);
 
 
-    if (!page) {
+    if(!page){
         return;
     }
 
 
-    page.classList
-        .remove("hidden");
-
-
-    const title =
-        document.getElementById(
-            "pageTitle"
-        );
+    page.classList.remove("hidden");
 
 
     const titles = {
@@ -380,118 +467,76 @@ function showPage(
         addOrderPage:
             "Zakas qo‘shish",
 
+        workerEventsPage:
+            "Tadbirlar",
+
+        applicationsPage:
+            "Arizalar",
+
         usersPage:
             "Userlar"
 
     };
 
 
-    title.textContent =
-        titles[pageId]
-        ||
-        "Goldshow";
-
-
     document
-        .querySelectorAll(
-            ".menu-btn"
-        )
-        .forEach(
-            btn => {
-
-                btn.classList
-                    .remove("active");
-
-            }
-        );
-
-
-    if (button) {
-
-        button.classList
-            .add("active");
-
-    }
-
-
-    if (
-        pageId === "ordersPage"
-    ) {
-
-        displayOrders();
-
-    }
-
-
-    if (
-        pageId === "usersPage"
-    ) {
-
-        displayUsers();
-
-    }
-
-}
-
-
-/* =========================================
-   DATE
-========================================= */
-
-function getToday() {
-
-    const date =
-        new Date();
-
-
-    const year =
-        date.getFullYear();
-
-
-    const month =
-        String(
-            date.getMonth() + 1
-        )
-        .padStart(2, "0");
-
-
-    const day =
-        String(
-            date.getDate()
-        )
-        .padStart(2, "0");
-
-
-    return `${year}-${month}-${day}`;
-}
-
-
-function updateDate() {
-
-    const formatted =
-        new Date()
-        .toLocaleDateString(
-            "uz-UZ",
-            {
-                day: "2-digit",
-                month: "long",
-                year: "numeric"
-            }
-        );
-
-
-    document
-        .getElementById("todayDate")
+        .getElementById("pageTitle")
         .textContent =
-        formatted;
+        titles[pageId] || "Gold Show";
+
+
+    document
+        .querySelectorAll(".menu-btn")
+        .forEach(btn => {
+
+            btn.classList.remove("active");
+
+        });
+
+
+    if(button){
+
+        button.classList.add("active");
+
+    }
+
+
+    if(pageId === "usersPage"){
+        await displayUsers();
+    }
+
+
+    if(pageId === "applicationsPage"){
+        await loadApplications();
+    }
+
+
+    if(pageId === "ordersPage"){
+        await displayOrders();
+    }
+
+
+    if(pageId === "dashboardPage"){
+        await updateDashboard();
+    }
+
+
+    if(pageId === "workerEventsPage"){
+
+        workerEventsPage = 1;
+
+        await loadWorkerEvents();
+
+    }
+
 }
 
 
 /* =========================================
-   QOLGAN PUL
+   ORDERS - FORM
 ========================================= */
 
-function calculateRemaining() {
+function calculateRemaining(){
 
     const paid =
         Number(
@@ -509,226 +554,153 @@ function calculateRemaining() {
         ) || 0;
 
 
-    const remaining =
-        total - paid;
-
-
     document
         .getElementById("remaining")
         .textContent =
+        formatMoney(total - paid);
 
-        remaining
-        .toLocaleString("uz-UZ")
-        +
-        " so‘m";
 }
 
 
-/* =========================================
-   FORM
-========================================= */
-
-function getOrderFromForm() {
+function getOrderFromForm(){
 
     return {
 
         client_name:
             document
-            .getElementById(
-                "clientName"
-            )
+            .getElementById("clientName")
             .value
             .trim(),
-
 
         client_phone:
             document
-            .getElementById(
-                "clientPhone"
-            )
+            .getElementById("clientPhone")
             .value
             .trim(),
-
 
         location:
             document
-            .getElementById(
-                "location"
-            )
+            .getElementById("location")
             .value
             .trim(),
 
-
         event_date:
             document
-            .getElementById(
-                "eventDate"
-            )
+            .getElementById("eventDate")
             .value,
-
 
         event_time:
             document
-            .getElementById(
-                "eventTime"
-            )
+            .getElementById("eventTime")
             .value,
-
 
         screen_height:
             Number(
                 document
-                .getElementById(
-                    "screenHeight"
-                )
+                .getElementById("screenHeight")
                 .value
             ) || 0,
-
 
         screen_width:
             Number(
                 document
-                .getElementById(
-                    "screenWidth"
-                )
+                .getElementById("screenWidth")
                 .value
             ) || 0,
-
 
         stage_width:
             Number(
                 document
-                .getElementById(
-                    "stageWidth"
-                )
+                .getElementById("stageWidth")
                 .value
             ) || 0,
-
 
         stage_length:
             Number(
                 document
-                .getElementById(
-                    "stageLength"
-                )
+                .getElementById("stageLength")
                 .value
             ) || 0,
 
-
         curtain:
             document
-            .getElementById(
-                "curtain"
-            )
+            .getElementById("curtain")
             .value,
-
 
         lights:
             Number(
                 document
-                .getElementById(
-                    "lights"
-                )
+                .getElementById("lights")
                 .value
             ) || 0,
-
 
         galava:
             Number(
                 document
-                .getElementById(
-                    "galava"
-                )
+                .getElementById("galava")
                 .value
             ) || 0,
-
 
         ledwash:
             Number(
                 document
-                .getElementById(
-                    "ledwash"
-                )
+                .getElementById("ledwash")
                 .value
             ) || 0,
-
 
         confetti:
             Number(
                 document
-                .getElementById(
-                    "confetti"
-                )
+                .getElementById("confetti")
                 .value
             ) || 0,
-
 
         dim:
             Number(
                 document
-                .getElementById(
-                    "dim"
-                )
+                .getElementById("dim")
                 .value
             ) || 0,
-
 
         firework:
             Number(
                 document
-                .getElementById(
-                    "firework"
-                )
+                .getElementById("firework")
                 .value
             ) || 0,
-
 
         side_screens:
             Number(
                 document
-                .getElementById(
-                    "sideScreens"
-                )
+                .getElementById("sideScreens")
                 .value
             ) || 0,
-
 
         side_height:
             Number(
                 document
-                .getElementById(
-                    "sideHeight"
-                )
+                .getElementById("sideHeight")
                 .value
             ) || 0,
-
 
         side_width:
             Number(
                 document
-                .getElementById(
-                    "sideWidth"
-                )
+                .getElementById("sideWidth")
                 .value
             ) || 0,
-
 
         paid:
             Number(
                 document
-                .getElementById(
-                    "paid"
-                )
+                .getElementById("paid")
                 .value
             ) || 0,
-
 
         total_price:
             Number(
                 document
-                .getElementById(
-                    "totalPrice"
-                )
+                .getElementById("totalPrice")
                 .value
             ) || 0
 
@@ -737,207 +709,151 @@ function getOrderFromForm() {
 }
 
 
-/* =========================================
-   ZAKAS SAQLASH
-========================================= */
-
-async function saveOrderFromForm(
-    event
-) {
+async function saveOrderFromForm(event){
 
     event.preventDefault();
 
 
-    if (
-
-        !currentUser
-
-        ||
-
+    if(
+        !currentUser ||
         currentUser.role !== "admin"
-
-    ) {
+    ){
 
         alert(
-            "❌ Faqat admin zakas boshqara oladi!"
+            "❌ Faqat admin zakasni boshqara oladi."
         );
 
         return;
+
     }
 
 
-    const orderData =
+    const order =
         getOrderFromForm();
 
 
-    orderData.remaining =
-        orderData.total_price
-        -
-        orderData.paid;
+    order.remaining =
+        order.total_price -
+        order.paid;
 
 
     const editingId =
         document
-        .getElementById(
-            "editingOrderId"
-        )
+        .getElementById("editingOrderId")
         .value;
 
 
-    let result;
+    try{
+
+        if(editingId){
+
+            const { error } =
+                await supabaseClient
+                .from("orders")
+                .update(order)
+                .eq("id", editingId);
 
 
-    if (editingId) {
+            if(error){
+                throw error;
+            }
 
-        result =
-            await supabaseClient
-            .from("orders")
-            .update(
-                orderData
-            )
-            .eq(
-                "id",
-                editingId
+
+            alert(
+                "✅ Zakas muvaffaqiyatli tahrirlandi!"
             );
 
-    } else {
+        }
+        else{
 
-        result =
-            await supabaseClient
-            .from("orders")
-            .insert([
-                orderData
-            ]);
+            const { error } =
+                await supabaseClient
+                .from("orders")
+                .insert([order]);
+
+
+            if(error){
+                throw error;
+            }
+
+
+            alert(
+                "✅ Zakas muvaffaqiyatli saqlandi!"
+            );
+
+        }
+
+
+        resetOrderForm();
+
+        await displayOrders();
+
+        await updateDashboard();
+
+        await checkNotifications();
+
+        await showPage("ordersPage");
 
     }
+    catch(error){
 
-
-    if (result.error) {
-
-        console.error(
-            result.error
-        );
-
+        console.error(error);
 
         alert(
-            "❌ Zakasni saqlashda xatolik!"
+            "❌ Zakasni saqlashda xatolik."
         );
 
-        return;
+    }
+
+}
+
+
+/* =========================================
+   ORDERS - DISPLAY
+========================================= */
+
+async function getOrders(){
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+        .from("orders")
+        .select("*")
+        .order(
+            "event_date",
+            { ascending:false }
+        )
+        .order(
+            "event_time",
+            { ascending:false }
+        );
+
+
+    if(error){
+
+        console.error(error);
+
+        return [];
+
     }
 
 
-    alert(
+    return data || [];
 
-        editingId
-
-            ?
-
-            "✅ Zakas muvaffaqiyatli tahrirlandi!"
-
-            :
-
-            "✅ Zakas muvaffaqiyatli saqlandi!"
-
-    );
-
-
-    resetOrderForm();
-
-
-    await displayOrders();
-
-    await updateDashboard();
-
-    await checkNotifications();
-
-
-    showPage(
-        "ordersPage"
-    );
 }
 
 
-document
-    .getElementById(
-        "orderForm"
-    )
-    .addEventListener(
-        "submit",
-        saveOrderFromForm
-    );
-
-
-/* =========================================
-   FORM RESET
-========================================= */
-
-function resetOrderForm() {
-
-    document
-        .getElementById(
-            "orderForm"
-        )
-        .reset();
-
-
-    document
-        .getElementById(
-            "editingOrderId"
-        )
-        .value = "";
-
-
-    document
-        .getElementById(
-            "cancelEditBtn"
-        )
-        .classList
-        .add("hidden");
-
-
-    document
-        .getElementById(
-            "editBadge"
-        )
-        .classList
-        .add("hidden");
-
-
-    document
-        .getElementById(
-            "orderFormTitle"
-        )
-        .textContent =
-        "➕ Yangi zakas qo‘shish";
-
-
-    document
-        .getElementById(
-            "orderSubmitBtn"
-        )
-        .textContent =
-        "💾 Zakasni saqlash";
-
-
-    calculateRemaining();
-}
-
-
-/* =========================================
-   ZAKASLAR
-========================================= */
-
-async function displayOrders() {
+async function displayOrders(){
 
     const container =
-        document
-        .getElementById(
+        document.getElementById(
             "ordersList"
         );
 
 
-    if (!container) {
+    if(!container){
         return;
     }
 
@@ -948,73 +864,44 @@ async function displayOrders() {
 
     const search =
         document
-        .getElementById(
-            "searchInput"
-        )
+        .getElementById("searchInput")
         ?.value
         .toLowerCase()
         .trim();
 
 
-    if (search) {
+    if(search){
 
         orders =
-            orders.filter(
+            orders.filter(order =>
 
-                order =>
+                String(
+                    order.client_name
+                )
+                .toLowerCase()
+                .includes(search)
 
-                    String(
-                        order.client_name
-                    )
-                    .toLowerCase()
-                    .includes(
-                        search
-                    )
+                ||
 
-                    ||
+                String(
+                    order.location
+                )
+                .toLowerCase()
+                .includes(search)
 
-                    String(
-                        order.location
-                    )
-                    .toLowerCase()
-                    .includes(
-                        search
-                    )
+                ||
 
-                    ||
-
-                    String(
-                        order.client_phone
-                    )
-                    .includes(
-                        search
-                    )
+                String(
+                    order.client_phone
+                )
+                .includes(search)
 
             );
 
     }
 
 
-    orders.sort(
-
-        (a, b) =>
-
-            new Date(
-                `${b.event_date}T${b.event_time}`
-            )
-
-            -
-
-            new Date(
-                `${a.event_date}T${a.event_time}`
-            )
-
-    );
-
-
-    if (
-        orders.length === 0
-    ) {
+    if(!orders.length){
 
         container.innerHTML = `
 
@@ -1033,91 +920,79 @@ async function displayOrders() {
         `;
 
         return;
+
     }
 
 
     container.innerHTML =
         orders
-        .map(
-            createOrderHTML
-        )
+        .map(createOrderHTML)
         .join("");
+
 }
 
 
-/* =========================================
-   ZAKAS HTML
-========================================= */
-
-function createOrderHTML(
-    order
-) {
+function createOrderHTML(order){
 
     const eventDate =
-        new Date(
-            `${order.event_date}T00:00:00`
-        )
-        .toLocaleDateString(
-            "uz-UZ"
-        );
+        order.event_date
+            ? new Date(
+                order.event_date +
+                "T00:00:00"
+            ).toLocaleDateString("uz-UZ")
+            : "—";
 
 
     const adminButtons =
-
-        currentUser
-        &&
+        currentUser &&
         currentUser.role === "admin"
 
         ?
 
         `
 
-        <div
-            style="
-                margin-top:15px;
-                display:flex;
-                justify-content:flex-end;
-                gap:8px;
-                flex-wrap:wrap;
-            "
-        >
-
-            <button
-                onclick="
-                    editOrder(${order.id})
-                "
+            <div
                 style="
-                    padding:9px 15px;
-                    border:0;
-                    border-radius:7px;
-                    background:#d89b00;
-                    color:white;
-                    cursor:pointer;
-                    font-weight:bold;
+                    margin-top:15px;
+                    display:flex;
+                    justify-content:flex-end;
+                    gap:8px;
+                    flex-wrap:wrap;
                 "
             >
-                ✏️ Tahrirlash
-            </button>
+
+                <button
+                    onclick="editOrder(${order.id})"
+                    style="
+                        padding:9px 15px;
+                        border:0;
+                        border-radius:7px;
+                        background:#d89b00;
+                        color:#fff;
+                        cursor:pointer;
+                        font-weight:bold;
+                    "
+                >
+                    ✏️ Tahrirlash
+                </button>
 
 
-            <button
-                onclick="
-                    deleteOrder(${order.id})
-                "
-                style="
-                    padding:9px 15px;
-                    border:0;
-                    border-radius:7px;
-                    background:#dc2626;
-                    color:white;
-                    cursor:pointer;
-                    font-weight:bold;
-                "
-            >
-                🗑️ O‘chirish
-            </button>
+                <button
+                    onclick="deleteOrder(${order.id})"
+                    style="
+                        padding:9px 15px;
+                        border:0;
+                        border-radius:7px;
+                        background:#dc2626;
+                        color:#fff;
+                        cursor:pointer;
+                        font-weight:bold;
+                    "
+                >
+                    🗑️ O‘chirish
+                </button>
 
-        </div>
+            </div>
 
         `
 
@@ -1134,37 +1009,28 @@ function createOrderHTML(
 
                 <div>
 
-                    <div
-                        class="order-client"
-                    >
+                    <div class="order-client">
                         👤
-                        ${escapeHTML(
-                            order.client_name
-                        )}
+                        ${escapeHTML(order.client_name)}
                     </div>
 
                     <div>
                         📞
-                        ${escapeHTML(
-                            order.client_phone
-                        )}
+                        ${escapeHTML(order.client_phone)}
                     </div>
 
                 </div>
 
 
-                <div
-                    class="order-date"
-                >
+                <div class="order-date">
 
-                    📅
-                    ${eventDate}
+                    📅 ${eventDate}
 
                     <br>
 
                     ⏰
                     ${escapeHTML(
-                        order.event_time
+                        order.event_time || ""
                     )}
 
                 </div>
@@ -1174,127 +1040,79 @@ function createOrderHTML(
 
             <div class="order-grid">
 
-
                 <div class="info">
-
-                    <span>
-                        📍 Manzil
-                    </span>
-
+                    <span>📍 Manzil</span>
                     <strong>
-                        ${escapeHTML(
-                            order.location
-                        )}
+                        ${escapeHTML(order.location)}
                     </strong>
-
                 </div>
 
 
                 <div class="info">
-
-                    <span>
-                        🖥️ Asosiy ekran
-                    </span>
-
+                    <span>🖥️ Asosiy ekran</span>
                     <strong>
                         ${order.screen_height || 0}m
                         ×
                         ${order.screen_width || 0}m
                     </strong>
-
                 </div>
 
 
                 <div class="info">
-
-                    <span>
-                        🎭 Sahna
-                    </span>
-
+                    <span>🎭 Sahna</span>
                     <strong>
                         ${order.stage_width || 0}m
                         ×
                         ${order.stage_length || 0}m
                     </strong>
-
                 </div>
 
 
                 <div class="info">
-
-                    <span>
-                        💡 Chiroqlar
-                    </span>
-
+                    <span>💡 Chiroqlar</span>
                     <strong>
                         ${order.lights || 0}
                     </strong>
-
                 </div>
 
 
                 <div class="info">
-
-                    <span>
-                        🔆 Galava
-                    </span>
-
+                    <span>🔆 Galava</span>
                     <strong>
                         ${order.galava || 0}
                     </strong>
-
                 </div>
 
 
                 <div class="info">
-
-                    <span>
-                        💡 LED Wash
-                    </span>
-
+                    <span>💡 LED Wash</span>
                     <strong>
                         ${order.ledwash || 0}
                     </strong>
-
                 </div>
 
 
                 <div class="info">
-
-                    <span>
-                        🎉 Kanfeti
-                    </span>
-
+                    <span>🎉 Kanfeti</span>
                     <strong>
                         ${order.confetti || 0}
                     </strong>
-
                 </div>
 
 
                 <div class="info">
-
-                    <span>
-                        💡 Dim apparat
-                    </span>
-
+                    <span>💡 Dim apparat</span>
                     <strong>
                         ${order.dim || 0}
                     </strong>
-
                 </div>
 
 
                 <div class="info">
-
-                    <span>
-                        🎆 Firework
-                    </span>
-
+                    <span>🎆 Firework</span>
                     <strong>
                         ${order.firework || 0}
                     </strong>
-
                 </div>
 
 
@@ -1341,18 +1159,10 @@ function createOrderHTML(
                         💰 Jami summa
                     </span>
 
-                    <strong
-                        class="money"
-                    >
-
-                        ${Number(
-                            order.total_price || 0
-                        ).toLocaleString(
-                            "uz-UZ"
+                    <strong class="money">
+                        ${formatMoney(
+                            order.total_price
                         )}
-
-                        so‘m
-
                     </strong>
 
                 </div>
@@ -1364,18 +1174,10 @@ function createOrderHTML(
                         💵 To‘langan
                     </span>
 
-                    <strong
-                        class="money"
-                    >
-
-                        ${Number(
-                            order.paid || 0
-                        ).toLocaleString(
-                            "uz-UZ"
+                    <strong class="money">
+                        ${formatMoney(
+                            order.paid
                         )}
-
-                        so‘m
-
                     </strong>
 
                 </div>
@@ -1387,22 +1189,13 @@ function createOrderHTML(
                         ⚠️ Qolgan
                     </span>
 
-                    <strong
-                        class="remaining-money"
-                    >
-
-                        ${Number(
-                            order.remaining || 0
-                        ).toLocaleString(
-                            "uz-UZ"
+                    <strong class="remaining-money">
+                        ${formatMoney(
+                            order.remaining
                         )}
-
-                        so‘m
-
                     </strong>
 
                 </div>
-
 
             </div>
 
@@ -1410,22 +1203,22 @@ function createOrderHTML(
             ${adminButtons}
 
         </div>
+
     `;
+
 }
 
 
 /* =========================================
-   ZAKAS TAHRIRLASH
+   ORDER EDIT
 ========================================= */
 
-async function editOrder(id) {
+async function editOrder(id){
 
-    if (
-        !currentUser
-        ||
+    if(
+        !currentUser ||
         currentUser.role !== "admin"
-    ) {
-
+    ){
         return;
     }
 
@@ -1441,142 +1234,85 @@ async function editOrder(id) {
         .single();
 
 
-    if (error || !data) {
+    if(error || !data){
 
         alert(
-            "❌ Zakas topilmadi!"
+            "❌ Zakas topilmadi."
         );
 
         return;
+
     }
 
 
     const fields = {
 
-        clientName:
-            data.client_name,
-
-        clientPhone:
-            data.client_phone,
-
-        location:
-            data.location,
-
-        eventDate:
-            data.event_date,
-
-        eventTime:
-            data.event_time,
-
-        screenHeight:
-            data.screen_height,
-
-        screenWidth:
-            data.screen_width,
-
-        stageWidth:
-            data.stage_width,
-
-        stageLength:
-            data.stage_length,
-
-        curtain:
-            data.curtain,
-
-        lights:
-            data.lights,
-
-        galava:
-            data.galava,
-
-        ledwash:
-            data.ledwash,
-
-        confetti:
-            data.confetti,
-
-        dim:
-            data.dim,
-
-        firework:
-            data.firework,
-
-        sideScreens:
-            data.side_screens,
-
-        sideHeight:
-            data.side_height,
-
-        sideWidth:
-            data.side_width,
-
-        paid:
-            data.paid,
-
-        totalPrice:
-            data.total_price
+        clientName: "client_name",
+        clientPhone: "client_phone",
+        location: "location",
+        eventDate: "event_date",
+        eventTime: "event_time",
+        screenHeight: "screen_height",
+        screenWidth: "screen_width",
+        stageWidth: "stage_width",
+        stageLength: "stage_length",
+        curtain: "curtain",
+        lights: "lights",
+        galava: "galava",
+        ledwash: "ledwash",
+        confetti: "confetti",
+        dim: "dim",
+        firework: "firework",
+        sideScreens: "side_screens",
+        sideHeight: "side_height",
+        sideWidth: "side_width",
+        paid: "paid",
+        totalPrice: "total_price"
 
     };
 
 
-    Object.entries(
-        fields
-    ).forEach(
-        ([key, value]) => {
+    Object.entries(fields)
+        .forEach(([elementId, dbField]) => {
 
             const element =
                 document.getElementById(
-                    key
+                    elementId
                 );
 
-
-            if (element) {
-
+            if(element){
                 element.value =
-                    value ?? "";
-
+                    data[dbField] ?? "";
             }
 
-        }
-    );
+        });
 
 
     document
-        .getElementById(
-            "editingOrderId"
-        )
-        .value =
-        id;
+        .getElementById("editingOrderId")
+        .value = data.id;
 
 
     document
-        .getElementById(
-            "cancelEditBtn"
-        )
+        .getElementById("cancelEditBtn")
         .classList
         .remove("hidden");
 
 
     document
-        .getElementById(
-            "editBadge"
-        )
+        .getElementById("editBadge")
         .classList
         .remove("hidden");
 
 
     document
-        .getElementById(
-            "orderFormTitle"
-        )
+        .getElementById("orderFormTitle")
         .textContent =
         "✏️ Zakasni tahrirlash";
 
 
     document
-        .getElementById(
-            "orderSubmitBtn"
-        )
+        .getElementById("orderSubmitBtn")
         .textContent =
         "💾 O‘zgarishlarni saqlash";
 
@@ -1584,68 +1320,108 @@ async function editOrder(id) {
     calculateRemaining();
 
 
-    showPage(
-        "addOrderPage"
-    );
-
+    await showPage("addOrderPage");
 
     window.scrollTo({
-
-        top: 0,
-
-        behavior: "smooth"
-
+        top:0,
+        behavior:"smooth"
     });
+
 }
 
 
-/* =========================================
-   ZAKAS O‘CHIRISH
-========================================= */
+function resetOrderForm(){
 
-async function deleteOrder(id) {
-
-    if (
-        !currentUser
-        ||
-        currentUser.role !== "admin"
-    ) {
-
-        return;
-    }
-
-
-    if (
-        !confirm(
-            "Bu zakasni o‘chirmoqchimisiz?"
-        )
-    ) {
-
-        return;
-    }
-
-
-    const {
-        error
-    } =
-        await supabaseClient
-        .from("orders")
-        .delete()
-        .eq(
-            "id",
-            id
+    const form =
+        document.getElementById(
+            "orderForm"
         );
 
 
-    if (error) {
+    if(form){
+        form.reset();
+    }
+
+
+    document
+        .getElementById("editingOrderId")
+        .value = "";
+
+
+    document
+        .getElementById("cancelEditBtn")
+        .classList
+        .add("hidden");
+
+
+    document
+        .getElementById("editBadge")
+        .classList
+        .add("hidden");
+
+
+    document
+        .getElementById("orderFormTitle")
+        .textContent =
+        "➕ Yangi zakas qo‘shish";
+
+
+    document
+        .getElementById("orderSubmitBtn")
+        .textContent =
+        "💾 Zakasni saqlash";
+
+
+    calculateRemaining();
+
+}
+
+
+function cancelEditOrder(){
+
+    resetOrderForm();
+
+    showPage("ordersPage");
+
+}
+
+
+async function deleteOrder(id){
+
+    if(
+        !currentUser ||
+        currentUser.role !== "admin"
+    ){
+        return;
+    }
+
+
+    if(
+        !confirm(
+            "Bu zakasni o‘chirmoqchimisiz?"
+        )
+    ){
+        return;
+    }
+
+
+    const { error } =
+        await supabaseClient
+        .from("orders")
+        .delete()
+        .eq("id", id);
+
+
+    if(error){
 
         console.error(error);
 
         alert(
-            "❌ Zakasni o‘chirishda xatolik!"
+            "❌ O‘chirishda xatolik."
         );
 
         return;
+
     }
 
 
@@ -1662,7 +1438,7 @@ async function deleteOrder(id) {
    DASHBOARD
 ========================================= */
 
-async function updateDashboard() {
+async function updateDashboard(){
 
     const orders =
         await getOrders();
@@ -1674,10 +1450,8 @@ async function updateDashboard() {
 
     const todayOrders =
         orders.filter(
-
             order =>
                 order.event_date === today
-
         );
 
 
@@ -1686,102 +1460,68 @@ async function updateDashboard() {
 
 
     const upcoming =
-        orders.filter(
-            order => {
+        orders.filter(order => {
 
-                const event =
-                    new Date(
-                        `${order.event_date}T${order.event_time}`
-                    );
-
-
-                const difference =
-                    event - now;
-
-
-                return (
-
-                    difference > 0
-
-                    &&
-
-                    difference <=
-                    7 *
-                    24 *
-                    60 *
-                    60 *
-                    1000
-
+            const event =
+                new Date(
+                    `${order.event_date}T${order.event_time}`
                 );
 
-            }
-        );
+
+            const difference =
+                event - now;
+
+
+            return (
+                difference > 0 &&
+                difference <=
+                7 * 24 * 60 * 60 * 1000
+            );
+
+        });
 
 
     const totalMoney =
         orders.reduce(
-
-            (
-                sum,
-                order
-            ) =>
-
+            (sum, order) =>
                 sum +
                 Number(
                     order.total_price || 0
                 ),
-
             0
         );
 
 
     document
-        .getElementById(
-            "totalOrders"
-        )
+        .getElementById("totalOrders")
         .textContent =
         orders.length;
 
 
     document
-        .getElementById(
-            "todayOrders"
-        )
+        .getElementById("todayOrders")
         .textContent =
         todayOrders.length;
 
 
     document
-        .getElementById(
-            "upcomingOrders"
-        )
+        .getElementById("upcomingOrders")
         .textContent =
         upcoming.length;
 
 
     document
-        .getElementById(
-            "totalMoney"
-        )
+        .getElementById("totalMoney")
         .textContent =
-
-        totalMoney
-        .toLocaleString(
-            "uz-UZ"
-        )
-        +
-        " so‘m";
+        formatMoney(totalMoney);
 
 
     await displayTodayOrders();
+
 }
 
 
-/* =========================================
-   BUGUNGI ZAKASLAR
-========================================= */
-
-async function displayTodayOrders() {
+async function displayTodayOrders(){
 
     const container =
         document.getElementById(
@@ -1789,28 +1529,21 @@ async function displayTodayOrders() {
         );
 
 
-    if (!container) {
+    if(!container){
         return;
     }
 
 
     const orders =
-        await getOrders();
-
-
-    const todayOrders =
-        orders.filter(
-
+        (await getOrders())
+        .filter(
             order =>
                 order.event_date ===
                 getToday()
-
         );
 
 
-    if (
-        todayOrders.length === 0
-    ) {
+    if(!orders.length){
 
         container.innerHTML = `
 
@@ -1833,19 +1566,18 @@ async function displayTodayOrders() {
 
 
     container.innerHTML =
-        todayOrders
-        .map(
-            createOrderHTML
-        )
+        orders
+        .map(createOrderHTML)
         .join("");
+
 }
 
 
 /* =========================================
-   OGOHLANTIRISH
+   NOTIFICATIONS
 ========================================= */
 
-async function checkNotifications() {
+async function checkNotifications(){
 
     const container =
         document.getElementById(
@@ -1853,7 +1585,7 @@ async function checkNotifications() {
         );
 
 
-    if (!container) {
+    if(!container){
         return;
     }
 
@@ -1869,66 +1601,65 @@ async function checkNotifications() {
     const alerts = [];
 
 
-    orders.forEach(
-        order => {
+    orders.forEach(order => {
 
-            const event =
-                new Date(
-                    `${order.event_date}T${order.event_time}`
-                );
-
-
-            const hours =
-                (
-                    event - now
-                )
-                /
-                (
-                    1000 *
-                    60 *
-                    60
-                );
+        const event =
+            new Date(
+                `${order.event_date}T${order.event_time}`
+            );
 
 
-            if (
-                hours > 0
-                &&
-                hours <= 24
-            ) {
+        const hours =
+            (
+                event - now
+            ) /
+            (
+                1000 *
+                60 *
+                60
+            );
 
-                alerts.push(`
 
-                    <div
-                        class="notification"
-                    >
+        if(
+            hours > 0 &&
+            hours <= 24
+        ){
 
-                        <strong>
-                            🔔 Tadbir yaqinlashmoqda!
-                        </strong>
+            alerts.push(`
 
-                        ${escapeHTML(
-                            order.client_name
-                        )}
+                <div class="notification">
 
-                        —
+                    <strong>
+                        🔔 Tadbir yaqinlashmoqda!
+                    </strong>
 
-                        ${order.event_date}
-                        ${order.event_time}
+                    ${escapeHTML(
+                        order.client_name
+                    )}
 
-                        <br>
+                    —
 
-                        📍
-                        ${escapeHTML(
-                            order.location
-                        )}
+                    ${escapeHTML(
+                        order.event_date
+                    )}
+                    ${escapeHTML(
+                        order.event_time
+                    )}
 
-                    </div>
-                `);
+                    <br>
 
-            }
+                    📍
+                    ${escapeHTML(
+                        order.location
+                    )}
+
+                </div>
+
+            `);
 
         }
-    );
+
+    });
 
 
     orders
@@ -1937,214 +1668,53 @@ async function checkNotifications() {
                 order.event_date ===
                 getToday()
         )
-        .forEach(
-            order => {
+        .forEach(order => {
 
-                alerts.push(`
+            alerts.push(`
 
-                    <div
-                        class="notification"
-                    >
+                <div class="notification">
 
-                        <strong>
-                            🚨 BUGUN TADBIR BOR!
-                        </strong>
+                    <strong>
+                        🚨 BUGUN TADBIR BOR!
+                    </strong>
 
-                        👤
-                        ${escapeHTML(
-                            order.client_name
-                        )}
+                    👤
+                    ${escapeHTML(
+                        order.client_name
+                    )}
 
-                        <br>
+                    <br>
 
-                        ⏰
-                        ${escapeHTML(
-                            order.event_time
-                        )}
+                    ⏰
+                    ${escapeHTML(
+                        order.event_time
+                    )}
 
-                        <br>
+                    <br>
 
-                        📍
-                        ${escapeHTML(
-                            order.location
-                        )}
+                    📍
+                    ${escapeHTML(
+                        order.location
+                    )}
 
-                    </div>
+                </div>
 
-                `);
+            `);
 
-            }
-        );
+        });
 
 
     container.innerHTML =
         alerts.join("");
+
 }
-
-
-/* =========================================
-   USER QO‘SHISH
-========================================= */
-
-document
-    .getElementById(
-        "userForm"
-    )
-    .addEventListener(
-        "submit",
-        async function(event) {
-
-            event.preventDefault();
-
-
-            if (
-                !currentUser
-                ||
-                currentUser.role !== "admin"
-            ) {
-
-                alert(
-                    "❌ Faqat admin user yarata oladi!"
-                );
-
-                return;
-            }
-
-
-            const name =
-                document
-                .getElementById(
-                    "newUserName"
-                )
-                .value
-                .trim();
-
-
-            const username =
-                document
-                .getElementById(
-                    "newUsername"
-                )
-                .value
-                .trim();
-
-
-            const password =
-                document
-                .getElementById(
-                    "newUserPassword"
-                )
-                .value
-                .trim();
-
-
-            const role =
-                document
-                .getElementById(
-                    "newUserRole"
-                )
-                .value;
-
-
-            if (
-                !name
-                ||
-                !username
-                ||
-                !password
-            ) {
-
-                alert(
-                    "❌ Barcha maydonlarni to‘ldiring!"
-                );
-
-                return;
-            }
-
-
-            const users =
-                await getUsers();
-
-
-            const exists =
-                users.some(
-
-                    user =>
-
-                        user.username
-                            .toLowerCase()
-                            ===
-                        username
-                            .toLowerCase()
-
-                );
-
-
-            if (exists) {
-
-                alert(
-                    "❌ Bu login allaqachon mavjud!"
-                );
-
-                return;
-            }
-
-
-            const {
-                error
-            } =
-                await supabaseClient
-                .from("users")
-                .insert([
-
-                    {
-
-                        name,
-
-                        username,
-
-                        password,
-
-                        role
-
-                    }
-
-                ]);
-
-
-            if (error) {
-
-                console.error(
-                    error
-                );
-
-                alert(
-                    "❌ User yaratishda xatolik!"
-                );
-
-                return;
-            }
-
-
-            this.reset();
-
-
-            await displayUsers();
-
-
-            alert(
-                "✅ Yangi user yaratildi!"
-            );
-
-        }
-    );
 
 
 /* =========================================
    USERLAR
 ========================================= */
 
-async function displayUsers() {
+async function displayUsers(){
 
     const container =
         document.getElementById(
@@ -2152,31 +1722,54 @@ async function displayUsers() {
         );
 
 
-    if (!container) {
+    if(!container){
         return;
     }
 
 
-    if (
-        !currentUser
-        ||
+    if(
+        !currentUser ||
         currentUser.role !== "admin"
-    ) {
+    ){
 
-        container.innerHTML =
-            "";
+        container.innerHTML = "";
 
         return;
+
+    }
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+        .from("users")
+        .select("*")
+        .order("id");
+
+
+    if(error){
+
+        console.error(error);
+
+        container.innerHTML =
+            `
+                <div class="no-orders">
+                    Userlarni olishda xatolik.
+                </div>
+            `;
+
+        return;
+
     }
 
 
     const users =
-        await getUsers();
+        data || [];
 
 
-    if (
-        users.length === 0
-    ) {
+    if(!users.length){
 
         container.innerHTML = `
 
@@ -2191,205 +1784,313 @@ async function displayUsers() {
         `;
 
         return;
+
     }
 
 
     container.innerHTML =
-
         users
-        .map(
-            user => `
+        .map(user => `
 
-                <div
-                    class="user-card"
-                >
+            <div class="user-card">
 
-                    <div
-                        class="user-card-header"
-                    >
+                <div class="user-card-header">
 
-                        <div>
+                    <div>
 
-                            <div
-                                class="user-card-name"
-                            >
+                        <div class="user-card-name">
 
-                                👤
-                                ${escapeHTML(
-                                    user.name
-                                )}
-
-                            </div>
-
-
-                            <span
-                                class="user-role"
-                            >
-
-                                ${
-                                    user.role ===
-                                    "admin"
-
-                                    ?
-
-                                    "ADMIN"
-
-                                    :
-
-                                    "USER"
-
-                                }
-
-                            </span>
+                            👤
+                            ${escapeHTML(
+                                user.name
+                            )}
 
                         </div>
 
-                    </div>
+                        <span class="user-role">
 
+                            ${
+                                user.role === "admin"
+                                    ? "ADMIN"
+                                    : "USER"
+                            }
 
-                    <div
-                        class="user-grid"
-                    >
-
-                        <div
-                            class="user-detail"
-                        >
-
-                            <span>
-                                🔑 Login
-                            </span>
-
-                            <strong>
-                                ${escapeHTML(
-                                    user.username
-                                )}
-                            </strong>
-
-                        </div>
-
-
-                        <div
-                            class="user-detail"
-                        >
-
-                            <span>
-                                🔒 Parol
-                            </span>
-
-                            <strong
-                                id="
-                                    password-${user.id}
-                                "
-                            >
-                                ••••••••
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-
-                    <div
-                        class="user-actions"
-                    >
-
-                        <button
-                            class="btn-view"
-                            onclick="
-                                showUserPassword(
-                                    ${user.id}
-                                )
-                            "
-                        >
-                            👁️ Ko‘rish
-                        </button>
-
-
-                        <button
-                            class="btn-edit"
-                            onclick="
-                                changeUserPassword(
-                                    ${user.id}
-                                )
-                            "
-                        >
-                            🔑 Parolni almashtirish
-                        </button>
-
-
-                        <button
-                            class="btn-edit"
-                            onclick="
-                                changeUsername(
-                                    ${user.id}
-                                )
-                            "
-                        >
-                            ✏️ Loginni o‘zgartirish
-                        </button>
-
-
-                        ${
-                            user.id !==
-                            currentUser.id
-
-                            ?
-
-                            `
-
-                            <button
-                                class="btn-delete"
-                                onclick="
-                                    deleteUser(
-                                        ${user.id}
-                                    )
-                                "
-                            >
-                                🗑️ Userni o‘chirish
-                            </button>
-
-                            `
-
-                            :
-
-                            ""
-                        }
+                        </span>
 
                     </div>
 
                 </div>
 
-            `
-        )
+
+                <div class="user-grid">
+
+                    <div class="user-detail">
+
+                        <span>
+                            🔑 Login
+                        </span>
+
+                        <strong>
+                            ${escapeHTML(
+                                user.username
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="user-detail">
+
+                        <span>
+                            🔒 Parol
+                        </span>
+
+                        <strong
+                            id="password-${user.id}"
+                        >
+                            ••••••••
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div class="user-actions">
+
+                    <button
+                        class="btn-view"
+                        onclick="showUserPassword(${user.id})"
+                    >
+                        👁️ Ko‘rish
+                    </button>
+
+
+                    <button
+                        class="btn-edit"
+                        onclick="changeUserPassword(${user.id})"
+                    >
+                        🔑 Parolni almashtirish
+                    </button>
+
+
+                    <button
+                        class="btn-edit"
+                        onclick="changeUsername(${user.id})"
+                    >
+                        ✏️ Loginni o‘zgartirish
+                    </button>
+
+
+                    ${
+                        user.id !== currentUser.id
+
+                            ?
+
+                        `
+                            <button
+                                class="btn-delete"
+                                onclick="deleteUser(${user.id})"
+                            >
+                                🗑️ Userni o‘chirish
+                            </button>
+                        `
+
+                            :
+
+                        ""
+                    }
+
+                </div>
+
+            </div>
+
+        `)
         .join("");
+
 }
 
 
 /* =========================================
-   PAROL KO‘RISH
+   USER FORM
 ========================================= */
 
-async function showUserPassword(id) {
+async function createUser(event){
 
-    if (
-        !currentUser
-        ||
+    event.preventDefault();
+
+
+    if(
+        !currentUser ||
         currentUser.role !== "admin"
-    ) {
+    ){
 
+        alert(
+            "❌ Faqat admin user yaratadi."
+        );
+
+        return;
+
+    }
+
+
+    const name =
+        document
+        .getElementById("newUserName")
+        .value
+        .trim();
+
+
+    const username =
+        document
+        .getElementById("newUsername")
+        .value
+        .trim();
+
+
+    const password =
+        document
+        .getElementById("newUserPassword")
+        .value
+        .trim();
+
+
+    const role =
+        document
+        .getElementById("newUserRole")
+        .value;
+
+
+    if(
+        !name ||
+        !username ||
+        !password
+    ){
+
+        alert(
+            "❌ Barcha maydonlarni to‘ldiring."
+        );
+
+        return;
+
+    }
+
+
+    const {
+        data: existing,
+        error: checkError
+    } =
+        await supabaseClient
+        .from("users")
+        .select("id")
+        .ilike("username", username)
+        .limit(1);
+
+
+    if(checkError){
+
+        console.error(checkError);
+
+        alert(
+            "❌ Userni tekshirishda xatolik."
+        );
+
+        return;
+
+    }
+
+
+    if(existing && existing.length){
+
+        alert(
+            "❌ Bu login allaqachon mavjud!"
+        );
+
+        return;
+
+    }
+
+
+    const { error } =
+        await supabaseClient
+        .from("users")
+        .insert([{
+
+            name,
+            username,
+            password,
+            role
+
+        }]);
+
+
+    if(error){
+
+        console.error(error);
+
+        alert(
+            "❌ User yaratilmadi."
+        );
+
+        return;
+
+    }
+
+
+    document
+        .getElementById("userForm")
+        .reset();
+
+
+    await displayUsers();
+
+
+    alert(
+        "✅ Yangi user muvaffaqiyatli yaratildi!"
+    );
+
+}
+
+
+async function getUserById(id){
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+        .from("users")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+
+    if(error){
+        return null;
+    }
+
+
+    return data;
+
+}
+
+
+/* =========================================
+   USER PAROL
+========================================= */
+
+async function showUserPassword(id){
+
+    if(
+        !currentUser ||
+        currentUser.role !== "admin"
+    ){
         return;
     }
 
 
-    const users =
-        await getUsers();
-
-
     const user =
-        users.find(
-            item =>
-                item.id === id
-        );
+        await getUserById(id);
 
 
     const element =
@@ -2398,79 +2099,49 @@ async function showUserPassword(id) {
         );
 
 
-    if (
-        !user
-        ||
+    if(
+        !user ||
         !element
-    ) {
-
+    ){
         return;
     }
 
 
     element.textContent =
-
-        element.textContent
-        ===
-        "••••••••"
-
-        ?
-
-        user.password
-
-        :
-
-        "••••••••";
+        element.textContent === "••••••••"
+            ? user.password
+            : "••••••••";
 
 }
 
 
-/* =========================================
-   PAROL ALMASHTIRISH
-========================================= */
+async function changeUserPassword(id){
 
-async function changeUserPassword(
-    id
-) {
-
-    if (
-        !currentUser
-        ||
+    if(
+        !currentUser ||
         currentUser.role !== "admin"
-    ) {
-
+    ){
         return;
     }
 
 
-    const users =
-        await getUsers();
-
-
     const user =
-        users.find(
-            item =>
-                item.id === id
-        );
+        await getUserById(id);
 
 
-    if (!user) {
+    if(!user){
         return;
     }
 
 
     const newPassword =
         prompt(
-            `"${user.username}"
-uchun yangi parolni kiriting:`,
+            `"${user.username}" uchun yangi parolni kiriting:`,
             ""
         );
 
 
-    if (
-        newPassword === null
-    ) {
-
+    if(newPassword === null){
         return;
     }
 
@@ -2479,44 +2150,36 @@ uchun yangi parolni kiriting:`,
         newPassword.trim();
 
 
-    if (!cleanPassword) {
+    if(!cleanPassword){
 
         alert(
-            "❌ Parol bo‘sh bo‘lishi mumkin emas!"
+            "❌ Parol bo‘sh bo‘lishi mumkin emas."
         );
 
         return;
+
     }
 
 
-    const {
-        error
-    } =
+    const { error } =
         await supabaseClient
         .from("users")
         .update({
-
-            password:
-                cleanPassword
-
+            password:cleanPassword
         })
-        .eq(
-            "id",
-            id
-        );
+        .eq("id", id);
 
 
-    if (error) {
+    if(error){
 
-        console.error(
-            error
-        );
+        console.error(error);
 
         alert(
-            "❌ Parolni almashtirishda xatolik!"
+            "❌ Parol almashtirilmadi."
         );
 
         return;
+
     }
 
 
@@ -2526,55 +2189,37 @@ uchun yangi parolni kiriting:`,
     alert(
         "✅ Parol muvaffaqiyatli almashtirildi!"
     );
+
 }
 
 
-/* =========================================
-   LOGIN O‘ZGARTIRISH
-========================================= */
+async function changeUsername(id){
 
-async function changeUsername(
-    id
-) {
-
-    if (
-        !currentUser
-        ||
+    if(
+        !currentUser ||
         currentUser.role !== "admin"
-    ) {
-
+    ){
         return;
     }
 
 
-    const users =
-        await getUsers();
-
-
     const user =
-        users.find(
-            item =>
-                item.id === id
-        );
+        await getUserById(id);
 
 
-    if (!user) {
+    if(!user){
         return;
     }
 
 
     const newUsername =
         prompt(
-            `"${user.username}"
-uchun yangi loginni kiriting:`,
+            `"${user.username}" uchun yangi loginni kiriting:`,
             user.username
         );
 
 
-    if (
-        newUsername === null
-    ) {
-
+    if(newUsername === null){
         return;
     }
 
@@ -2583,78 +2228,72 @@ uchun yangi loginni kiriting:`,
         newUsername.trim();
 
 
-    if (!cleanUsername) {
+    if(!cleanUsername){
 
         alert(
-            "❌ Login bo‘sh bo‘lishi mumkin emas!"
+            "❌ Login bo‘sh bo‘lishi mumkin emas."
         );
 
         return;
+
     }
 
 
-    const exists =
-        users.some(
-
-            item =>
-
-                item.id !== id
-
-                &&
-
-                item.username
-                    .toLowerCase()
-                    ===
-                cleanUsername
-                    .toLowerCase()
-
-        );
+    const {
+        data: existing,
+        error: checkError
+    } =
+        await supabaseClient
+        .from("users")
+        .select("id")
+        .ilike("username", cleanUsername)
+        .neq("id", id)
+        .limit(1);
 
 
-    if (exists) {
+    if(checkError){
+
+        console.error(checkError);
+
+        return;
+
+    }
+
+
+    if(existing && existing.length){
 
         alert(
             "❌ Bu login allaqachon mavjud!"
         );
 
         return;
+
     }
 
 
-    const {
-        error
-    } =
+    const { error } =
         await supabaseClient
         .from("users")
         .update({
-
-            username:
-                cleanUsername
-
+            username:cleanUsername
         })
-        .eq(
-            "id",
-            id
-        );
+        .eq("id", id);
 
 
-    if (error) {
+    if(error){
 
-        console.error(
-            error
-        );
+        console.error(error);
 
         alert(
-            "❌ Loginni o‘zgartirishda xatolik!"
+            "❌ Login o‘zgartirilmadi."
         );
 
         return;
+
     }
 
 
-    if (
-        currentUser.id === id
-    ) {
+    if(currentUser.id === id){
 
         currentUser.username =
             cleanUsername;
@@ -2668,87 +2307,66 @@ uchun yangi loginni kiriting:`,
     alert(
         "✅ Login muvaffaqiyatli o‘zgartirildi!"
     );
+
 }
 
 
-/* =========================================
-   USER O‘CHIRISH
-========================================= */
+async function deleteUser(id){
 
-async function deleteUser(id) {
-
-    if (
-        !currentUser
-        ||
+    if(
+        !currentUser ||
         currentUser.role !== "admin"
-    ) {
-
+    ){
         return;
     }
 
 
-    if (
-        currentUser.id === id
-    ) {
+    if(currentUser.id === id){
 
         alert(
-            "❌ O‘zingizni o‘chira olmaysiz!"
+            "❌ O‘zingizni o‘chira olmaysiz."
         );
 
         return;
+
     }
-
-
-    const users =
-        await getUsers();
 
 
     const user =
-        users.find(
-            item =>
-                item.id === id
-        );
+        await getUserById(id);
 
 
-    if (!user) {
+    if(!user){
         return;
     }
 
 
-    if (
+    if(
         !confirm(
-            `"${user.username}"
-userini o‘chirmoqchimisiz?`
+            `"${user.username}" userini o‘chirmoqchimisiz?`
         )
-    ) {
-
+    ){
         return;
     }
 
 
-    const {
-        error
-    } =
+    const { error } =
         await supabaseClient
         .from("users")
         .delete()
-        .eq(
-            "id",
-            id
-        );
+        .eq("id", id);
 
 
-    if (error) {
+    if(error){
 
-        console.error(
-            error
-        );
+        console.error(error);
 
         alert(
-            "❌ Userni o‘chirishda xatolik!"
+            "❌ User o‘chirilmadi."
         );
 
         return;
+
     }
 
 
@@ -2758,43 +2376,1549 @@ userini o‘chirmoqchimisiz?`
     alert(
         "✅ User o‘chirildi."
     );
+
 }
 
 
 /* =========================================
-   XAVFSIZ HTML
+   CUSTOMER - EVENTS
 ========================================= */
 
-function escapeHTML(value) {
+async function getEvents(){
 
-    return String(
-        value ?? ""
-    )
-
-        .replaceAll(
-            "&",
-            "&amp;"
-        )
-
-        .replaceAll(
-            "<",
-            "&lt;"
-        )
-
-        .replaceAll(
-            ">",
-            "&gt;"
-        )
-
-        .replaceAll(
-            '"',
-            "&quot;"
-        )
-
-        .replaceAll(
-            "'",
-            "&#039;"
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+        .from("events")
+        .select("*")
+        .order(
+            "created_at",
+            { ascending:false }
         );
+
+
+    if(error){
+
+        console.error(error);
+
+        return [];
+
+    }
+
+
+    return data || [];
+
+}
+
+
+async function loadCustomerEvents(){
+
+    const list =
+        document.getElementById(
+            "customerEventsList"
+        );
+
+
+    const pagination =
+        document.getElementById(
+            "customerPagination"
+        );
+
+
+    if(!list || !pagination){
+        return;
+    }
+
+
+    const events =
+        await getEvents();
+
+
+    const totalPages =
+        Math.max(
+            1,
+            Math.ceil(
+                events.length /
+                EVENTS_PER_PAGE
+            )
+        );
+
+
+    if(
+        customerEventsPage >
+        totalPages
+    ){
+        customerEventsPage =
+            totalPages;
+    }
+
+
+    const start =
+        (
+            customerEventsPage - 1
+        ) *
+        EVENTS_PER_PAGE;
+
+
+    const pageEvents =
+        events.slice(
+            start,
+            start + EVENTS_PER_PAGE
+        );
+
+
+    if(!pageEvents.length){
+
+        list.innerHTML = `
+
+            <div class="no-orders">
+
+                <h3>
+                    🎪 Hozircha tadbirlar yo‘q
+                </h3>
+
+                <p>
+                    Tez orada yangi tadbirlar qo‘shiladi.
+                </p>
+
+            </div>
+
+        `;
+
+    }
+    else{
+
+        list.innerHTML =
+            pageEvents
+            .map(createEventHTML)
+            .join("");
+
+    }
+
+
+    renderPagination(
+        pagination,
+        totalPages,
+        customerEventsPage,
+        page => {
+
+            customerEventsPage =
+                page;
+
+            loadCustomerEvents();
+
+            window.scrollTo({
+                top:0,
+                behavior:"smooth"
+            });
+
+        }
+    );
+
+}
+
+
+function createEventHTML(event){
+
+    const image =
+        event.image_url
+            ?
+
+        `<img
+            class="event-card-image"
+            src="${event.image_url}"
+            alt="${escapeHTML(event.title)}"
+            loading="lazy"
+        >`
+
+            :
+
+        `<div
+            class="event-card-image"
+            style="
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:50px;
+            "
+        >
+            🎪
+        </div>`;
+
+
+    return `
+
+        <article class="event-card">
+
+            ${image}
+
+            <div class="event-card-body">
+
+                <div class="event-card-title">
+
+                    ${escapeHTML(
+                        event.title
+                    )}
+
+                </div>
+
+
+                <div class="event-card-description">
+
+                    ${escapeHTML(
+                        event.description ||
+                        "Tavsif mavjud emas."
+                    )}
+
+                </div>
+
+
+                <div class="event-card-date">
+
+                    ${formatEventDate(
+                        event.created_at
+                    )}
+
+                </div>
+
+            </div>
+
+        </article>
+
+    `;
+
+}
+
+
+function formatEventDate(date){
+
+    if(!date){
+        return "";
+    }
+
+
+    return new Date(date)
+        .toLocaleDateString(
+            "uz-UZ",
+            {
+                day:"2-digit",
+                month:"long",
+                year:"numeric"
+            }
+        );
+
+}
+
+
+function renderPagination(
+    container,
+    totalPages,
+    currentPage,
+    onPage
+){
+
+    if(totalPages <= 1){
+
+        container.innerHTML = "";
+
+        return;
+    }
+
+
+    let html = `
+
+        <button
+            ${currentPage === 1 ? "disabled" : ""}
+            onclick="void 0"
+            id="prevPageBtn"
+        >
+            ← Oldingi
+        </button>
+
+    `;
+
+
+    for(
+        let i = 1;
+        i <= totalPages;
+        i++
+    ){
+
+        html += `
+
+            <button
+                class="${
+                    i === currentPage
+                        ? "active"
+                        : ""
+                }"
+                data-page="${i}"
+            >
+                ${i}
+            </button>
+
+        `;
+
+    }
+
+
+    html += `
+
+        <button
+            ${
+                currentPage === totalPages
+                    ? "disabled"
+                    : ""
+            }
+            id="nextPageBtn"
+        >
+            Keyingi sahifa →
+        </button>
+
+        <span>
+            ${currentPage} / ${totalPages}
+        </span>
+
+    `;
+
+
+    container.innerHTML = html;
+
+
+    const buttons =
+        container.querySelectorAll(
+            "[data-page]"
+        );
+
+
+    buttons.forEach(button => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                onPage(
+                    Number(
+                        button.dataset.page
+                    )
+                );
+
+            }
+        );
+
+    });
+
+
+    const prev =
+        container.querySelector(
+            "#prevPageBtn"
+        );
+
+
+    const next =
+        container.querySelector(
+            "#nextPageBtn"
+        );
+
+
+    if(prev){
+
+        prev.addEventListener(
+            "click",
+            () => {
+
+                if(currentPage > 1){
+
+                    onPage(
+                        currentPage - 1
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    if(next){
+
+        next.addEventListener(
+            "click",
+            () => {
+
+                if(
+                    currentPage <
+                    totalPages
+                ){
+
+                    onPage(
+                        currentPage + 1
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   ADMIN / WORKER EVENTS
+========================================= */
+
+async function loadWorkerEvents(){
+
+    const list =
+        document.getElementById(
+            "workerEventsList"
+        );
+
+
+    const pagination =
+        document.getElementById(
+            "workerPagination"
+        );
+
+
+    if(!list || !pagination){
+        return;
+    }
+
+
+    const events =
+        await getEvents();
+
+
+    const totalPages =
+        Math.max(
+            1,
+            Math.ceil(
+                events.length /
+                EVENTS_PER_PAGE
+            )
+        );
+
+
+    if(workerEventsPage > totalPages){
+
+        workerEventsPage =
+            totalPages;
+
+    }
+
+
+    const start =
+        (
+            workerEventsPage - 1
+        ) *
+        EVENTS_PER_PAGE;
+
+
+    const pageEvents =
+        events.slice(
+            start,
+            start + EVENTS_PER_PAGE
+        );
+
+
+    if(!pageEvents.length){
+
+        list.innerHTML = `
+
+            <div class="no-orders">
+
+                <h3>
+                    🎪 Tadbirlar mavjud emas
+                </h3>
+
+            </div>
+
+        `;
+
+    }
+    else{
+
+        list.innerHTML =
+            pageEvents
+            .map(createWorkerEventHTML)
+            .join("");
+
+    }
+
+
+    renderPagination(
+        pagination,
+        totalPages,
+        workerEventsPage,
+        page => {
+
+            workerEventsPage =
+                page;
+
+            loadWorkerEvents();
+
+        }
+    );
+
+}
+
+
+function createWorkerEventHTML(event){
+
+    const image =
+        event.image_url
+            ?
+
+        `<img
+            class="event-card-image"
+            src="${event.image_url}"
+            alt="${escapeHTML(event.title)}"
+        >`
+
+            :
+
+        `<div
+            class="event-card-image"
+            style="
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:50px;
+            "
+        >
+            🎪
+        </div>`;
+
+
+    const adminButtons =
+        currentUser &&
+        currentUser.role === "admin"
+
+        ?
+
+        `
+
+            <div class="event-admin-actions">
+
+                <button
+                    class="btn-edit"
+                    onclick="deleteEvent(${event.id})"
+                >
+                    🗑️ O‘chirish
+                </button>
+
+            </div>
+
+        `
+
+        :
+
+        "";
+
+
+    return `
+
+        <article class="event-card">
+
+            ${image}
+
+            <div class="event-card-body">
+
+                <div class="event-card-title">
+
+                    ${escapeHTML(
+                        event.title
+                    )}
+
+                </div>
+
+
+                <div class="event-card-description">
+
+                    ${escapeHTML(
+                        event.description ||
+                        "Tavsif mavjud emas."
+                    )}
+
+                </div>
+
+
+                <div class="event-card-date">
+
+                    ${formatEventDate(
+                        event.created_at
+                    )}
+
+                </div>
+
+
+                ${adminButtons}
+
+            </div>
+
+        </article>
+
+    `;
+
+}
+
+
+/* =========================================
+   IMAGE COMPRESS
+========================================= */
+
+function compressImage(file){
+
+    return new Promise(
+        (resolve,reject) => {
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload = event => {
+
+                const img =
+                    new Image();
+
+
+                img.onload = () => {
+
+                    const maxWidth = 1200;
+
+
+                    let width =
+                        img.width;
+
+
+                    let height =
+                        img.height;
+
+
+                    if(width > maxWidth){
+
+                        const ratio =
+                            maxWidth / width;
+
+                        width =
+                            maxWidth;
+
+                        height =
+                            Math.round(
+                                height * ratio
+                            );
+
+                    }
+
+
+                    const canvas =
+                        document.createElement(
+                            "canvas"
+                        );
+
+
+                    canvas.width =
+                        width;
+
+                    canvas.height =
+                        height;
+
+
+                    const ctx =
+                        canvas.getContext("2d");
+
+
+                    ctx.drawImage(
+                        img,
+                        0,
+                        0,
+                        width,
+                        height
+                    );
+
+
+                    resolve(
+                        canvas.toDataURL(
+                            "image/jpeg",
+                            0.78
+                        )
+                    );
+
+                };
+
+
+                img.onerror =
+                    () =>
+                        reject(
+                            new Error(
+                                "Rasm ochilmadi."
+                            )
+                        );
+
+
+                img.src =
+                    event.target.result;
+
+            };
+
+
+            reader.onerror =
+                () =>
+                    reject(
+                        new Error(
+                            "Faylni o‘qib bo‘lmadi."
+                        )
+                    );
+
+
+            reader.readAsDataURL(file);
+
+        }
+    );
+
+}
+
+
+/* =========================================
+   ADD EVENT
+========================================= */
+
+async function saveEventFromForm(event){
+
+    event.preventDefault();
+
+
+    if(
+        !currentUser ||
+        currentUser.role !== "admin"
+    ){
+
+        alert(
+            "❌ Faqat admin tadbir qo‘sha oladi."
+        );
+
+        return;
+
+    }
+
+
+    const title =
+        document
+        .getElementById("eventTitle")
+        .value
+        .trim();
+
+
+    const description =
+        document
+        .getElementById("eventDescription")
+        .value
+        .trim();
+
+
+    const file =
+        document
+        .getElementById("eventImage")
+        .files[0];
+
+
+    if(!title){
+
+        alert(
+            "❌ Tadbir nomini kiriting."
+        );
+
+        return;
+
+    }
+
+
+    let imageUrl = "";
+
+
+    try{
+
+        if(file){
+
+            imageUrl =
+                await compressImage(file);
+
+        }
+
+
+        const { error } =
+            await supabaseClient
+            .from("events")
+            .insert([{
+
+                title,
+                description,
+                image_url:imageUrl
+
+            }]);
+
+
+        if(error){
+            throw error;
+        }
+
+
+        document
+            .getElementById("eventForm")
+            .reset();
+
+
+        await loadWorkerEvents();
+
+
+        alert(
+            "✅ Tadbir muvaffaqiyatli qo‘shildi!"
+        );
+
+    }
+    catch(error){
+
+        console.error(error);
+
+        alert(
+            "❌ Tadbirni saqlashda xatolik."
+        );
+
+    }
+
+}
+
+
+async function deleteEvent(id){
+
+    if(
+        !currentUser ||
+        currentUser.role !== "admin"
+    ){
+        return;
+    }
+
+
+    if(
+        !confirm(
+            "Bu tadbirni o‘chirmoqchimisiz?"
+        )
+    ){
+        return;
+    }
+
+
+    const { error } =
+        await supabaseClient
+        .from("events")
+        .delete()
+        .eq("id", id);
+
+
+    if(error){
+
+        console.error(error);
+
+        alert(
+            "❌ Tadbir o‘chirilmadi."
+        );
+
+        return;
+
+    }
+
+
+    await loadWorkerEvents();
+
+    alert(
+        "✅ Tadbir o‘chirildi."
+    );
+
+}
+
+
+/* =========================================
+   BUYURTMA MODALI
+========================================= */
+
+function openOrderModal(){
+
+    const modal =
+        document.getElementById(
+            "orderModal"
+        );
+
+
+    modal.classList.remove("hidden");
+
+
+    document
+        .getElementById("applicationMessage")
+        .innerHTML = "";
+
+
+    document
+        .getElementById("applicationName")
+        .focus();
+
+}
+
+
+function closeOrderModal(){
+
+    const modal =
+        document.getElementById(
+            "orderModal"
+        );
+
+
+    if(modal){
+        modal.classList.add("hidden");
+    }
+
+}
+
+
+/* =========================================
+   APPLICATION
+========================================= */
+
+async function submitApplication(event){
+
+    event.preventDefault();
+
+
+    const name =
+        document
+        .getElementById("applicationName")
+        .value
+        .trim();
+
+
+    const phone =
+        document
+        .getElementById("applicationPhone")
+        .value
+        .trim();
+
+
+    const message =
+        document
+        .getElementById(
+            "applicationMessage"
+        );
+
+
+    if(!name || !phone){
+
+        message.innerHTML = `
+            <div class="error">
+                ❌ Ism va telefonni kiriting.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    try{
+
+        const { data, error } =
+            await supabaseClient
+            .from("applications")
+            .insert([{
+
+                full_name:name,
+
+                phone:phone,
+
+                status:"new"
+
+            }])
+            .select()
+            .single();
+
+
+        if(error){
+            throw error;
+        }
+
+
+        sessionStorage.setItem(
+            "goldshow_application_id",
+            String(data.id)
+        );
+
+
+        sessionStorage.setItem(
+            "goldshow_application_phone",
+            phone
+        );
+
+
+        message.innerHTML = `
+
+            <div
+                style="
+                    padding:14px;
+                    border-radius:10px;
+                    background:#dcfce7;
+                    color:#15803d;
+                "
+            >
+
+                ✅ Arizangiz yuborildi!
+
+                <br><br>
+
+                <strong>
+                    Ariza raqami:
+                    #${data.id}
+                </strong>
+
+                <br><br>
+
+                Biz siz bilan bog‘lanamiz.
+
+            </div>
+
+        `;
+
+
+        document
+            .getElementById("applicationForm")
+            .reset();
+
+
+        startApplicationPolling(
+            data.id,
+            phone
+        );
+
+
+    }
+    catch(error){
+
+        console.error(error);
+
+        message.innerHTML = `
+
+            <div class="error">
+
+                ❌ Ariza yuborishda xatolik.
+
+            </div>
+
+        `;
+
+    }
+
+}
+
+
+/* =========================================
+   APPLICATION STATUS
+========================================= */
+
+function startApplicationPolling(
+    id,
+    phone
+){
+
+    stopApplicationPolling();
+
+
+    checkApplicationStatus(
+        id,
+        phone
+    );
+
+
+    applicationPollTimer =
+        setInterval(
+            () => {
+
+                checkApplicationStatus(
+                    id,
+                    phone
+                );
+
+            },
+            8000
+        );
+
+}
+
+
+function stopApplicationPolling(){
+
+    if(applicationPollTimer){
+
+        clearInterval(
+            applicationPollTimer
+        );
+
+        applicationPollTimer = null;
+
+    }
+
+}
+
+
+async function checkApplicationStatus(
+    id,
+    phone
+){
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+        .from("applications")
+        .select(
+            "id,status,full_name,phone,created_at"
+        )
+        .eq("id", id)
+        .eq("phone", phone)
+        .maybeSingle();
+
+
+    if(error || !data){
+        return;
+    }
+
+
+    const box =
+        document.getElementById(
+            "customerStatusBox"
+        );
+
+
+    if(!box){
+        return;
+    }
+
+
+    if(data.status === "accepted"){
+
+        box.classList.remove("hidden");
+
+
+        box.innerHTML = `
+
+            <strong>
+                ✅ Sizning arizangiz qabul qilindi
+            </strong>
+
+            <br>
+
+            Tez orada siz bilan bog‘lanamiz.
+
+            <br><br>
+
+            Ariza:
+            #${data.id}
+
+        `;
+
+
+        stopApplicationPolling();
+
+    }
+
+    else if(data.status === "rejected"){
+
+        box.classList.remove("hidden");
+
+        box.style.borderLeftColor =
+            "#dc2626";
+
+
+        box.innerHTML = `
+
+            <strong>
+                ❌ Afsuski, arizangiz qabul qilinmadi.
+            </strong>
+
+            <br><br>
+
+            Ariza:
+            #${data.id}
+
+        `;
+
+
+        stopApplicationPolling();
+
+    }
+
+}
+
+
+function restoreCustomerApplicationStatus(){
+
+    const id =
+        sessionStorage.getItem(
+            "goldshow_application_id"
+        );
+
+
+    const phone =
+        sessionStorage.getItem(
+            "goldshow_application_phone"
+        );
+
+
+    if(id && phone){
+
+        startApplicationPolling(
+            id,
+            phone
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   ADMIN - APPLICATIONS
+========================================= */
+
+async function loadApplications(){
+
+    const container =
+        document.getElementById(
+            "applicationsList"
+        );
+
+
+    if(!container){
+
+        return;
+
+    }
+
+
+    if(
+        !currentUser ||
+        currentUser.role !== "admin"
+    ){
+
+        container.innerHTML = "";
+
+        return;
+
+    }
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+        .from("applications")
+        .select("*")
+        .order(
+            "created_at",
+            { ascending:false }
+        );
+
+
+    if(error){
+
+        console.error(error);
+
+        container.innerHTML = `
+
+            <div class="no-orders">
+                Arizalarni olishda xatolik.
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    const applications =
+        data || [];
+
+
+    if(!applications.length){
+
+        container.innerHTML = `
+
+            <div class="no-orders">
+
+                <h3>
+                    📭 Arizalar yo‘q
+                </h3>
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    container.innerHTML =
+        applications
+        .map(createApplicationHTML)
+        .join("");
+
+}
+
+
+function createApplicationHTML(application){
+
+    const statusClass =
+        application.status === "accepted"
+
+            ? "status-accepted"
+
+            : application.status === "rejected"
+
+                ? "status-rejected"
+
+                : "status-new";
+
+
+    const statusText =
+        application.status === "accepted"
+
+            ? "Qabul qilingan"
+
+            : application.status === "rejected"
+
+                ? "Rad etilgan"
+
+                : "Yangi";
+
+
+    return `
+
+        <div class="application-card">
+
+            <div class="application-header">
+
+                <div>
+
+                    <div class="application-name">
+
+                        👤
+                        ${escapeHTML(
+                            application.full_name
+                        )}
+
+                    </div>
+
+                </div>
+
+
+                <div class="application-time">
+
+                    ${formatDateTime(
+                        application.created_at
+                    )}
+
+                </div>
+
+            </div>
+
+
+            <div class="application-info">
+
+                <div class="application-detail">
+
+                    <span>
+                        📞 Telefon
+                    </span>
+
+                    <strong>
+                        ${escapeHTML(
+                            application.phone
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div class="application-detail">
+
+                    <span>
+                        🆔 Ariza raqami
+                    </span>
+
+                    <strong>
+                        #${application.id}
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <span
+                class="
+                    application-status
+                    ${statusClass}
+                "
+            >
+                ${statusText}
+            </span>
+
+
+            ${
+                application.status === "new"
+
+                    ?
+
+                `
+
+                    <div class="application-actions">
+
+                        <button
+                            class="accept-btn"
+                            onclick="
+                                updateApplicationStatus(
+                                    ${application.id},
+                                    'accepted'
+                                )
+                            "
+                        >
+                            ✅ Qabul qilish
+                        </button>
+
+
+                        <button
+                            class="reject-btn"
+                            onclick="
+                                updateApplicationStatus(
+                                    ${application.id},
+                                    'rejected'
+                                )
+                            "
+                        >
+                            ❌ Rad etish
+                        </button>
+
+                    </div>
+
+                `
+
+                    :
+
+                ""
+
+            }
+
+        </div>
+
+    `;
+
+}
+
+
+async function updateApplicationStatus(
+    id,
+    status
+){
+
+    if(
+        !currentUser ||
+        currentUser.role !== "admin"
+    ){
+        return;
+    }
+
+
+    const text =
+        status === "accepted"
+            ? "Bu arizani qabul qilasizmi?"
+            : "Bu arizani rad qilasizmi?";
+
+
+    if(!confirm(text)){
+        return;
+    }
+
+
+    const updateData = {
+        status:status
+    };
+
+
+    if(status === "accepted"){
+
+        updateData.accepted_at =
+            new Date()
+            .toISOString();
+
+    }
+
+
+    const { error } =
+        await supabaseClient
+        .from("applications")
+        .update(updateData)
+        .eq("id", id);
+
+
+    if(error){
+
+        console.error(error);
+
+        alert(
+            "❌ Ariza statusini o‘zgartirib bo‘lmadi."
+        );
+
+        return;
+
+    }
+
+
+    await loadApplications();
+
+    alert(
+        status === "accepted"
+            ? "✅ Ariza qabul qilindi!"
+            : "❌ Ariza rad etildi."
+    );
+
+}
+
+
+function formatDateTime(value){
+
+    if(!value){
+        return "—";
+    }
+
+
+    return new Date(value)
+        .toLocaleString(
+            "uz-UZ",
+            {
+                day:"2-digit",
+                month:"2-digit",
+                year:"numeric",
+                hour:"2-digit",
+                minute:"2-digit"
+            }
+        );
+
 }
 
 
@@ -2802,4 +3926,104 @@ function escapeHTML(value) {
    START
 ========================================= */
 
-updateDate();
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        updateDate();
+
+
+        const orderForm =
+            document.getElementById(
+                "orderForm"
+            );
+
+
+        if(orderForm){
+
+            orderForm.addEventListener(
+                "submit",
+                saveOrderFromForm
+            );
+
+        }
+
+
+        const userForm =
+            document.getElementById(
+                "userForm"
+            );
+
+
+        if(userForm){
+
+            userForm.addEventListener(
+                "submit",
+                createUser
+            );
+
+        }
+
+
+        const eventForm =
+            document.getElementById(
+                "eventForm"
+            );
+
+
+        if(eventForm){
+
+            eventForm.addEventListener(
+                "submit",
+                saveEventFromForm
+            );
+
+        }
+
+
+        const applicationForm =
+            document.getElementById(
+                "applicationForm"
+            );
+
+
+        if(applicationForm){
+
+            applicationForm.addEventListener(
+                "submit",
+                submitApplication
+            );
+
+        }
+
+
+        const modal =
+            document.getElementById(
+                "orderModal"
+            );
+
+
+        if(modal){
+
+            modal.addEventListener(
+                "click",
+                event => {
+
+                    if(
+                        event.target === modal
+                    ){
+
+                        closeOrderModal();
+
+                    }
+
+                }
+            );
+
+        }
+
+
+        calculateRemaining();
+
+    }
+);
