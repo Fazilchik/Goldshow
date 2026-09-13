@@ -1,6 +1,5 @@
 /* =========================================================
    GOLD SHOW - SCRIPT.JS
-   HTML INGIZ BILAN TO'LIQ MOS
 ========================================================= */
 
 
@@ -14,11 +13,22 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
     "sb_publishable_MFI3LFGRmSviFv6ygJnXyg_wFktEpyP";
 
-const supabase =
-    window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY
+let supabaseClient = null;
+
+if (
+    window.supabase &&
+    typeof window.supabase.createClient === "function"
+) {
+    supabaseClient =
+        window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_KEY
+        );
+} else {
+    console.error(
+        "❌ Supabase kutubxonasi yuklanmadi."
     );
+}
 
 
 /* =========================================================
@@ -61,6 +71,26 @@ const UZ_MONTHS = [
 
 
 /* =========================================================
+   SUPABASE CHECK
+========================================================= */
+
+function checkSupabase() {
+
+    if (!supabaseClient) {
+
+        alert(
+            "❌ Supabase ulanmagan.\n" +
+            "Internet aloqasi yoki Supabase CDNni tekshiring."
+        );
+
+        return false;
+    }
+
+    return true;
+}
+
+
+/* =========================================================
    DATE
 ========================================================= */
 
@@ -74,15 +104,18 @@ function formatDate(value) {
         new Date(value);
 
     if (isNaN(date.getTime())) {
-        return value;
+        return String(value);
     }
 
     const day =
-        String(date.getDate())
-            .padStart(2, "0");
+        String(
+            date.getDate()
+        ).padStart(2, "0");
 
     const month =
-        UZ_MONTHS[date.getMonth()];
+        UZ_MONTHS[
+            date.getMonth()
+        ];
 
     const year =
         date.getFullYear();
@@ -101,16 +134,18 @@ function formatShortDate(value) {
         new Date(value);
 
     if (isNaN(date.getTime())) {
-        return value;
+        return String(value);
     }
 
     const day =
-        String(date.getDate())
-            .padStart(2, "0");
+        String(
+            date.getDate()
+        ).padStart(2, "0");
 
     const month =
-        String(date.getMonth() + 1)
-            .padStart(2, "0");
+        String(
+            date.getMonth() + 1
+        ).padStart(2, "0");
 
     const year =
         date.getFullYear();
@@ -122,7 +157,9 @@ function formatShortDate(value) {
 function updateDate() {
 
     const element =
-        document.getElementById("todayDate");
+        document.getElementById(
+            "todayDate"
+        );
 
     if (!element) {
         return;
@@ -135,7 +172,9 @@ function updateDate() {
         date.getDate();
 
     const month =
-        UZ_MONTHS[date.getMonth()];
+        UZ_MONTHS[
+            date.getMonth()
+        ];
 
     const year =
         date.getFullYear();
@@ -160,19 +199,23 @@ function getValue(id) {
 }
 
 
-function setValue(id, value) {
+function setValue(
+    id,
+    value
+) {
 
     const element =
         document.getElementById(id);
 
-    if (element) {
-
-        element.value =
-            value === null ||
-            value === undefined
-                ? ""
-                : value;
+    if (!element) {
+        return;
     }
+
+    element.value =
+        value === null ||
+        value === undefined
+            ? ""
+            : value;
 }
 
 
@@ -189,7 +232,10 @@ function getNumber(id) {
 }
 
 
-function setText(id, value) {
+function setText(
+    id,
+    value
+) {
 
     const element =
         document.getElementById(id);
@@ -214,11 +260,26 @@ function formatMoney(value) {
 function escapeHTML(value) {
 
     return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
 }
 
 
@@ -234,78 +295,134 @@ function escapeAttribute(value) {
 
 function openCustomerPage() {
 
-    hideAllMainSections();
-
     const landing =
-        document.getElementById("landingPage");
+        document.getElementById(
+            "landingPage"
+        );
 
     const login =
-        document.getElementById("loginPage");
+        document.getElementById(
+            "loginPage"
+        );
 
     const customer =
-        document.getElementById("customerPage");
+        document.getElementById(
+            "customerPage"
+        );
 
     const main =
-        document.getElementById("mainPage");
+        document.getElementById(
+            "mainPage"
+        );
 
     if (landing) {
-        landing.classList.add("hidden");
+        landing.classList.add(
+            "hidden"
+        );
     }
 
     if (login) {
-        login.classList.add("hidden");
+        login.classList.add(
+            "hidden"
+        );
     }
 
     if (main) {
-        main.classList.add("hidden");
+        main.classList.add(
+            "hidden"
+        );
     }
 
     if (customer) {
-        customer.classList.remove("hidden");
+        customer.classList.remove(
+            "hidden"
+        );
     }
 
-    loadCustomerEvents();
+    /*
+       AVVALGI XATO:
+       loadCustomerEvents() mavjud emas edi.
+       Endi to'g'ridan-to'g'ri getEvents() ishlaydi.
+    */
+
+    getEvents();
 }
 
+
+/* =========================================================
+   CUSTOMER EVENTS LOAD
+========================================================= */
+
+function loadCustomerEvents() {
+
+    getEvents();
+}
+
+
+/* =========================================================
+   WORKER LOGIN
+========================================================= */
 
 function openWorkerLogin() {
 
     const landing =
-        document.getElementById("landingPage");
+        document.getElementById(
+            "landingPage"
+        );
 
     const login =
-        document.getElementById("loginPage");
+        document.getElementById(
+            "loginPage"
+        );
 
     const customer =
-        document.getElementById("customerPage");
+        document.getElementById(
+            "customerPage"
+        );
 
     const main =
-        document.getElementById("mainPage");
+        document.getElementById(
+            "mainPage"
+        );
 
     if (landing) {
-        landing.classList.add("hidden");
+        landing.classList.add(
+            "hidden"
+        );
     }
 
     if (customer) {
-        customer.classList.add("hidden");
+        customer.classList.add(
+            "hidden"
+        );
     }
 
     if (main) {
-        main.classList.add("hidden");
+        main.classList.add(
+            "hidden"
+        );
     }
 
     if (login) {
-        login.classList.remove("hidden");
+        login.classList.remove(
+            "hidden"
+        );
     }
 
     const username =
-        document.getElementById("username");
+        document.getElementById(
+            "username"
+        );
 
     const password =
-        document.getElementById("password");
+        document.getElementById(
+            "password"
+        );
 
     const error =
-        document.getElementById("loginError");
+        document.getElementById(
+            "loginError"
+        );
 
     if (username) {
         username.value = "";
@@ -320,39 +437,73 @@ function openWorkerLogin() {
     }
 
     if (username) {
-        username.focus();
+        setTimeout(
+            () => username.focus(),
+            50
+        );
     }
 }
 
 
+/* =========================================================
+   BACK TO LANDING
+========================================================= */
+
 function backToLanding() {
 
     const landing =
-        document.getElementById("landingPage");
+        document.getElementById(
+            "landingPage"
+        );
 
     const login =
-        document.getElementById("loginPage");
+        document.getElementById(
+            "loginPage"
+        );
 
     const customer =
-        document.getElementById("customerPage");
+        document.getElementById(
+            "customerPage"
+        );
 
     const main =
-        document.getElementById("mainPage");
+        document.getElementById(
+            "mainPage"
+        );
+
+    const modal =
+        document.getElementById(
+            "orderModal"
+        );
 
     if (login) {
-        login.classList.add("hidden");
+        login.classList.add(
+            "hidden"
+        );
     }
 
     if (customer) {
-        customer.classList.add("hidden");
+        customer.classList.add(
+            "hidden"
+        );
     }
 
     if (main) {
-        main.classList.add("hidden");
+        main.classList.add(
+            "hidden"
+        );
+    }
+
+    if (modal) {
+        modal.classList.add(
+            "hidden"
+        );
     }
 
     if (landing) {
-        landing.classList.remove("hidden");
+        landing.classList.remove(
+            "hidden"
+        );
     }
 }
 
@@ -368,16 +519,23 @@ async function login(event) {
     }
 
     const username =
-        getValue("username").trim();
+        getValue(
+            "username"
+        ).trim();
 
     const password =
-        getValue("password").trim();
+        getValue(
+            "password"
+        ).trim();
 
     const errorElement =
-        document.getElementById("loginError");
+        document.getElementById(
+            "loginError"
+        );
 
     if (errorElement) {
-        errorElement.textContent = "";
+        errorElement.textContent =
+            "";
     }
 
     if (!username || !password) {
@@ -390,17 +548,27 @@ async function login(event) {
         return;
     }
 
+    if (!checkSupabase()) {
+        return;
+    }
+
     try {
 
         const {
             data,
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("users")
                 .select("*")
-                .eq("username", username)
-                .eq("password", password)
+                .eq(
+                    "username",
+                    username
+                )
+                .eq(
+                    "password",
+                    password
+                )
                 .maybeSingle();
 
         if (error) {
@@ -440,21 +608,18 @@ async function login(event) {
             JSON.stringify(data)
         );
 
-        if (data.role === "admin") {
-
-            await openMainPage("admin");
-
-        } else {
-
-            await openMainPage("user");
-        }
+        await openMainPage(
+            data.role
+        );
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "LOGIN EXCEPTION:",
+            error
+        );
 
         if (errorElement) {
-
             errorElement.textContent =
                 "Kutilmagan xatolik: " +
                 error.message;
@@ -473,31 +638,47 @@ async function openMainPage(role) {
         role;
 
     const landing =
-        document.getElementById("landingPage");
+        document.getElementById(
+            "landingPage"
+        );
 
     const login =
-        document.getElementById("loginPage");
+        document.getElementById(
+            "loginPage"
+        );
 
     const customer =
-        document.getElementById("customerPage");
+        document.getElementById(
+            "customerPage"
+        );
 
     const main =
-        document.getElementById("mainPage");
+        document.getElementById(
+            "mainPage"
+        );
 
     if (landing) {
-        landing.classList.add("hidden");
+        landing.classList.add(
+            "hidden"
+        );
     }
 
     if (login) {
-        login.classList.add("hidden");
+        login.classList.add(
+            "hidden"
+        );
     }
 
     if (customer) {
-        customer.classList.add("hidden");
+        customer.classList.add(
+            "hidden"
+        );
     }
 
     if (main) {
-        main.classList.remove("hidden");
+        main.classList.remove(
+            "hidden"
+        );
     }
 
     updateUserInfo();
@@ -506,22 +687,22 @@ async function openMainPage(role) {
 
     updateDate();
 
-    await getEvents();
+    if (checkSupabase()) {
 
-    await getOrders();
+        await getEvents();
 
-    if (role === "admin") {
+        await getOrders();
 
-        await getApplications();
+        if (role === "admin") {
 
-        await getUsers();
+            await getApplications();
+
+            await getUsers();
+        }
     }
 
     showPage(
-        "dashboardPage",
-        document.querySelector(
-            ".menu-btn"
-        )
+        "dashboardPage"
     );
 }
 
@@ -537,19 +718,26 @@ function updateUserInfo() {
     }
 
     const nameElement =
-        document.getElementById("currentUser");
+        document.getElementById(
+            "currentUser"
+        );
 
     const roleElement =
-        document.getElementById("userRole");
+        document.getElementById(
+            "userRole"
+        );
 
     const avatarElement =
-        document.getElementById("userAvatar");
+        document.getElementById(
+            "userAvatar"
+        );
 
     if (nameElement) {
 
         nameElement.textContent =
             currentUser.name ||
-            currentUser.username;
+            currentUser.username ||
+            "User";
     }
 
     if (roleElement) {
@@ -601,57 +789,39 @@ function setupRoleMenus() {
             "workerEventAdminForm"
         );
 
-    if (currentRole === "admin") {
+    const isAdmin =
+        currentRole === "admin";
 
-        if (addOrderMenu) {
-            addOrderMenu.classList.remove(
-                "hidden"
-            );
-        }
+    if (addOrderMenu) {
 
-        if (applicationsMenu) {
-            applicationsMenu.classList.remove(
-                "hidden"
-            );
-        }
+        addOrderMenu.classList.toggle(
+            "hidden",
+            !isAdmin
+        );
+    }
 
-        if (usersMenu) {
-            usersMenu.classList.remove(
-                "hidden"
-            );
-        }
+    if (applicationsMenu) {
 
-        if (eventAdminForm) {
-            eventAdminForm.classList.remove(
-                "hidden"
-            );
-        }
+        applicationsMenu.classList.toggle(
+            "hidden",
+            !isAdmin
+        );
+    }
 
-    } else {
+    if (usersMenu) {
 
-        if (addOrderMenu) {
-            addOrderMenu.classList.add(
-                "hidden"
-            );
-        }
+        usersMenu.classList.toggle(
+            "hidden",
+            !isAdmin
+        );
+    }
 
-        if (applicationsMenu) {
-            applicationsMenu.classList.add(
-                "hidden"
-            );
-        }
+    if (eventAdminForm) {
 
-        if (usersMenu) {
-            usersMenu.classList.add(
-                "hidden"
-            );
-        }
-
-        if (eventAdminForm) {
-            eventAdminForm.classList.add(
-                "hidden"
-            );
-        }
+        eventAdminForm.classList.toggle(
+            "hidden",
+            !isAdmin
+        );
     }
 }
 
@@ -660,26 +830,33 @@ function setupRoleMenus() {
    SHOW PAGE
 ========================================================= */
 
-function showPage(pageId, button = null) {
+function showPage(
+    pageId,
+    button = null
+) {
 
     const pages =
         document.querySelectorAll(
             "#mainPage .page"
         );
 
-    pages.forEach(page => {
+    pages.forEach(
+        page => {
 
-        page.classList.add(
-            "hidden"
-        );
+            page.classList.add(
+                "hidden"
+            );
 
-        page.classList.remove(
-            "active"
-        );
-    });
+            page.classList.remove(
+                "active"
+            );
+        }
+    );
 
     const target =
-        document.getElementById(pageId);
+        document.getElementById(
+            pageId
+        );
 
     if (!target) {
         return;
@@ -698,21 +875,39 @@ function showPage(pageId, button = null) {
             ".menu-btn"
         );
 
-    buttons.forEach(btn => {
+    buttons.forEach(
+        btn => {
 
-        btn.classList.remove(
-            "active"
-        );
-    });
+            btn.classList.remove(
+                "active"
+            );
+        }
+    );
 
     if (button) {
 
         button.classList.add(
             "active"
         );
+
+    } else {
+
+        const defaultButton =
+            document.querySelector(
+                `.menu-btn[onclick*="${pageId}"]`
+            );
+
+        if (defaultButton) {
+
+            defaultButton.classList.add(
+                "active"
+            );
+        }
     }
 
-    updatePageTitle(pageId);
+    updatePageTitle(
+        pageId
+    );
 
     if (pageId === "dashboardPage") {
 
@@ -741,22 +936,9 @@ function showPage(pageId, button = null) {
 }
 
 
-function hideAllMainSections() {
-
-    document
-        .querySelectorAll(
-            "#mainPage .page"
-        )
-        .forEach(page => {
-
-            page.classList.add(
-                "hidden"
-            );
-        });
-}
-
-
-function updatePageTitle(pageId) {
+function updatePageTitle(
+    pageId
+) {
 
     const title =
         document.getElementById(
@@ -800,8 +982,11 @@ function updatePageTitle(pageId) {
 
 function logout() {
 
-    currentUser = null;
-    currentRole = null;
+    currentUser =
+        null;
+
+    currentRole =
+        null;
 
     localStorage.removeItem(
         "goldshow_user"
@@ -813,7 +998,8 @@ function logout() {
             applicationTimer
         );
 
-        applicationTimer = null;
+        applicationTimer =
+            null;
     }
 
     backToLanding();
@@ -826,13 +1012,17 @@ function logout() {
 
 async function updateDashboard() {
 
+    if (!checkSupabase()) {
+        return;
+    }
+
     try {
 
         const {
             data,
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("orders")
                 .select("*");
 
@@ -883,18 +1073,17 @@ async function updateDashboard() {
         const totalMoney =
             orders.reduce(
                 (
-                    sum,
+                    total,
                     order
                 ) => {
 
                     return (
-                        sum +
+                        total +
                         Number(
                             order.total_price ||
                             0
                         )
                     );
-
                 },
                 0
             );
@@ -918,7 +1107,8 @@ async function updateDashboard() {
             "totalMoney",
             formatMoney(
                 totalMoney
-            ) + " so‘m"
+            ) +
+            " so‘m"
         );
 
         displayTodayOrders(
@@ -932,7 +1122,10 @@ async function updateDashboard() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "DASHBOARD EXCEPTION:",
+            error
+        );
     }
 }
 
@@ -973,35 +1166,64 @@ function displayTodayOrders(
                     return `
                         <div class="order-card">
 
-                            <h3>
-                                ${escapeHTML(
-                                    order.client_name
-                                )}
-                            </h3>
+                            <div class="order-card-header">
 
-                            <p>
-                                📞
-                                ${escapeHTML(
-                                    order.client_phone
-                                )}
-                            </p>
+                                <div>
 
-                            <p>
-                                📍
-                                ${escapeHTML(
-                                    order.location
-                                )}
-                            </p>
+                                    <h3>
+                                        ${escapeHTML(
+                                            order.client_name ||
+                                            "-"
+                                        )}
+                                    </h3>
 
-                            <p>
-                                🕒
-                                ${escapeHTML(
-                                    String(
-                                        order.event_time ||
-                                        ""
-                                    ).slice(0, 5)
-                                )}
-                            </p>
+                                    <p>
+                                        📞
+                                        ${escapeHTML(
+                                            order.client_phone ||
+                                            "-"
+                                        )}
+                                    </p>
+
+                                </div>
+
+                                <div>
+                                    ${escapeHTML(
+                                        String(
+                                            order.event_time ||
+                                            ""
+                                        ).slice(0, 5)
+                                    )}
+                                </div>
+
+                            </div>
+
+                            <div class="order-info-grid">
+
+                                <div>
+                                    📍
+                                    ${escapeHTML(
+                                        order.location ||
+                                        "-"
+                                    )}
+                                </div>
+
+                                <div>
+                                    💰
+                                    ${formatMoney(
+                                        order.total_price
+                                    )} so‘m
+                                </div>
+
+                                <div>
+                                    💳
+                                    Qolgan:
+                                    ${formatMoney(
+                                        order.remaining
+                                    )} so‘m
+                                </div>
+
+                            </div>
 
                         </div>
                     `;
@@ -1029,15 +1251,22 @@ function updateNotifications(
         return;
     }
 
-    let text = "";
+    let text =
+        "";
 
-    if (todayOrders.length > 0) {
+    if (
+        todayOrders.length >
+        0
+    ) {
 
         text +=
             `🔔 Bugun ${todayOrders.length} ta zakas bor. `;
     }
 
-    if (upcomingOrders.length > 0) {
+    if (
+        upcomingOrders.length >
+        0
+    ) {
 
         text +=
             `📅 Kelgusi ${upcomingOrders.length} ta tadbir bor.`;
@@ -1055,10 +1284,14 @@ function updateNotifications(
 
 
 /* =========================================================
-   GET ORDERS
+   ORDERS
 ========================================================= */
 
 async function getOrders() {
+
+    if (!checkSupabase()) {
+        return;
+    }
 
     try {
 
@@ -1066,7 +1299,7 @@ async function getOrders() {
             data,
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("orders")
                 .select("*")
                 .order(
@@ -1099,14 +1332,13 @@ async function getOrders() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "ORDERS EXCEPTION:",
+            error
+        );
     }
 }
 
-
-/* =========================================================
-   DISPLAY ORDERS
-========================================================= */
 
 function displayOrders() {
 
@@ -1123,8 +1355,8 @@ function displayOrders() {
         getValue(
             "searchInput"
         )
-        .trim()
-        .toLowerCase();
+            .trim()
+            .toLowerCase();
 
     let orders =
         [...allOrders];
@@ -1133,36 +1365,33 @@ function displayOrders() {
 
         orders =
             orders.filter(
-                order => {
+                order => (
 
-                    return (
+                    String(
+                        order.client_name ||
+                        ""
+                    )
+                        .toLowerCase()
+                        .includes(search)
 
-                        String(
-                            order.client_name ||
-                            ""
-                        )
-                            .toLowerCase()
-                            .includes(search)
+                    ||
 
-                        ||
+                    String(
+                        order.client_phone ||
+                        ""
+                    )
+                        .toLowerCase()
+                        .includes(search)
 
-                        String(
-                            order.client_phone ||
-                            ""
-                        )
-                            .toLowerCase()
-                            .includes(search)
+                    ||
 
-                        ||
-
-                        String(
-                            order.location ||
-                            ""
-                        )
-                            .toLowerCase()
-                            .includes(search)
-                    );
-                }
+                    String(
+                        order.location ||
+                        ""
+                    )
+                        .toLowerCase()
+                        .includes(search)
+                )
             );
     }
 
@@ -1189,11 +1418,9 @@ function displayOrders() {
 }
 
 
-/* =========================================================
-   ORDER HTML
-========================================================= */
-
-function createOrderHTML(order) {
+function createOrderHTML(
+    order
+) {
 
     return `
         <div class="order-card">
@@ -1305,6 +1532,16 @@ function createOrderHTML(order) {
 
 function getOrderFromForm() {
 
+    const total =
+        getNumber(
+            "totalPrice"
+        );
+
+    const paid =
+        getNumber(
+            "paid"
+        );
+
     return {
 
         client_name:
@@ -1355,7 +1592,8 @@ function getOrderFromForm() {
         curtain:
             getValue(
                 "curtain"
-            ) || "Yo‘q",
+            ) ||
+            "Yo‘q",
 
         lights:
             Math.floor(
@@ -1416,25 +1654,16 @@ function getOrderFromForm() {
                 "sideWidth"
             ),
 
-        paid:
-            getNumber(
-                "paid"
-            ),
-
         total_price:
-            getNumber(
-                "totalPrice"
-            ),
+            total,
+
+        paid:
+            paid,
 
         remaining:
             Math.max(
                 0,
-                getNumber(
-                    "totalPrice"
-                ) -
-                getNumber(
-                    "paid"
-                )
+                total - paid
             )
     };
 }
@@ -1450,12 +1679,19 @@ async function saveOrder(event) {
         event.preventDefault();
     }
 
-    if (currentRole !== "admin") {
+    if (
+        currentRole !==
+        "admin"
+    ) {
 
         alert(
             "Faqat admin zakas qo‘sha oladi."
         );
 
+        return;
+    }
+
+    if (!checkSupabase()) {
         return;
     }
 
@@ -1533,7 +1769,7 @@ async function saveOrder(event) {
         if (editingId) {
 
             result =
-                await supabase
+                await supabaseClient
                     .from("orders")
                     .update(order)
                     .eq(
@@ -1544,7 +1780,7 @@ async function saveOrder(event) {
         } else {
 
             result =
-                await supabase
+                await supabaseClient
                     .from("orders")
                     .insert([
                         order
@@ -1554,6 +1790,7 @@ async function saveOrder(event) {
         if (result.error) {
 
             console.error(
+                "SAVE ORDER ERROR:",
                 result.error
             );
 
@@ -1583,7 +1820,10 @@ async function saveOrder(event) {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "SAVE ORDER EXCEPTION:",
+            error
+        );
 
         alert(
             "❌ Zakas qo‘shishda xatolik:\n" +
@@ -1605,7 +1845,7 @@ async function saveOrder(event) {
 
 
 /* =========================================================
-   CALCULATE REMAINING
+   REMAINING
 ========================================================= */
 
 function calculateRemaining() {
@@ -1636,7 +1876,8 @@ function calculateRemaining() {
         element.textContent =
             formatMoney(
                 remaining
-            ) + " so‘m";
+            ) +
+            " so‘m";
     }
 }
 
@@ -1691,7 +1932,10 @@ function editOrder(id) {
         String(
             order.event_time ||
             ""
-        ).slice(0, 5)
+        ).slice(
+            0,
+            5
+        )
     );
 
     setValue(
@@ -1782,7 +2026,6 @@ function editOrder(id) {
         );
 
     if (badge) {
-
         badge.classList.remove(
             "hidden"
         );
@@ -1794,7 +2037,6 @@ function editOrder(id) {
         );
 
     if (title) {
-
         title.textContent =
             "✏️ Zakasni tahrirlash";
     }
@@ -1805,7 +2047,6 @@ function editOrder(id) {
         );
 
     if (button) {
-
         button.textContent =
             "💾 Zakasni yangilash";
     }
@@ -1816,7 +2057,6 @@ function editOrder(id) {
         );
 
     if (cancel) {
-
         cancel.classList.remove(
             "hidden"
         );
@@ -1941,7 +2181,6 @@ function resetOrderForm() {
         );
 
     if (badge) {
-
         badge.classList.add(
             "hidden"
         );
@@ -1953,7 +2192,6 @@ function resetOrderForm() {
         );
 
     if (cancel) {
-
         cancel.classList.add(
             "hidden"
         );
@@ -1965,7 +2203,6 @@ function resetOrderForm() {
         );
 
     if (title) {
-
         title.textContent =
             "➕ Yangi zakas qo‘shish";
     }
@@ -1976,7 +2213,6 @@ function resetOrderForm() {
         );
 
     if (button) {
-
         button.textContent =
             "💾 Zakasni saqlash";
     }
@@ -1989,7 +2225,14 @@ function resetOrderForm() {
 
 async function deleteOrder(id) {
 
-    if (currentRole !== "admin") {
+    if (
+        currentRole !==
+        "admin"
+    ) {
+        return;
+    }
+
+    if (!checkSupabase()) {
         return;
     }
 
@@ -2006,7 +2249,7 @@ async function deleteOrder(id) {
         const {
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("orders")
                 .delete()
                 .eq(
@@ -2024,17 +2267,20 @@ async function deleteOrder(id) {
             return;
         }
 
-        await getOrders();
-
-        await updateDashboard();
-
         alert(
             "✅ Zakas o‘chirildi."
         );
 
+        await getOrders();
+
+        await updateDashboard();
+
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "DELETE ORDER ERROR:",
+            error
+        );
 
         alert(
             "❌ Xatolik:\n" +
@@ -2050,13 +2296,17 @@ async function deleteOrder(id) {
 
 async function getEvents() {
 
+    if (!checkSupabase()) {
+        return;
+    }
+
     try {
 
         const {
             data,
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("events")
                 .select("*")
                 .order(
@@ -2085,16 +2335,19 @@ async function getEvents() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "EVENTS EXCEPTION:",
+            error
+        );
     }
 }
 
 
 /* =========================================================
-   EVENT IMAGE
+   IMAGE
 ========================================================= */
 
-async function getImageData(file) {
+function getImageData(file) {
 
     return new Promise(
         (
@@ -2106,16 +2359,14 @@ async function getImageData(file) {
                 new FileReader();
 
             reader.onload =
-                () =>
-                    resolve(
-                        reader.result
-                    );
+                () => resolve(
+                    reader.result
+                );
 
             reader.onerror =
-                () =>
-                    reject(
-                        reader.error
-                    );
+                () => reject(
+                    reader.error
+                );
 
             reader.readAsDataURL(
                 file
@@ -2135,12 +2386,19 @@ async function saveEvent(event) {
         event.preventDefault();
     }
 
-    if (currentRole !== "admin") {
+    if (
+        currentRole !==
+        "admin"
+    ) {
 
         alert(
             "Faqat admin tadbir qo‘sha oladi."
         );
 
+        return;
+    }
+
+    if (!checkSupabase()) {
         return;
     }
 
@@ -2174,7 +2432,7 @@ async function saveEvent(event) {
     if (
         imageInput &&
         imageInput.files &&
-        imageInput.files.length > 0
+        imageInput.files.length
     ) {
 
         const file =
@@ -2203,7 +2461,7 @@ async function saveEvent(event) {
         const {
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("events")
                 .insert([
                     {
@@ -2250,7 +2508,10 @@ async function saveEvent(event) {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "EVENT INSERT EXCEPTION:",
+            error
+        );
 
         alert(
             "❌ Xatolik:\n" +
@@ -2309,23 +2570,38 @@ function displayWorkerEvents() {
             .map(
                 event => {
 
+                    const image =
+                        event.image_url
+                            ? `
+                                <img
+                                    src="${escapeAttribute(
+                                        event.image_url
+                                    )}"
+                                    alt="${escapeAttribute(
+                                        event.title
+                                    )}"
+                                >
+                            `
+                            : "";
+
+                    const deleteButton =
+                        currentRole ===
+                        "admin"
+                            ? `
+                                <button
+                                    type="button"
+                                    class="btn-delete"
+                                    onclick="deleteEvent(${event.id})"
+                                >
+                                    🗑️ O‘chirish
+                                </button>
+                            `
+                            : "";
+
                     return `
                         <div class="event-card">
 
-                            ${
-                                event.image_url
-                                    ? `
-                                        <img
-                                            src="${escapeAttribute(
-                                                event.image_url
-                                            )}"
-                                            alt="${escapeAttribute(
-                                                event.title
-                                            )}"
-                                        >
-                                    `
-                                    : ""
-                            }
+                            ${image}
 
                             <div class="event-content">
 
@@ -2342,20 +2618,13 @@ function displayWorkerEvents() {
                                     )}
                                 </p>
 
-                                ${
-                                    currentRole ===
-                                    "admin"
-                                        ? `
-                                            <button
-                                                type="button"
-                                                class="btn-delete"
-                                                onclick="deleteEvent(${event.id})"
-                                            >
-                                                🗑️ O‘chirish
-                                            </button>
-                                        `
-                                        : ""
-                                }
+                                <small>
+                                    ${formatDate(
+                                        event.created_at
+                                    )}
+                                </small>
+
+                                ${deleteButton}
 
                             </div>
 
@@ -2370,7 +2639,7 @@ function displayWorkerEvents() {
 
 
 /* =========================================================
-   CUSTOMER EVENTS
+   DISPLAY CUSTOMER EVENTS
 ========================================================= */
 
 function displayCustomerEvents() {
@@ -2400,23 +2669,24 @@ function displayCustomerEvents() {
             .map(
                 event => {
 
+                    const image =
+                        event.image_url
+                            ? `
+                                <img
+                                    src="${escapeAttribute(
+                                        event.image_url
+                                    )}"
+                                    alt="${escapeAttribute(
+                                        event.title
+                                    )}"
+                                >
+                            `
+                            : "";
+
                     return `
                         <div class="customer-event-card">
 
-                            ${
-                                event.image_url
-                                    ? `
-                                        <img
-                                            src="${escapeAttribute(
-                                                event.image_url
-                                            )}"
-                                            alt="${escapeAttribute(
-                                                event.title
-                                            )}"
-                                        >
-                                    `
-                                    : ""
-                            }
+                            ${image}
 
                             <div class="customer-event-content">
 
@@ -2472,7 +2742,9 @@ function renderEventPagination() {
             EVENTS_PER_PAGE
         );
 
-    if (totalPages <= 1) {
+    if (
+        totalPages <= 1
+    ) {
 
         container.innerHTML =
             "";
@@ -2524,7 +2796,14 @@ function goToEventPage(page) {
 
 async function deleteEvent(id) {
 
-    if (currentRole !== "admin") {
+    if (
+        currentRole !==
+        "admin"
+    ) {
+        return;
+    }
+
+    if (!checkSupabase()) {
         return;
     }
 
@@ -2541,7 +2820,7 @@ async function deleteEvent(id) {
         const {
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("events")
                 .delete()
                 .eq(
@@ -2559,11 +2838,18 @@ async function deleteEvent(id) {
             return;
         }
 
+        alert(
+            "✅ Tadbir o‘chirildi."
+        );
+
         await getEvents();
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "DELETE EVENT ERROR:",
+            error
+        );
 
         alert(
             "❌ Xatolik:\n" +
@@ -2574,7 +2860,7 @@ async function deleteEvent(id) {
 
 
 /* =========================================================
-   CUSTOMER MODAL
+   ORDER MODAL
 ========================================================= */
 
 function openOrderModal() {
@@ -2633,10 +2919,16 @@ function closeOrderModal() {
    APPLICATION
 ========================================================= */
 
-async function submitApplication(event) {
+async function submitApplication(
+    event
+) {
 
     if (event) {
         event.preventDefault();
+    }
+
+    if (!checkSupabase()) {
+        return;
     }
 
     const name =
@@ -2657,7 +2949,6 @@ async function submitApplication(event) {
     if (!name) {
 
         if (message) {
-
             message.textContent =
                 "Ism va familyani kiriting.";
         }
@@ -2668,7 +2959,6 @@ async function submitApplication(event) {
     if (!phone) {
 
         if (message) {
-
             message.textContent =
                 "Telefon raqamini kiriting.";
         }
@@ -2682,7 +2972,7 @@ async function submitApplication(event) {
             data,
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("applications")
                 .insert([
                     {
@@ -2742,13 +3032,18 @@ async function submitApplication(event) {
                 "⏳ Arizangiz ko‘rib chiqilmoqda...";
         }
 
+        closeOrderModal();
+
         startApplicationCheck(
             data.id
         );
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "APPLICATION EXCEPTION:",
+            error
+        );
 
         if (message) {
 
@@ -2791,7 +3086,13 @@ function startApplicationCheck(id) {
 }
 
 
-async function checkApplicationStatus(id) {
+async function checkApplicationStatus(
+    id
+) {
+
+    if (!checkSupabase()) {
+        return;
+    }
 
     try {
 
@@ -2799,7 +3100,7 @@ async function checkApplicationStatus(id) {
             data,
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("applications")
                 .select("*")
                 .eq(
@@ -2861,7 +3162,10 @@ async function checkApplicationStatus(id) {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "APPLICATION STATUS ERROR:",
+            error
+        );
     }
 }
 
@@ -2879,13 +3183,17 @@ async function getApplications() {
         return;
     }
 
+    if (!checkSupabase()) {
+        return;
+    }
+
     try {
 
         const {
             data,
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("applications")
                 .select("*")
                 .order(
@@ -2912,7 +3220,10 @@ async function getApplications() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "APPLICATIONS EXCEPTION:",
+            error
+        );
     }
 }
 
@@ -2951,7 +3262,6 @@ function displayApplications() {
                         application.status ===
                         "accepted"
                     ) {
-
                         status =
                             "Tasdiqlangan";
                     }
@@ -2960,7 +3270,6 @@ function displayApplications() {
                         application.status ===
                         "rejected"
                     ) {
-
                         status =
                             "Rad etilgan";
                     }
@@ -2991,6 +3300,7 @@ function displayApplications() {
 
                             </div>
 
+
                             <div>
 
                                 <strong>
@@ -3015,8 +3325,8 @@ function displayApplications() {
 
                                     <button
                                         type="button"
-                                        onclick="deleteApplication(${application.id})"
                                         class="btn-delete"
+                                        onclick="deleteApplication(${application.id})"
                                     >
                                         🗑️
                                     </button>
@@ -3032,10 +3342,6 @@ function displayApplications() {
             .join("");
 }
 
-
-/* =========================================================
-   ACCEPT / REJECT
-========================================================= */
 
 async function acceptApplication(id) {
 
@@ -3067,6 +3373,10 @@ async function changeApplicationStatus(
         return;
     }
 
+    if (!checkSupabase()) {
+        return;
+    }
+
     try {
 
         const updateData = {
@@ -3087,7 +3397,7 @@ async function changeApplicationStatus(
         const {
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("applications")
                 .update(
                     updateData
@@ -3111,14 +3421,13 @@ async function changeApplicationStatus(
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "CHANGE APPLICATION ERROR:",
+            error
+        );
     }
 }
 
-
-/* =========================================================
-   DELETE APPLICATION
-========================================================= */
 
 async function deleteApplication(
     id
@@ -3128,6 +3437,10 @@ async function deleteApplication(
         currentRole !==
         "admin"
     ) {
+        return;
+    }
+
+    if (!checkSupabase()) {
         return;
     }
 
@@ -3144,7 +3457,7 @@ async function deleteApplication(
         const {
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("applications")
                 .delete()
                 .eq(
@@ -3166,7 +3479,10 @@ async function deleteApplication(
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "DELETE APPLICATION ERROR:",
+            error
+        );
     }
 }
 
@@ -3184,13 +3500,17 @@ async function getUsers() {
         return;
     }
 
+    if (!checkSupabase()) {
+        return;
+    }
+
     try {
 
         const {
             data,
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("users")
                 .select("*")
                 .order(
@@ -3217,14 +3537,13 @@ async function getUsers() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "USERS EXCEPTION:",
+            error
+        );
     }
 }
 
-
-/* =========================================================
-   DISPLAY USERS
-========================================================= */
 
 function displayUsers() {
 
@@ -3265,7 +3584,8 @@ function displayUsers() {
 
                                 <h3>
                                     ${escapeHTML(
-                                        user.name
+                                        user.name ||
+                                        "-"
                                     )}
                                 </h3>
 
@@ -3291,7 +3611,9 @@ function displayUsers() {
                                 </p>
 
                                 <p>
+
                                     Parol:
+
                                     <span
                                         id="password-${user.id}"
                                     >
@@ -3308,6 +3630,7 @@ function displayUsers() {
                                 </p>
 
                             </div>
+
 
                             <div>
 
@@ -3353,7 +3676,9 @@ function displayUsers() {
    CREATE USER
 ========================================================= */
 
-async function createUser(event) {
+async function createUser(
+    event
+) {
 
     if (event) {
         event.preventDefault();
@@ -3363,6 +3688,10 @@ async function createUser(event) {
         currentRole !==
         "admin"
     ) {
+        return;
+    }
+
+    if (!checkSupabase()) {
         return;
     }
 
@@ -3405,7 +3734,7 @@ async function createUser(event) {
         const {
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("users")
                 .insert([
                     {
@@ -3426,6 +3755,7 @@ async function createUser(event) {
         if (error) {
 
             console.error(
+                "CREATE USER ERROR:",
                 error
             );
 
@@ -3466,7 +3796,10 @@ async function createUser(event) {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "CREATE USER EXCEPTION:",
+            error
+        );
 
         alert(
             "❌ Xatolik:\n" +
@@ -3477,7 +3810,7 @@ async function createUser(event) {
 
 
 /* =========================================================
-   SHOW PASSWORD
+   PASSWORD
 ========================================================= */
 
 function showUserPassword(id) {
@@ -3515,7 +3848,7 @@ function showUserPassword(id) {
     } else {
 
         element.textContent =
-            user.password;
+            user.password || "";
 
         element.dataset.visible =
             "true";
@@ -3527,12 +3860,18 @@ function showUserPassword(id) {
    CHANGE USERNAME
 ========================================================= */
 
-async function changeUsername(id) {
+async function changeUsername(
+    id
+) {
 
     if (
         currentRole !==
         "admin"
     ) {
+        return;
+    }
+
+    if (!checkSupabase()) {
         return;
     }
 
@@ -3570,7 +3909,7 @@ async function changeUsername(id) {
         const {
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("users")
                 .update({
                     username:
@@ -3595,7 +3934,10 @@ async function changeUsername(id) {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "CHANGE USERNAME ERROR:",
+            error
+        );
     }
 }
 
@@ -3604,12 +3946,18 @@ async function changeUsername(id) {
    CHANGE PASSWORD
 ========================================================= */
 
-async function changePassword(id) {
+async function changePassword(
+    id
+) {
 
     if (
         currentRole !==
         "admin"
     ) {
+        return;
+    }
+
+    if (!checkSupabase()) {
         return;
     }
 
@@ -3636,7 +3984,7 @@ async function changePassword(id) {
         const {
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("users")
                 .update({
                     password:
@@ -3665,7 +4013,10 @@ async function changePassword(id) {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "CHANGE PASSWORD ERROR:",
+            error
+        );
     }
 }
 
@@ -3674,12 +4025,18 @@ async function changePassword(id) {
    DELETE USER
 ========================================================= */
 
-async function deleteUser(id) {
+async function deleteUser(
+    id
+) {
 
     if (
         currentRole !==
         "admin"
     ) {
+        return;
+    }
+
+    if (!checkSupabase()) {
         return;
     }
 
@@ -3709,7 +4066,7 @@ async function deleteUser(id) {
         const {
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("users")
                 .delete()
                 .eq(
@@ -3731,13 +4088,16 @@ async function deleteUser(id) {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "DELETE USER ERROR:",
+            error
+        );
     }
 }
 
 
 /* =========================================================
-   RESTORE USER
+   RESTORE SESSION
 ========================================================= */
 
 async function restoreUser() {
@@ -3751,14 +4111,26 @@ async function restoreUser() {
         return;
     }
 
+    if (!checkSupabase()) {
+        return;
+    }
+
     try {
 
-        const user =
+        const savedUser =
             JSON.parse(
                 saved
             );
 
-        if (!user || !user.id) {
+        if (
+            !savedUser ||
+            !savedUser.id
+        ) {
+
+            localStorage.removeItem(
+                "goldshow_user"
+            );
+
             return;
         }
 
@@ -3766,12 +4138,12 @@ async function restoreUser() {
             data,
             error
         } =
-            await supabase
+            await supabaseClient
                 .from("users")
                 .select("*")
                 .eq(
                     "id",
-                    user.id
+                    savedUser.id
                 )
                 .maybeSingle();
 
@@ -3799,7 +4171,10 @@ async function restoreUser() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "RESTORE USER ERROR:",
+            error
+        );
 
         localStorage.removeItem(
             "goldshow_user"
@@ -3809,56 +4184,19 @@ async function restoreUser() {
 
 
 /* =========================================================
-   EVENTS IMAGE INPUT
-========================================================= */
-
-const eventImageInput =
-    document.getElementById(
-        "eventImage"
-    );
-
-if (eventImageInput) {
-
-    eventImageInput.addEventListener(
-        "change",
-        function () {
-
-            const file =
-                this.files &&
-                this.files[0];
-
-            if (!file) {
-                return;
-            }
-
-            if (
-                file.size >
-                2 * 1024 * 1024
-            ) {
-
-                alert(
-                    "Rasm hajmi 2 MB dan oshmasin."
-                );
-
-                this.value =
-                    "";
-            }
-        }
-    );
-}
-
-
-/* =========================================================
-   DOM LOADED
+   DOM READY
 ========================================================= */
 
 document.addEventListener(
     "DOMContentLoaded",
-    function () {
+    async function () {
 
         updateDate();
 
-        /* LOGIN */
+
+        /* -----------------------------------------
+           LOGIN
+        ----------------------------------------- */
 
         const loginForm =
             document.getElementById(
@@ -3874,7 +4212,9 @@ document.addEventListener(
         }
 
 
-        /* ORDER */
+        /* -----------------------------------------
+           ORDER FORM
+        ----------------------------------------- */
 
         const orderForm =
             document.getElementById(
@@ -3890,7 +4230,9 @@ document.addEventListener(
         }
 
 
-        /* SEARCH */
+        /* -----------------------------------------
+           SEARCH
+        ----------------------------------------- */
 
         const searchInput =
             document.getElementById(
@@ -3906,7 +4248,9 @@ document.addEventListener(
         }
 
 
-        /* PAYMENT */
+        /* -----------------------------------------
+           PAYMENT
+        ----------------------------------------- */
 
         const totalPrice =
             document.getElementById(
@@ -3935,7 +4279,9 @@ document.addEventListener(
         }
 
 
-        /* EVENT FORM */
+        /* -----------------------------------------
+           EVENT FORM
+        ----------------------------------------- */
 
         const eventForm =
             document.getElementById(
@@ -3951,7 +4297,9 @@ document.addEventListener(
         }
 
 
-        /* USER FORM */
+        /* -----------------------------------------
+           USER FORM
+        ----------------------------------------- */
 
         const userForm =
             document.getElementById(
@@ -3967,7 +4315,9 @@ document.addEventListener(
         }
 
 
-        /* APPLICATION FORM */
+        /* -----------------------------------------
+           APPLICATION FORM
+        ----------------------------------------- */
 
         const applicationForm =
             document.getElementById(
@@ -3983,7 +4333,9 @@ document.addEventListener(
         }
 
 
-        /* MODAL BACKGROUND */
+        /* -----------------------------------------
+           MODAL OUTSIDE CLICK
+        ----------------------------------------- */
 
         const modal =
             document.getElementById(
@@ -4006,6 +4358,54 @@ document.addEventListener(
                 }
             );
         }
+
+
+        /* -----------------------------------------
+           EVENT IMAGE
+        ----------------------------------------- */
+
+        const eventImage =
+            document.getElementById(
+                "eventImage"
+            );
+
+        if (eventImage) {
+
+            eventImage.addEventListener(
+                "change",
+                function () {
+
+                    const file =
+                        this.files &&
+                        this.files[0];
+
+                    if (!file) {
+                        return;
+                    }
+
+                    if (
+                        file.size >
+                        2 * 1024 * 1024
+                    ) {
+
+                        alert(
+                            "Rasm hajmi 2 MB dan oshmasin."
+                        );
+
+                        this.value =
+                            "";
+                    }
+                }
+            );
+        }
+
+
+        /* -----------------------------------------
+           RESTORE LOGIN
+        ----------------------------------------- */
+
+        await restoreUser();
+
     }
 );
 
@@ -4016,6 +4416,9 @@ document.addEventListener(
 
 window.openCustomerPage =
     openCustomerPage;
+
+window.loadCustomerEvents =
+    loadCustomerEvents;
 
 window.openWorkerLogin =
     openWorkerLogin;
@@ -4079,10 +4482,3 @@ window.changePassword =
 
 window.deleteUser =
     deleteUser;
-
-
-/* =========================================================
-   RESTORE SESSION AFTER PAGE RELOAD
-========================================================= */
-
-restoreUser();
