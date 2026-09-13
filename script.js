@@ -1,66 +1,67 @@
 /* =========================================
-   GOLD SHOW - ZAKAS BOSHQARUV TIZIMI
-   Frontend demo: localStorage asosida
+   GOLD SHOW
+   SUPABASE ONLINE VERSION
+========================================= */
+
+
+/* =========================================
+   SUPABASE
+========================================= */
+
+const SUPABASE_URL =
+    "https://mvrrftlhjlbrsiexnwjq.supabase.co";
+
+const SUPABASE_PUBLISHABLE_KEY =
+    "sb_publishable_MFI3LFGRmSviFv6ygJnXyg_wFktEpyP";
+
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    );
+
+
+/* =========================================
+   GLOBAL
 ========================================= */
 
 let currentUser = null;
-
-const KEYS = {
-    users: "goldshow_users",
-    orders: "goldshow_orders"
-};
 
 
 /* =========================================
    USERLAR
 ========================================= */
 
-function getUsers() {
+async function getUsers() {
 
-    const data =
-        localStorage.getItem(KEYS.users);
-
-    return data
-        ? JSON.parse(data)
-        : [];
-}
-
-
-function saveUsers(users) {
-
-    localStorage.setItem(
-        KEYS.users,
-        JSON.stringify(users)
-    );
-}
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("users")
+        .select("*")
+        .order("id", {
+            ascending: true
+        });
 
 
-function initializeUsers() {
+    if (error) {
 
-    if (getUsers().length === 0) {
+        console.error(
+            "Users error:",
+            error
+        );
 
-        saveUsers([
+        alert(
+            "❌ Userlarni olishda xatolik!"
+        );
 
-            {
-                id: 1,
-                name: "Otabek",
-                username: "Otabek",
-                password: "goldshow",
-                role: "admin"
-            },
-
-            {
-                id: 2,
-                name: "User",
-                username: "user",
-                password: "user123",
-                role: "user"
-            }
-
-        ]);
-
+        return [];
     }
 
+
+    return data || [];
 }
 
 
@@ -68,25 +69,35 @@ function initializeUsers() {
    ZAKASLAR
 ========================================= */
 
-function getOrders() {
+async function getOrders() {
 
-    const data =
-        localStorage.getItem(
-            KEYS.orders
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("orders")
+        .select("*")
+        .order("event_date", {
+            ascending: false
+        });
+
+
+    if (error) {
+
+        console.error(
+            "Orders error:",
+            error
         );
 
-    return data
-        ? JSON.parse(data)
-        : [];
-}
+        alert(
+            "❌ Zakaslarni olishda xatolik!"
+        );
+
+        return [];
+    }
 
 
-function saveOrders(orders) {
-
-    localStorage.setItem(
-        KEYS.orders,
-        JSON.stringify(orders)
-    );
+    return data || [];
 }
 
 
@@ -94,7 +105,7 @@ function saveOrders(orders) {
    LOGIN
 ========================================= */
 
-function login() {
+async function login() {
 
     const username =
         document
@@ -115,17 +126,39 @@ function login() {
         .getElementById("loginError");
 
 
+    error.textContent = "";
+
+
+    if (
+        !username ||
+        !password
+    ) {
+
+        error.textContent =
+            "❌ Login va parolni kiriting!";
+
+        return;
+    }
+
+
+    const users =
+        await getUsers();
+
+
     const user =
-        getUsers().find(item =>
+        users.find(
 
-            item.username
-                .toLowerCase()
-                ===
-            username.toLowerCase()
+            item =>
 
-            &&
+                item.username
+                    .toLowerCase()
+                    ===
+                username.toLowerCase()
 
-            item.password === password
+                &&
+
+                item.password ===
+                password
 
         );
 
@@ -152,8 +185,6 @@ function login() {
     };
 
 
-    error.textContent = "";
-
     openMainPage();
 }
 
@@ -162,7 +193,7 @@ function login() {
    MAIN PAGE
 ========================================= */
 
-function openMainPage() {
+async function openMainPage() {
 
     document
         .getElementById("loginPage")
@@ -185,6 +216,7 @@ function openMainPage() {
     document
         .getElementById("userRole")
         .textContent =
+
         currentUser.role === "admin"
             ? "Admin"
             : "Oddiy user";
@@ -193,6 +225,7 @@ function openMainPage() {
     document
         .getElementById("userAvatar")
         .textContent =
+
         currentUser.name
             .charAt(0)
             .toUpperCase();
@@ -220,13 +253,13 @@ function openMainPage() {
 
     updateDate();
 
-    displayOrders();
+    await displayOrders();
 
-    updateDashboard();
+    await updateDashboard();
 
-    checkNotifications();
+    await checkNotifications();
 
-    displayUsers();
+    await displayUsers();
 }
 
 
@@ -264,11 +297,12 @@ function logout() {
     document
         .getElementById("loginError")
         .textContent = "";
+
 }
 
 
 /* =========================================
-   SAHIFA ALMASHTIRISH
+   SAHIFA
 ========================================= */
 
 function showPage(
@@ -277,6 +311,7 @@ function showPage(
 ) {
 
     if (
+
         pageId === "usersPage"
 
         &&
@@ -286,10 +321,11 @@ function showPage(
             ||
             currentUser.role !== "admin"
         )
+
     ) {
 
         alert(
-            "❌ Bu sahifa faqat admin uchun."
+            "❌ Bu sahifa faqat admin uchun!"
         );
 
         return;
@@ -297,19 +333,25 @@ function showPage(
 
 
     const pages =
-        document.querySelectorAll(".page");
+        document.querySelectorAll(
+            ".page"
+        );
 
 
-    pages.forEach(page => {
+    pages.forEach(
+        page => {
 
-        page.classList
-            .add("hidden");
+            page.classList
+                .add("hidden");
 
-    });
+        }
+    );
 
 
     const page =
-        document.getElementById(pageId);
+        document.getElementById(
+            pageId
+        );
 
 
     if (!page) {
@@ -322,8 +364,9 @@ function showPage(
 
 
     const title =
-        document
-        .getElementById("pageTitle");
+        document.getElementById(
+            "pageTitle"
+        );
 
 
     const titles = {
@@ -350,19 +393,32 @@ function showPage(
 
 
     document
-        .querySelectorAll(".menu-btn")
-        .forEach(btn => {
+        .querySelectorAll(
+            ".menu-btn"
+        )
+        .forEach(
+            btn => {
 
-            btn.classList
-                .remove("active");
+                btn.classList
+                    .remove("active");
 
-        });
+            }
+        );
 
 
     if (button) {
 
         button.classList
             .add("active");
+
+    }
+
+
+    if (
+        pageId === "ordersPage"
+    ) {
+
+        displayOrders();
 
     }
 
@@ -379,7 +435,7 @@ function showPage(
 
 
 /* =========================================
-   BUGUNGI SANA
+   DATE
 ========================================= */
 
 function getToday() {
@@ -469,142 +525,210 @@ function calculateRemaining() {
 
 
 /* =========================================
-   FORMADAN ZAKAS OLISH
+   FORM
 ========================================= */
 
 function getOrderFromForm() {
 
     return {
 
-        clientName:
+        client_name:
             document
-            .getElementById("clientName")
+            .getElementById(
+                "clientName"
+            )
             .value
             .trim(),
 
 
-        clientPhone:
+        client_phone:
             document
-            .getElementById("clientPhone")
+            .getElementById(
+                "clientPhone"
+            )
             .value
             .trim(),
 
 
         location:
             document
-            .getElementById("location")
+            .getElementById(
+                "location"
+            )
             .value
             .trim(),
 
 
-        eventDate:
+        event_date:
             document
-            .getElementById("eventDate")
+            .getElementById(
+                "eventDate"
+            )
             .value,
 
 
-        eventTime:
+        event_time:
             document
-            .getElementById("eventTime")
+            .getElementById(
+                "eventTime"
+            )
             .value,
 
 
-        screenHeight:
-            document
-            .getElementById("screenHeight")
-            .value,
+        screen_height:
+            Number(
+                document
+                .getElementById(
+                    "screenHeight"
+                )
+                .value
+            ) || 0,
 
 
-        screenWidth:
-            document
-            .getElementById("screenWidth")
-            .value,
+        screen_width:
+            Number(
+                document
+                .getElementById(
+                    "screenWidth"
+                )
+                .value
+            ) || 0,
 
 
-        stageWidth:
-            document
-            .getElementById("stageWidth")
-            .value,
+        stage_width:
+            Number(
+                document
+                .getElementById(
+                    "stageWidth"
+                )
+                .value
+            ) || 0,
 
 
-        stageLength:
-            document
-            .getElementById("stageLength")
-            .value,
+        stage_length:
+            Number(
+                document
+                .getElementById(
+                    "stageLength"
+                )
+                .value
+            ) || 0,
 
 
         curtain:
             document
-            .getElementById("curtain")
+            .getElementById(
+                "curtain"
+            )
             .value,
 
 
         lights:
-            document
-            .getElementById("lights")
-            .value,
+            Number(
+                document
+                .getElementById(
+                    "lights"
+                )
+                .value
+            ) || 0,
 
 
         galava:
-            document
-            .getElementById("galava")
-            .value,
+            Number(
+                document
+                .getElementById(
+                    "galava"
+                )
+                .value
+            ) || 0,
 
 
         ledwash:
-            document
-            .getElementById("ledwash")
-            .value,
+            Number(
+                document
+                .getElementById(
+                    "ledwash"
+                )
+                .value
+            ) || 0,
 
 
         confetti:
-            document
-            .getElementById("confetti")
-            .value,
+            Number(
+                document
+                .getElementById(
+                    "confetti"
+                )
+                .value
+            ) || 0,
 
 
         dim:
-            document
-            .getElementById("dim")
-            .value,
+            Number(
+                document
+                .getElementById(
+                    "dim"
+                )
+                .value
+            ) || 0,
 
 
         firework:
-            document
-            .getElementById("firework")
-            .value,
+            Number(
+                document
+                .getElementById(
+                    "firework"
+                )
+                .value
+            ) || 0,
 
 
-        sideScreens:
-            document
-            .getElementById("sideScreens")
-            .value,
+        side_screens:
+            Number(
+                document
+                .getElementById(
+                    "sideScreens"
+                )
+                .value
+            ) || 0,
 
 
-        sideHeight:
-            document
-            .getElementById("sideHeight")
-            .value,
+        side_height:
+            Number(
+                document
+                .getElementById(
+                    "sideHeight"
+                )
+                .value
+            ) || 0,
 
 
-        sideWidth:
-            document
-            .getElementById("sideWidth")
-            .value,
+        side_width:
+            Number(
+                document
+                .getElementById(
+                    "sideWidth"
+                )
+                .value
+            ) || 0,
 
 
         paid:
             Number(
                 document
-                .getElementById("paid")
+                .getElementById(
+                    "paid"
+                )
                 .value
             ) || 0,
 
 
-        totalPrice:
+        total_price:
             Number(
                 document
-                .getElementById("totalPrice")
+                .getElementById(
+                    "totalPrice"
+                )
                 .value
             ) || 0
 
@@ -614,22 +738,28 @@ function getOrderFromForm() {
 
 
 /* =========================================
-   ZAKAS SAQLASH / TAHRIRLASH
+   ZAKAS SAQLASH
 ========================================= */
 
-function saveOrderFromForm(event) {
+async function saveOrderFromForm(
+    event
+) {
 
     event.preventDefault();
 
 
     if (
+
         !currentUser
+
         ||
+
         currentUser.role !== "admin"
+
     ) {
 
         alert(
-            "❌ Faqat admin zakasni boshqara oladi!"
+            "❌ Faqat admin zakas boshqara oladi!"
         );
 
         return;
@@ -641,7 +771,7 @@ function saveOrderFromForm(event) {
 
 
     orderData.remaining =
-        orderData.totalPrice
+        orderData.total_price
         -
         orderData.paid;
 
@@ -654,76 +784,73 @@ function saveOrderFromForm(event) {
         .value;
 
 
-    const orders =
-        getOrders();
+    let result;
 
 
     if (editingId) {
 
-        const index =
-            orders.findIndex(
-                order =>
-                    String(order.id)
-                    ===
-                    String(editingId)
+        result =
+            await supabaseClient
+            .from("orders")
+            .update(
+                orderData
+            )
+            .eq(
+                "id",
+                editingId
             );
 
+    } else {
 
-        if (index === -1) {
+        result =
+            await supabaseClient
+            .from("orders")
+            .insert([
+                orderData
+            ]);
 
-            alert(
-                "❌ Zakas topilmadi."
-            );
-
-            return;
-        }
+    }
 
 
-        orders[index] = {
+    if (result.error) {
 
-            ...orders[index],
-
-            ...orderData
-
-        };
+        console.error(
+            result.error
+        );
 
 
         alert(
+            "❌ Zakasni saqlashda xatolik!"
+        );
+
+        return;
+    }
+
+
+    alert(
+
+        editingId
+
+            ?
+
             "✅ Zakas muvaffaqiyatli tahrirlandi!"
-        );
 
-    }
+            :
 
-    else {
-
-        orderData.id =
-            Date.now();
-
-
-        orders.push(
-            orderData
-        );
-
-
-        alert(
             "✅ Zakas muvaffaqiyatli saqlandi!"
-        );
 
-    }
-
-
-    saveOrders(
-        orders
     );
 
 
     resetOrderForm();
 
-    displayOrders();
 
-    updateDashboard();
+    await displayOrders();
 
-    checkNotifications();
+    await updateDashboard();
+
+    await checkNotifications();
+
 
     showPage(
         "ordersPage"
@@ -732,7 +859,9 @@ function saveOrderFromForm(event) {
 
 
 document
-    .getElementById("orderForm")
+    .getElementById(
+        "orderForm"
+    )
     .addEventListener(
         "submit",
         saveOrderFromForm
@@ -746,7 +875,9 @@ document
 function resetOrderForm() {
 
     document
-        .getElementById("orderForm")
+        .getElementById(
+            "orderForm"
+        )
         .reset();
 
 
@@ -790,15 +921,14 @@ function resetOrderForm() {
 
 
     calculateRemaining();
-
 }
 
 
 /* =========================================
-   ZAKASLARNI KO‘RSATISH
+   ZAKASLAR
 ========================================= */
 
-function displayOrders() {
+async function displayOrders() {
 
     const container =
         document
@@ -813,7 +943,7 @@ function displayOrders() {
 
 
     let orders =
-        getOrders();
+        await getOrders();
 
 
     const search =
@@ -830,13 +960,16 @@ function displayOrders() {
 
         orders =
             orders.filter(
+
                 order =>
 
                     String(
-                        order.clientName
+                        order.client_name
                     )
                     .toLowerCase()
-                    .includes(search)
+                    .includes(
+                        search
+                    )
 
                     ||
 
@@ -844,14 +977,18 @@ function displayOrders() {
                         order.location
                     )
                     .toLowerCase()
-                    .includes(search)
+                    .includes(
+                        search
+                    )
 
                     ||
 
                     String(
-                        order.clientPhone
+                        order.client_phone
                     )
-                    .includes(search)
+                    .includes(
+                        search
+                    )
 
             );
 
@@ -859,17 +996,19 @@ function displayOrders() {
 
 
     orders.sort(
+
         (a, b) =>
 
             new Date(
-                `${b.eventDate}T${b.eventTime}`
+                `${b.event_date}T${b.event_time}`
             )
 
             -
 
             new Date(
-                `${a.eventDate}T${a.eventTime}`
+                `${a.event_date}T${a.event_time}`
             )
+
     );
 
 
@@ -903,7 +1042,6 @@ function displayOrders() {
             createOrderHTML
         )
         .join("");
-
 }
 
 
@@ -911,13 +1049,13 @@ function displayOrders() {
    ZAKAS HTML
 ========================================= */
 
-function createOrderHTML(order) {
+function createOrderHTML(
+    order
+) {
 
     const eventDate =
         new Date(
-            order.eventDate
-            +
-            "T00:00:00"
+            `${order.event_date}T00:00:00`
         )
         .toLocaleDateString(
             "uz-UZ"
@@ -934,22 +1072,26 @@ function createOrderHTML(order) {
 
         `
 
-        <div style="
-            margin-top:15px;
-            display:flex;
-            justify-content:flex-end;
-            gap:8px;
-            flex-wrap:wrap;
-        ">
+        <div
+            style="
+                margin-top:15px;
+                display:flex;
+                justify-content:flex-end;
+                gap:8px;
+                flex-wrap:wrap;
+            "
+        >
 
             <button
-                onclick="editOrder(${order.id})"
+                onclick="
+                    editOrder(${order.id})
+                "
                 style="
                     padding:9px 15px;
                     border:0;
                     border-radius:7px;
                     background:#d89b00;
-                    color:#fff;
+                    color:white;
                     cursor:pointer;
                     font-weight:bold;
                 "
@@ -959,13 +1101,15 @@ function createOrderHTML(order) {
 
 
             <button
-                onclick="deleteOrder(${order.id})"
+                onclick="
+                    deleteOrder(${order.id})
+                "
                 style="
                     padding:9px 15px;
                     border:0;
                     border-radius:7px;
                     background:#dc2626;
-                    color:#fff;
+                    color:white;
                     cursor:pointer;
                     font-weight:bold;
                 "
@@ -990,29 +1134,37 @@ function createOrderHTML(order) {
 
                 <div>
 
-                    <div class="order-client">
-                        👤 ${escapeHTML(
-                            order.clientName
+                    <div
+                        class="order-client"
+                    >
+                        👤
+                        ${escapeHTML(
+                            order.client_name
                         )}
                     </div>
 
                     <div>
-                        📞 ${escapeHTML(
-                            order.clientPhone
+                        📞
+                        ${escapeHTML(
+                            order.client_phone
                         )}
                     </div>
 
                 </div>
 
 
-                <div class="order-date">
+                <div
+                    class="order-date"
+                >
 
-                    📅 ${eventDate}
+                    📅
+                    ${eventDate}
 
                     <br>
 
-                    ⏰ ${escapeHTML(
-                        order.eventTime
+                    ⏰
+                    ${escapeHTML(
+                        order.event_time
                     )}
 
                 </div>
@@ -1045,9 +1197,9 @@ function createOrderHTML(order) {
                     </span>
 
                     <strong>
-                        ${order.screenHeight || 0}m
+                        ${order.screen_height || 0}m
                         ×
-                        ${order.screenWidth || 0}m
+                        ${order.screen_width || 0}m
                     </strong>
 
                 </div>
@@ -1060,9 +1212,9 @@ function createOrderHTML(order) {
                     </span>
 
                     <strong>
-                        ${order.stageWidth || 0}m
+                        ${order.stage_width || 0}m
                         ×
-                        ${order.stageLength || 0}m
+                        ${order.stage_length || 0}m
                     </strong>
 
                 </div>
@@ -1154,14 +1306,14 @@ function createOrderHTML(order) {
 
                     <strong>
 
-                        ${order.sideScreens || 0}
+                        ${order.side_screens || 0}
                         dona
 
                         <br>
 
-                        ${order.sideHeight || 0}m
+                        ${order.side_height || 0}m
                         ×
-                        ${order.sideWidth || 0}m
+                        ${order.side_width || 0}m
 
                     </strong>
 
@@ -1189,10 +1341,12 @@ function createOrderHTML(order) {
                         💰 Jami summa
                     </span>
 
-                    <strong class="money">
+                    <strong
+                        class="money"
+                    >
 
                         ${Number(
-                            order.totalPrice || 0
+                            order.total_price || 0
                         ).toLocaleString(
                             "uz-UZ"
                         )}
@@ -1210,7 +1364,9 @@ function createOrderHTML(order) {
                         💵 To‘langan
                     </span>
 
-                    <strong class="money">
+                    <strong
+                        class="money"
+                    >
 
                         ${Number(
                             order.paid || 0
@@ -1231,7 +1387,9 @@ function createOrderHTML(order) {
                         ⚠️ Qolgan
                     </span>
 
-                    <strong class="remaining-money">
+                    <strong
+                        class="remaining-money"
+                    >
 
                         ${Number(
                             order.remaining || 0
@@ -1252,17 +1410,15 @@ function createOrderHTML(order) {
             ${adminButtons}
 
         </div>
-
     `;
-
 }
 
 
 /* =========================================
-   ZAKASNI TAHRIRLASH
+   ZAKAS TAHRIRLASH
 ========================================= */
 
-function editOrder(id) {
+async function editOrder(id) {
 
     if (
         !currentUser
@@ -1274,82 +1430,110 @@ function editOrder(id) {
     }
 
 
-    const order =
-        getOrders()
-        .find(
-            item =>
-                item.id === id
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+        .from("orders")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+
+    if (error || !data) {
+
+        alert(
+            "❌ Zakas topilmadi!"
         );
 
-
-    if (!order) {
         return;
     }
 
 
-    const fields = [
+    const fields = {
 
-        "clientName",
+        clientName:
+            data.client_name,
 
-        "clientPhone",
+        clientPhone:
+            data.client_phone,
 
-        "location",
+        location:
+            data.location,
 
-        "eventDate",
+        eventDate:
+            data.event_date,
 
-        "eventTime",
+        eventTime:
+            data.event_time,
 
-        "screenHeight",
+        screenHeight:
+            data.screen_height,
 
-        "screenWidth",
+        screenWidth:
+            data.screen_width,
 
-        "stageWidth",
+        stageWidth:
+            data.stage_width,
 
-        "stageLength",
+        stageLength:
+            data.stage_length,
 
-        "curtain",
+        curtain:
+            data.curtain,
 
-        "lights",
+        lights:
+            data.lights,
 
-        "galava",
+        galava:
+            data.galava,
 
-        "ledwash",
+        ledwash:
+            data.ledwash,
 
-        "confetti",
+        confetti:
+            data.confetti,
 
-        "dim",
+        dim:
+            data.dim,
 
-        "firework",
+        firework:
+            data.firework,
 
-        "sideScreens",
+        sideScreens:
+            data.side_screens,
 
-        "sideHeight",
+        sideHeight:
+            data.side_height,
 
-        "sideWidth",
+        sideWidth:
+            data.side_width,
 
-        "paid",
+        paid:
+            data.paid,
 
-        "totalPrice"
+        totalPrice:
+            data.total_price
 
-    ];
+    };
 
 
-    fields.forEach(
-        idName => {
+    Object.entries(
+        fields
+    ).forEach(
+        ([key, value]) => {
 
-            const el =
-                document
-                .getElementById(
-                    idName
+            const element =
+                document.getElementById(
+                    key
                 );
 
 
-            if (el) {
+            if (element) {
 
-                el.value =
-                    order[idName]
-                    ??
-                    "";
+                element.value =
+                    value ?? "";
 
             }
 
@@ -1362,7 +1546,7 @@ function editOrder(id) {
             "editingOrderId"
         )
         .value =
-        order.id;
+        id;
 
 
     document
@@ -1412,22 +1596,6 @@ function editOrder(id) {
         behavior: "smooth"
 
     });
-
-}
-
-
-/* =========================================
-   TAHRIRLASHNI BEKOR QILISH
-========================================= */
-
-function cancelEditOrder() {
-
-    resetOrderForm();
-
-    showPage(
-        "ordersPage"
-    );
-
 }
 
 
@@ -1435,7 +1603,7 @@ function cancelEditOrder() {
    ZAKAS O‘CHIRISH
 ========================================= */
 
-function deleteOrder(id) {
+async function deleteOrder(id) {
 
     if (
         !currentUser
@@ -1457,21 +1625,35 @@ function deleteOrder(id) {
     }
 
 
-    saveOrders(
+    const {
+        error
+    } =
+        await supabaseClient
+        .from("orders")
+        .delete()
+        .eq(
+            "id",
+            id
+        );
 
-        getOrders().filter(
-            order =>
-                order.id !== id
-        )
 
-    );
+    if (error) {
+
+        console.error(error);
+
+        alert(
+            "❌ Zakasni o‘chirishda xatolik!"
+        );
+
+        return;
+    }
 
 
-    displayOrders();
+    await displayOrders();
 
-    updateDashboard();
+    await updateDashboard();
 
-    checkNotifications();
+    await checkNotifications();
 
 }
 
@@ -1480,10 +1662,10 @@ function deleteOrder(id) {
    DASHBOARD
 ========================================= */
 
-function updateDashboard() {
+async function updateDashboard() {
 
     const orders =
-        getOrders();
+        await getOrders();
 
 
     const today =
@@ -1492,8 +1674,10 @@ function updateDashboard() {
 
     const todayOrders =
         orders.filter(
+
             order =>
-                order.eventDate === today
+                order.event_date === today
+
         );
 
 
@@ -1507,7 +1691,7 @@ function updateDashboard() {
 
                 const event =
                     new Date(
-                        `${order.eventDate}T${order.eventTime}`
+                        `${order.event_date}T${order.event_time}`
                     );
 
 
@@ -1544,11 +1728,10 @@ function updateDashboard() {
 
                 sum +
                 Number(
-                    order.totalPrice || 0
+                    order.total_price || 0
                 ),
 
             0
-
         );
 
 
@@ -1583,13 +1766,14 @@ function updateDashboard() {
         .textContent =
 
         totalMoney
-        .toLocaleString("uz-UZ")
+        .toLocaleString(
+            "uz-UZ"
+        )
         +
         " so‘m";
 
 
-    displayTodayOrders();
-
+    await displayTodayOrders();
 }
 
 
@@ -1597,7 +1781,7 @@ function updateDashboard() {
    BUGUNGI ZAKASLAR
 ========================================= */
 
-function displayTodayOrders() {
+async function displayTodayOrders() {
 
     const container =
         document.getElementById(
@@ -1611,16 +1795,21 @@ function displayTodayOrders() {
 
 
     const orders =
-        getOrders()
-        .filter(
+        await getOrders();
+
+
+    const todayOrders =
+        orders.filter(
+
             order =>
-                order.eventDate ===
+                order.event_date ===
                 getToday()
+
         );
 
 
     if (
-        orders.length === 0
+        todayOrders.length === 0
     ) {
 
         container.innerHTML = `
@@ -1644,12 +1833,11 @@ function displayTodayOrders() {
 
 
     container.innerHTML =
-        orders
+        todayOrders
         .map(
             createOrderHTML
         )
         .join("");
-
 }
 
 
@@ -1657,11 +1845,10 @@ function displayTodayOrders() {
    OGOHLANTIRISH
 ========================================= */
 
-function checkNotifications() {
+async function checkNotifications() {
 
     const container =
-        document
-        .getElementById(
+        document.getElementById(
             "notifications"
         );
 
@@ -1672,7 +1859,7 @@ function checkNotifications() {
 
 
     const orders =
-        getOrders();
+        await getOrders();
 
 
     const now =
@@ -1687,7 +1874,7 @@ function checkNotifications() {
 
             const event =
                 new Date(
-                    `${order.eventDate}T${order.eventTime}`
+                    `${order.event_date}T${order.event_time}`
                 );
 
 
@@ -1720,13 +1907,13 @@ function checkNotifications() {
                         </strong>
 
                         ${escapeHTML(
-                            order.clientName
+                            order.client_name
                         )}
 
                         —
 
-                        ${order.eventDate}
-                        ${order.eventTime}
+                        ${order.event_date}
+                        ${order.event_time}
 
                         <br>
 
@@ -1736,7 +1923,6 @@ function checkNotifications() {
                         )}
 
                     </div>
-
                 `);
 
             }
@@ -1748,7 +1934,7 @@ function checkNotifications() {
     orders
         .filter(
             order =>
-                order.eventDate ===
+                order.event_date ===
                 getToday()
         )
         .forEach(
@@ -1766,14 +1952,14 @@ function checkNotifications() {
 
                         👤
                         ${escapeHTML(
-                            order.clientName
+                            order.client_name
                         )}
 
                         <br>
 
                         ⏰
                         ${escapeHTML(
-                            order.eventTime
+                            order.event_time
                         )}
 
                         <br>
@@ -1793,7 +1979,6 @@ function checkNotifications() {
 
     container.innerHTML =
         alerts.join("");
-
 }
 
 
@@ -1807,7 +1992,7 @@ document
     )
     .addEventListener(
         "submit",
-        function(event) {
+        async function(event) {
 
             event.preventDefault();
 
@@ -1870,7 +2055,7 @@ document
             ) {
 
                 alert(
-                    "❌ Barcha majburiy maydonlarni to‘ldiring!"
+                    "❌ Barcha maydonlarni to‘ldiring!"
                 );
 
                 return;
@@ -1878,7 +2063,7 @@ document
 
 
             const users =
-                getUsers();
+                await getUsers();
 
 
             const exists =
@@ -1905,35 +2090,50 @@ document
             }
 
 
-            users.push({
+            const {
+                error
+            } =
+                await supabaseClient
+                .from("users")
+                .insert([
 
-                id:
-                    Date.now(),
+                    {
 
-                name,
+                        name,
 
-                username,
+                        username,
 
-                password,
+                        password,
 
-                role
+                        role
 
-            });
+                    }
+
+                ]);
 
 
-            saveUsers(
-                users
-            );
+            if (error) {
+
+                console.error(
+                    error
+                );
+
+                alert(
+                    "❌ User yaratishda xatolik!"
+                );
+
+                return;
+            }
 
 
             this.reset();
 
 
-            displayUsers();
+            await displayUsers();
 
 
             alert(
-                "✅ Yangi user muvaffaqiyatli yaratildi!"
+                "✅ Yangi user yaratildi!"
             );
 
         }
@@ -1941,14 +2141,13 @@ document
 
 
 /* =========================================
-   USERLARNI CHIQARISH
+   USERLAR
 ========================================= */
 
-function displayUsers() {
+async function displayUsers() {
 
     const container =
-        document
-        .getElementById(
+        document.getElementById(
             "usersList"
         );
 
@@ -1972,7 +2171,7 @@ function displayUsers() {
 
 
     const users =
-        getUsers();
+        await getUsers();
 
 
     if (
@@ -2028,8 +2227,7 @@ function displayUsers() {
                             >
 
                                 ${
-                                    user.role
-                                    ===
+                                    user.role ===
                                     "admin"
 
                                     ?
@@ -2039,6 +2237,7 @@ function displayUsers() {
                                     :
 
                                     "USER"
+
                                 }
 
                             </span>
@@ -2078,7 +2277,9 @@ function displayUsers() {
                             </span>
 
                             <strong
-                                id="password-${user.id}"
+                                id="
+                                    password-${user.id}
+                                "
                             >
                                 ••••••••
                             </strong>
@@ -2161,15 +2362,14 @@ function displayUsers() {
             `
         )
         .join("");
-
 }
 
 
 /* =========================================
-   PAROLNI KO‘RISH
+   PAROL KO‘RISH
 ========================================= */
 
-function showUserPassword(id) {
+async function showUserPassword(id) {
 
     if (
         !currentUser
@@ -2181,17 +2381,19 @@ function showUserPassword(id) {
     }
 
 
+    const users =
+        await getUsers();
+
+
     const user =
-        getUsers()
-        .find(
+        users.find(
             item =>
                 item.id === id
         );
 
 
     const element =
-        document
-        .getElementById(
+        document.getElementById(
             `password-${id}`
         );
 
@@ -2208,7 +2410,8 @@ function showUserPassword(id) {
 
     element.textContent =
 
-        element.textContent ===
+        element.textContent
+        ===
         "••••••••"
 
         ?
@@ -2223,10 +2426,12 @@ function showUserPassword(id) {
 
 
 /* =========================================
-   PAROLNI ALMASHTIRISH
+   PAROL ALMASHTIRISH
 ========================================= */
 
-function changeUserPassword(id) {
+async function changeUserPassword(
+    id
+) {
 
     if (
         !currentUser
@@ -2239,7 +2444,7 @@ function changeUserPassword(id) {
 
 
     const users =
-        getUsers();
+        await getUsers();
 
 
     const user =
@@ -2256,12 +2461,9 @@ function changeUserPassword(id) {
 
     const newPassword =
         prompt(
-
             `"${user.username}"
-            uchun yangi parolni kiriting:`,
-
+uchun yangi parolni kiriting:`,
             ""
-
         );
 
 
@@ -2287,30 +2489,53 @@ function changeUserPassword(id) {
     }
 
 
-    user.password =
-        cleanPassword;
+    const {
+        error
+    } =
+        await supabaseClient
+        .from("users")
+        .update({
+
+            password:
+                cleanPassword
+
+        })
+        .eq(
+            "id",
+            id
+        );
 
 
-    saveUsers(
-        users
-    );
+    if (error) {
+
+        console.error(
+            error
+        );
+
+        alert(
+            "❌ Parolni almashtirishda xatolik!"
+        );
+
+        return;
+    }
 
 
-    displayUsers();
+    await displayUsers();
 
 
     alert(
         "✅ Parol muvaffaqiyatli almashtirildi!"
     );
-
 }
 
 
 /* =========================================
-   LOGINNI O‘ZGARTIRISH
+   LOGIN O‘ZGARTIRISH
 ========================================= */
 
-function changeUsername(id) {
+async function changeUsername(
+    id
+) {
 
     if (
         !currentUser
@@ -2323,7 +2548,7 @@ function changeUsername(id) {
 
 
     const users =
-        getUsers();
+        await getUsers();
 
 
     const user =
@@ -2340,12 +2565,9 @@ function changeUsername(id) {
 
     const newUsername =
         prompt(
-
             `"${user.username}"
-            uchun yangi loginni kiriting:`,
-
+uchun yangi loginni kiriting:`,
             user.username
-
         );
 
 
@@ -2361,9 +2583,7 @@ function changeUsername(id) {
         newUsername.trim();
 
 
-    if (
-        !cleanUsername
-    ) {
+    if (!cleanUsername) {
 
         alert(
             "❌ Login bo‘sh bo‘lishi mumkin emas!"
@@ -2401,13 +2621,35 @@ function changeUsername(id) {
     }
 
 
-    user.username =
-        cleanUsername;
+    const {
+        error
+    } =
+        await supabaseClient
+        .from("users")
+        .update({
+
+            username:
+                cleanUsername
+
+        })
+        .eq(
+            "id",
+            id
+        );
 
 
-    saveUsers(
-        users
-    );
+    if (error) {
+
+        console.error(
+            error
+        );
+
+        alert(
+            "❌ Loginni o‘zgartirishda xatolik!"
+        );
+
+        return;
+    }
 
 
     if (
@@ -2420,21 +2662,20 @@ function changeUsername(id) {
     }
 
 
-    displayUsers();
+    await displayUsers();
 
 
     alert(
         "✅ Login muvaffaqiyatli o‘zgartirildi!"
     );
-
 }
 
 
 /* =========================================
-   USERNI O‘CHIRISH
+   USER O‘CHIRISH
 ========================================= */
 
-function deleteUser(id) {
+async function deleteUser(id) {
 
     if (
         !currentUser
@@ -2459,7 +2700,7 @@ function deleteUser(id) {
 
 
     const users =
-        getUsers();
+        await getUsers();
 
 
     const user =
@@ -2477,7 +2718,7 @@ function deleteUser(id) {
     if (
         !confirm(
             `"${user.username}"
-            userini o‘chirmoqchimisiz?`
+userini o‘chirmoqchimisiz?`
         )
     ) {
 
@@ -2485,23 +2726,38 @@ function deleteUser(id) {
     }
 
 
-    saveUsers(
+    const {
+        error
+    } =
+        await supabaseClient
+        .from("users")
+        .delete()
+        .eq(
+            "id",
+            id
+        );
 
-        users.filter(
-            item =>
-                item.id !== id
-        )
 
-    );
+    if (error) {
+
+        console.error(
+            error
+        );
+
+        alert(
+            "❌ Userni o‘chirishda xatolik!"
+        );
+
+        return;
+    }
 
 
-    displayUsers();
+    await displayUsers();
 
 
     alert(
         "✅ User o‘chirildi."
     );
-
 }
 
 
@@ -2539,14 +2795,11 @@ function escapeHTML(value) {
             "'",
             "&#039;"
         );
-
 }
 
 
 /* =========================================
    START
 ========================================= */
-
-initializeUsers();
 
 updateDate();
