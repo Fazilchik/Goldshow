@@ -1,377 +1,233 @@
 /* =========================================================
-   GOLD SHOW
-   FULL SCRIPT.JS
-   ADMIN + WORKER + CUSTOMER
-========================================================= */
-
-
-/* =========================================================
-   SUPABASE
+   GOLD SHOW - FINAL SCRIPT
 ========================================================= */
 
 const SUPABASE_URL =
     "https://mvrrftlhjlbrsiexnwjq.supabase.co";
 
-/*
-   BU YERGA O'ZINGIZNING PUBLISHABLE KEYINGIZNI QO'YING.
-   SECRET KEYNI QO'YMANG.
-*/
 const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_MFI3LFGRmSviFv6ygJnXyg_wFktEpyP";
 
-
-/*
-   Supabase kutubxonasi tekshiriladi.
-*/
 let supabaseClient = null;
-
-if (
-    window.supabase &&
-    typeof window.supabase.createClient === "function"
-) {
-
-    supabaseClient =
-        window.supabase.createClient(
-            SUPABASE_URL,
-            SUPABASE_PUBLISHABLE_KEY
-        );
-
-}
-else {
-
-    console.error(
-        "Supabase JavaScript kutubxonasi yuklanmagan."
-    );
-
-}
-
-
-/* =========================================================
-   GLOBAL
-========================================================= */
-
 let currentUser = null;
 
 let customerEventsPage = 1;
-
 let workerEventsPage = 1;
 
 const EVENTS_PER_PAGE = 10;
 
 let applicationTimer = null;
 
+/* =========================================================
+   SUPABASE
+========================================================= */
+
+if (
+    window.supabase &&
+    typeof window.supabase.createClient === "function"
+) {
+    supabaseClient = window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    );
+}
 
 /* =========================================================
    HELPERS
 ========================================================= */
 
-function escapeHTML(value) {
+const UZ_MONTHS = [
+    "yanvar",
+    "fevral",
+    "mart",
+    "aprel",
+    "may",
+    "iyun",
+    "iyul",
+    "avgust",
+    "sentabr",
+    "oktabr",
+    "noyabr",
+    "dekabr"
+];
 
+function escapeHTML(value) {
     return String(value ?? "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
-
 }
-
 
 function formatMoney(value) {
-
     return (
-        Number(value || 0)
-            .toLocaleString("uz-UZ")
-        + " so‘m"
+        Number(value || 0).toLocaleString("uz-UZ") +
+        " so‘m"
     );
-
 }
-
 
 function getToday() {
+    const now = new Date();
 
-    const date = new Date();
+    const year = now.getFullYear();
 
-    const year =
-        date.getFullYear();
+    const month = String(
+        now.getMonth() + 1
+    ).padStart(2, "0");
 
-    const month =
-        String(
-            date.getMonth() + 1
-        ).padStart(2, "0");
+    const day = String(
+        now.getDate()
+    ).padStart(2, "0");
 
-    const day =
-        String(
-            date.getDate()
-        ).padStart(2, "0");
-
-    return (
-        year +
-        "-" +
-        month +
-        "-" +
-        day
-    );
-
+    return `${year}-${month}-${day}`;
 }
-
 
 function formatDate(value) {
-
     if (!value) {
         return "—";
     }
 
-    return new Date(
-        value + "T00:00:00"
-    ).toLocaleDateString(
-        "uz-UZ"
-    );
+    const parts = String(value).split("-");
 
+    if (parts.length !== 3) {
+        return String(value);
+    }
+
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+
+    if (!year || !month || !day) {
+        return String(value);
+    }
+
+    return `${day}-${UZ_MONTHS[month - 1]} ${year}-yil`;
 }
-
 
 function formatDateTime(value) {
-
     if (!value) {
         return "—";
     }
 
-    return new Date(
-        value
-    ).toLocaleString(
-        "uz-UZ",
-        {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-        }
-    );
+    const date = new Date(value);
 
+    if (Number.isNaN(date.getTime())) {
+        return "—";
+    }
+
+    const day = String(
+        date.getDate()
+    ).padStart(2, "0");
+
+    const month = String(
+        date.getMonth() + 1
+    ).padStart(2, "0");
+
+    const year = date.getFullYear();
+
+    const hour = String(
+        date.getHours()
+    ).padStart(2, "0");
+
+    const minute = String(
+        date.getMinutes()
+    ).padStart(2, "0");
+
+    return `${day}.${month}.${year} ${hour}:${minute}`;
 }
 
-
 function updateDate() {
-
     const element =
-        document.getElementById(
-            "todayDate"
-        );
+        document.getElementById("todayDate");
 
     if (!element) {
         return;
     }
 
+    const date = new Date();
+
     element.textContent =
-        new Date().toLocaleDateString(
-            "uz-UZ",
-            {
-                day: "2-digit",
-                month: "long",
-                year: "numeric"
-            }
-        );
-
+        `${date.getDate()}-${UZ_MONTHS[date.getMonth()]} ${date.getFullYear()}-yil`;
 }
 
-
 /* =========================================================
-   SUPABASE CONNECTION TEST
-========================================================= */
-
-async function testSupabaseConnection() {
-
-    if (!supabaseClient) {
-
-        console.error(
-            "Supabase client mavjud emas."
-        );
-
-        return false;
-
-    }
-
-
-    try {
-
-        const result =
-            await supabaseClient
-                .from("users")
-                .select("id")
-                .limit(1);
-
-
-        if (result.error) {
-
-            console.error(
-                "SUPABASE CONNECTION ERROR:",
-                result.error
-            );
-
-            return false;
-
-        }
-
-
-        console.log(
-            "✅ Supabase ulanishi ishlayapti."
-        );
-
-        return true;
-
-    }
-    catch (error) {
-
-        console.error(
-            "SUPABASE CONNECTION EXCEPTION:",
-            error
-        );
-
-        return false;
-
-    }
-
-}
-
-
-/* =========================================================
-   PAGE CONTROL
+   PAGE
 ========================================================= */
 
 function hideAllPages() {
-
-    const pages = [
+    [
         "landingPage",
         "loginPage",
         "customerPage",
         "mainPage"
-    ];
+    ].forEach(function(id) {
 
+        const element =
+            document.getElementById(id);
 
-    pages.forEach(
-        function(id) {
-
-            const element =
-                document.getElementById(
-                    id
-                );
-
-            if (element) {
-
-                element.classList.add(
-                    "hidden"
-                );
-
-            }
-
+        if (element) {
+            element.classList.add("hidden");
         }
-    );
 
+    });
 }
-
 
 function backToLanding() {
-
     currentUser = null;
 
-    hideAllPages();
+    if (applicationTimer) {
+        clearInterval(applicationTimer);
+    }
 
+    applicationTimer = null;
+
+    hideAllPages();
 
     const landing =
-        document.getElementById(
-            "landingPage"
-        );
-
+        document.getElementById("landingPage");
 
     if (landing) {
-
-        landing.classList.remove(
-            "hidden"
-        );
-
+        landing.classList.remove("hidden");
     }
-
 
     closeOrderModal();
-
 }
 
-
-/* =========================================================
-   CUSTOMER
-========================================================= */
-
 async function openCustomerPage() {
-
     hideAllPages();
 
-
     const page =
-        document.getElementById(
-            "customerPage"
-        );
-
+        document.getElementById("customerPage");
 
     if (page) {
-
-        page.classList.remove(
-            "hidden"
-        );
-
+        page.classList.remove("hidden");
     }
-
 
     customerEventsPage = 1;
 
-
     await loadCustomerEvents();
 
-
     restoreApplicationStatus();
-
 }
-
-
-/* =========================================================
-   WORKER LOGIN
-========================================================= */
 
 function openWorkerLogin() {
-
     hideAllPages();
 
+    const login =
+        document.getElementById("loginPage");
 
-    const loginPage =
-        document.getElementById(
-            "loginPage"
-        );
-
-
-    if (loginPage) {
-
-        loginPage.classList.remove(
-            "hidden"
-        );
-
+    if (login) {
+        login.classList.remove("hidden");
     }
-
 
     const username =
-        document.getElementById(
-            "username"
-        );
-
+        document.getElementById("username");
 
     if (username) {
-
         username.focus();
-
     }
-
 }
-
 
 /* =========================================================
    LOGIN
@@ -379,91 +235,48 @@ function openWorkerLogin() {
 
 async function login(event) {
 
-    event.preventDefault();
-
+    if (event) {
+        event.preventDefault();
+    }
 
     const usernameElement =
-        document.getElementById(
-            "username"
-        );
-
+        document.getElementById("username");
 
     const passwordElement =
-        document.getElementById(
-            "password"
-        );
-
+        document.getElementById("password");
 
     const errorElement =
-        document.getElementById(
-            "loginError"
-        );
-
+        document.getElementById("loginError");
 
     if (
         !usernameElement ||
         !passwordElement ||
         !errorElement
     ) {
-
         return;
-
     }
 
-
     const username =
-        usernameElement
-            .value
-            .trim();
-
+        usernameElement.value.trim();
 
     const password =
-        passwordElement
-            .value
-            .trim();
-
+        passwordElement.value.trim();
 
     errorElement.textContent = "";
 
-
-    if (
-        username === "" ||
-        password === ""
-    ) {
-
+    if (!username || !password) {
         errorElement.textContent =
             "❌ Login va parolni kiriting.";
-
         return;
-
     }
-
-
-    /*
-       Supabase mavjudligini tekshiramiz.
-    */
 
     if (!supabaseClient) {
-
         errorElement.textContent =
-            "❌ Supabase kutubxonasi yuklanmagan.";
-
+            "❌ Supabase ulanmagan.";
         return;
-
     }
 
-
     try {
-
-        console.log(
-            "Login tekshirilmoqda:",
-            username
-        );
-
-
-        /*
-           USERS jadvalidan login/parolni qidirish.
-        */
 
         const result =
             await supabaseClient
@@ -481,40 +294,19 @@ async function login(event) {
                 )
                 .limit(1);
 
-
-        console.log(
-            "LOGIN RESULT:",
-            result
-        );
-
-
-        /*
-           SUPABASE XATOSI
-        */
-
         if (result.error) {
 
             console.error(
-                "SUPABASE LOGIN ERROR:",
+                "LOGIN ERROR:",
                 result.error
             );
 
-
             errorElement.textContent =
                 "❌ " +
-                (
-                    result.error.message ||
-                    "Server bilan ulanishda xatolik."
-                );
+                result.error.message;
 
             return;
-
         }
-
-
-        /*
-           USER TOPILMADI
-        */
 
         if (
             !result.data ||
@@ -525,21 +317,10 @@ async function login(event) {
                 "❌ Login yoki parol noto‘g‘ri.";
 
             return;
-
         }
-
-
-        /*
-           USER
-        */
 
         const user =
             result.data[0];
-
-
-        /*
-           ROLE
-        */
 
         const role =
             String(
@@ -547,11 +328,6 @@ async function login(event) {
             )
             .trim()
             .toLowerCase();
-
-
-        /*
-           FAQAT ADMIN VA USER
-        */
 
         if (
             role !== "admin" &&
@@ -561,98 +337,44 @@ async function login(event) {
             errorElement.textContent =
                 "❌ User roli noto‘g‘ri.";
 
-            console.error(
-                "Noto‘g‘ri role:",
-                user.role
-            );
-
             return;
-
         }
-
-
-        /*
-           CURRENT USER
-        */
 
         currentUser = {
-
-            id:
-                user.id,
-
-            name:
-                user.name,
-
-            username:
-                user.username,
-
-            role:
-                role
-
+            id: user.id,
+            name: user.name,
+            username: user.username,
+            role: role
         };
 
-
-        /*
-           INPUTLARNI TOZALASH
-        */
-
         usernameElement.value = "";
-
         passwordElement.value = "";
 
-
-        /*
-           ADMIN
-        */
-
-        if (
-            currentUser.role === "admin"
-        ) {
-
+        if (role === "admin") {
             await openAdminPage();
-
-            return;
-
-        }
-
-
-        /*
-           ISHCHI
-        */
-
-        if (
-            currentUser.role === "user"
-        ) {
-
+        } else {
             await openWorkerPage();
-
-            return;
-
         }
 
     }
-    catch (errorObject) {
+    catch (error) {
 
         console.error(
             "LOGIN EXCEPTION:",
-            errorObject
+            error
         );
-
 
         errorElement.textContent =
             "❌ " +
             (
-                errorObject.message ||
-                "Server bilan ulanishda xatolik."
+                error.message ||
+                "Kirishda xatolik."
             );
-
     }
-
 }
 
-
 /* =========================================================
-   ADMIN PAGE
+   ADMIN / WORKER
 ========================================================= */
 
 async function openAdminPage() {
@@ -661,74 +383,12 @@ async function openAdminPage() {
         "ADMIN PANEL"
     );
 
-
-    const addOrderMenu =
-        document.getElementById(
-            "addOrderMenu"
-        );
-
-
-    if (addOrderMenu) {
-
-        addOrderMenu.style.display =
-            "block";
-
-    }
-
-
-    const applicationsMenu =
-        document.getElementById(
-            "applicationsMenu"
-        );
-
-
-    if (applicationsMenu) {
-
-        applicationsMenu.style.display =
-            "block";
-
-    }
-
-
-    const usersMenu =
-        document.getElementById(
-            "usersMenu"
-        );
-
-
-    if (usersMenu) {
-
-        usersMenu.style.display =
-            "block";
-
-    }
-
-
-    const eventAdminForm =
-        document.getElementById(
-            "workerEventAdminForm"
-        );
-
-
-    if (eventAdminForm) {
-
-        eventAdminForm.classList.remove(
-            "hidden"
-        );
-
-    }
-
+    toggleRoleMenus(true);
 
     await showPage(
         "dashboardPage"
     );
-
 }
-
-
-/* =========================================================
-   WORKER PAGE
-========================================================= */
 
 async function openWorkerPage() {
 
@@ -736,74 +396,43 @@ async function openWorkerPage() {
         "ISHCHI PANEL"
     );
 
-
-    const addOrderMenu =
-        document.getElementById(
-            "addOrderMenu"
-        );
-
-
-    if (addOrderMenu) {
-
-        addOrderMenu.style.display =
-            "none";
-
-    }
-
-
-    const applicationsMenu =
-        document.getElementById(
-            "applicationsMenu"
-        );
-
-
-    if (applicationsMenu) {
-
-        applicationsMenu.style.display =
-            "none";
-
-    }
-
-
-    const usersMenu =
-        document.getElementById(
-            "usersMenu"
-        );
-
-
-    if (usersMenu) {
-
-        usersMenu.style.display =
-            "none";
-
-    }
-
-
-    const eventAdminForm =
-        document.getElementById(
-            "workerEventAdminForm"
-        );
-
-
-    if (eventAdminForm) {
-
-        eventAdminForm.classList.add(
-            "hidden"
-        );
-
-    }
-
+    toggleRoleMenus(false);
 
     await showPage(
         "dashboardPage"
     );
-
 }
 
+function toggleRoleMenus(isAdmin) {
 
-/* =========================================================
-   PREPARE MAIN PAGE
-========================================================= */
+    [
+        "addOrderMenu",
+        "applicationsMenu",
+        "usersMenu"
+    ].forEach(function(id) {
+
+        const element =
+            document.getElementById(id);
+
+        if (element) {
+            element.style.display =
+                isAdmin ? "block" : "none";
+        }
+
+    });
+
+    const eventForm =
+        document.getElementById(
+            "workerEventAdminForm"
+        );
+
+    if (eventForm) {
+        eventForm.classList.toggle(
+            "hidden",
+            !isAdmin
+        );
+    }
+}
 
 async function prepareMainPage(
     panelTitle
@@ -811,141 +440,72 @@ async function prepareMainPage(
 
     hideAllPages();
 
-
     const mainPage =
-        document.getElementById(
-            "mainPage"
-        );
-
+        document.getElementById("mainPage");
 
     if (!mainPage) {
-
-        console.error(
-            "mainPage topilmadi."
-        );
-
         return;
-
     }
 
+    mainPage.classList.remove("hidden");
 
-    mainPage.classList.remove(
-        "hidden"
-    );
+    if (currentUser) {
 
+        const currentUserElement =
+            document.getElementById(
+                "currentUser"
+            );
 
-    /*
-       USER
-    */
+        if (currentUserElement) {
+            currentUserElement.textContent =
+                currentUser.name;
+        }
 
-    const currentUserElement =
-        document.getElementById(
-            "currentUser"
-        );
+        const roleElement =
+            document.getElementById(
+                "userRole"
+            );
 
+        if (roleElement) {
+            roleElement.textContent =
+                currentUser.role === "admin"
+                    ? "ADMIN"
+                    : "ISHCHI";
+        }
 
-    if (
-        currentUserElement &&
-        currentUser
-    ) {
+        const avatar =
+            document.getElementById(
+                "userAvatar"
+            );
 
-        currentUserElement.textContent =
-            currentUser.name;
-
-    }
-
-
-    /*
-       ROLE
-    */
-
-    const roleElement =
-        document.getElementById(
-            "userRole"
-        );
-
-
-    if (
-        roleElement &&
-        currentUser
-    ) {
-
-        roleElement.textContent =
-            currentUser.role === "admin"
-                ? "ADMIN"
-                : "ISHCHI";
-
-    }
-
-
-    /*
-       AVATAR
-    */
-
-    const avatar =
-        document.getElementById(
-            "userAvatar"
-        );
-
-
-    if (
-        avatar &&
-        currentUser
-    ) {
-
-        avatar.textContent =
-            currentUser.name
+        if (avatar) {
+            avatar.textContent =
+                (
+                    currentUser.name ||
+                    "G"
+                )
                 .charAt(0)
                 .toUpperCase();
-
+        }
     }
-
-
-    /*
-       TITLE
-    */
 
     const pageTitle =
         document.getElementById(
             "pageTitle"
         );
 
-
     if (pageTitle) {
-
         pageTitle.textContent =
             panelTitle;
-
     }
-
 
     updateDate();
 
-
-    /*
-       DASHBOARD
-    */
-
     await updateDashboard();
-
-
-    /*
-       ZAKASLAR
-    */
 
     await displayOrders();
 
-
-    /*
-       TADBIRLAR
-    */
-
     await loadWorkerEvents();
-
-
-    /*
-       FAQAT ADMIN
-    */
 
     if (
         currentUser &&
@@ -955,65 +515,35 @@ async function prepareMainPage(
         await displayUsers();
 
         await loadApplications();
-
     }
-
 }
-
-
-/* =========================================================
-   COMPATIBILITY
-========================================================= */
 
 async function openMainPage() {
 
     if (!currentUser) {
-
         return;
-
     }
-
 
     if (
         currentUser.role === "admin"
     ) {
-
         await openAdminPage();
-
     }
     else {
-
         await openWorkerPage();
-
     }
-
 }
-
-
-/* =========================================================
-   LOGOUT
-========================================================= */
 
 function logout() {
 
-    currentUser = null;
-
-
     if (applicationTimer) {
-
-        clearInterval(
-            applicationTimer
-        );
-
-        applicationTimer = null;
-
+        clearInterval(applicationTimer);
     }
 
+    applicationTimer = null;
 
     backToLanding();
-
 }
-
 
 /* =========================================================
    MENU
@@ -1024,12 +554,14 @@ async function showPage(
     button = null
 ) {
 
-    /*
-       USERLAR FAQAT ADMIN
-    */
+    const adminOnlyPages = [
+        "usersPage",
+        "applicationsPage",
+        "addOrderPage"
+    ];
 
     if (
-        pageId === "usersPage" &&
+        adminOnlyPages.includes(pageId) &&
         (
             !currentUser ||
             currentUser.role !== "admin"
@@ -1041,103 +573,28 @@ async function showPage(
         );
 
         return;
-
     }
 
-
-    /*
-       ARIZALAR FAQAT ADMIN
-    */
-
-    if (
-        pageId === "applicationsPage" &&
-        (
-            !currentUser ||
-            currentUser.role !== "admin"
-        )
-    ) {
-
-        alert(
-            "❌ Bu sahifa faqat admin uchun."
-        );
-
-        return;
-
-    }
-
-
-    /*
-       ZAKAS QO'SHISH FAQAT ADMIN
-    */
-
-    if (
-        pageId === "addOrderPage" &&
-        (
-            !currentUser ||
-            currentUser.role !== "admin"
-        )
-    ) {
-
-        alert(
-            "❌ Zakas qo‘shish faqat admin uchun."
-        );
-
-        return;
-
-    }
-
-
-    /*
-       BOSHQA PAGE'LARNI YOPISH
-    */
-
-    const pages =
-        document.querySelectorAll(
+    document
+        .querySelectorAll(
             "#mainPage .page"
-        );
-
-
-    pages.forEach(
-        function(page) {
+        )
+        .forEach(function(page) {
 
             page.classList.add(
                 "hidden"
             );
 
-        }
-    );
-
-
-    /*
-       TARGET
-    */
+        });
 
     const target =
-        document.getElementById(
-            pageId
-        );
-
+        document.getElementById(pageId);
 
     if (!target) {
-
-        console.error(
-            "Page topilmadi:",
-            pageId
-        );
-
         return;
-
     }
 
-
-    target.classList.remove(
-        "hidden"
-    );
-
-
-    /*
-       TITLE
-    */
+    target.classList.remove("hidden");
 
     const titles = {
 
@@ -1164,374 +621,210 @@ async function showPage(
 
     };
 
-
     const pageTitle =
         document.getElementById(
             "pageTitle"
         );
 
-
     if (pageTitle) {
-
         pageTitle.textContent =
             titles[pageId] ||
             "Gold Show";
-
     }
-
-
-    /*
-       ACTIVE
-    */
 
     document
         .querySelectorAll(
             "#mainPage .menu-btn"
         )
-        .forEach(
-            function(menuButton) {
+        .forEach(function(btn) {
 
-                menuButton.classList.remove(
-                    "active"
-                );
+            btn.classList.remove(
+                "active"
+            );
 
-            }
-        );
-
+        });
 
     if (button) {
-
-        button.classList.add(
-            "active"
-        );
-
+        button.classList.add("active");
     }
 
-
-    /*
-       DATA
-    */
-
-    if (
-        pageId ===
-        "dashboardPage"
-    ) {
-
+    if (pageId === "dashboardPage") {
         await updateDashboard();
-
     }
 
-
-    if (
-        pageId ===
-        "ordersPage"
-    ) {
-
+    if (pageId === "ordersPage") {
         await displayOrders();
-
     }
 
-
-    if (
-        pageId ===
-        "addOrderPage"
-    ) {
-
+    if (pageId === "addOrderPage") {
         calculateRemaining();
-
     }
 
-
-    if (
-        pageId ===
-        "workerEventsPage"
-    ) {
-
+    if (pageId === "workerEventsPage") {
         await loadWorkerEvents();
-
     }
 
-
-    if (
-        pageId ===
-        "applicationsPage"
-    ) {
-
+    if (pageId === "applicationsPage") {
         await loadApplications();
-
     }
 
-
-    if (
-        pageId ===
-        "usersPage"
-    ) {
-
+    if (pageId === "usersPage") {
         await displayUsers();
-
     }
-
 }
 
-
 /* =========================================================
-   ORDER CALCULATION
+   ORDER
 ========================================================= */
 
 function calculateRemaining() {
 
-    const totalElement =
-        document.getElementById(
-            "totalPrice"
-        );
+    const total =
+        Number(
+            document.getElementById(
+                "totalPrice"
+            )?.value
+        ) || 0;
 
+    const paid =
+        Number(
+            document.getElementById(
+                "paid"
+            )?.value
+        ) || 0;
 
-    const paidElement =
-        document.getElementById(
-            "paid"
-        );
-
-
-    const remainingElement =
+    const remaining =
         document.getElementById(
             "remaining"
         );
 
-
-    if (
-        !totalElement ||
-        !paidElement ||
-        !remainingElement
-    ) {
-
-        return;
-
+    if (remaining) {
+        remaining.textContent =
+            formatMoney(
+                total - paid
+            );
     }
-
-
-    const total =
-        Number(
-            totalElement.value
-        ) || 0;
-
-
-    const paid =
-        Number(
-            paidElement.value
-        ) || 0;
-
-
-    remainingElement.textContent =
-        formatMoney(
-            total - paid
-        );
-
 }
 
-
-/* =========================================================
-   GET ORDER FORM
-========================================================= */
-
 function getOrderFromForm() {
+
+    const getValue =
+        function(id) {
+
+            const element =
+                document.getElementById(id);
+
+            return element
+                ? element.value
+                : "";
+        };
 
     return {
 
         client_name:
-            document
-                .getElementById(
-                    "clientName"
-                )
-                .value
+            getValue("clientName")
                 .trim(),
 
         client_phone:
-            document
-                .getElementById(
-                    "clientPhone"
-                )
-                .value
+            getValue("clientPhone")
                 .trim(),
 
         location:
-            document
-                .getElementById(
-                    "location"
-                )
-                .value
+            getValue("location")
                 .trim(),
 
         event_date:
-            document
-                .getElementById(
-                    "eventDate"
-                )
-                .value,
+            getValue("eventDate"),
 
         event_time:
-            document
-                .getElementById(
-                    "eventTime"
-                )
-                .value,
+            getValue("eventTime"),
 
         screen_height:
             Number(
-                document
-                    .getElementById(
-                        "screenHeight"
-                    )
-                    .value
+                getValue("screenHeight")
             ) || 0,
 
         screen_width:
             Number(
-                document
-                    .getElementById(
-                        "screenWidth"
-                    )
-                    .value
+                getValue("screenWidth")
             ) || 0,
 
         stage_width:
             Number(
-                document
-                    .getElementById(
-                        "stageWidth"
-                    )
-                    .value
+                getValue("stageWidth")
             ) || 0,
 
         stage_length:
             Number(
-                document
-                    .getElementById(
-                        "stageLength"
-                    )
-                    .value
+                getValue("stageLength")
             ) || 0,
 
         curtain:
-            document
-                .getElementById(
-                    "curtain"
-                )
-                .value,
+            getValue("curtain") ||
+            "Yo‘q",
 
         lights:
             Number(
-                document
-                    .getElementById(
-                        "lights"
-                    )
-                    .value
+                getValue("lights")
             ) || 0,
 
         galava:
             Number(
-                document
-                    .getElementById(
-                        "galava"
-                    )
-                    .value
+                getValue("galava")
             ) || 0,
 
         ledwash:
             Number(
-                document
-                    .getElementById(
-                        "ledwash"
-                    )
-                    .value
+                getValue("ledwash")
             ) || 0,
 
         confetti:
             Number(
-                document
-                    .getElementById(
-                        "confetti"
-                    )
-                    .value
+                getValue("confetti")
             ) || 0,
 
         dim:
             Number(
-                document
-                    .getElementById(
-                        "dim"
-                    )
-                    .value
+                getValue("dim")
             ) || 0,
 
         firework:
             Number(
-                document
-                    .getElementById(
-                        "firework"
-                    )
-                    .value
+                getValue("firework")
             ) || 0,
 
         side_screens:
             Number(
-                document
-                    .getElementById(
-                        "sideScreens"
-                    )
-                    .value
+                getValue("sideScreens")
             ) || 0,
 
         side_height:
             Number(
-                document
-                    .getElementById(
-                        "sideHeight"
-                    )
-                    .value
+                getValue("sideHeight")
             ) || 0,
 
         side_width:
             Number(
-                document
-                    .getElementById(
-                        "sideWidth"
-                    )
-                    .value
+                getValue("sideWidth")
             ) || 0,
 
         paid:
             Number(
-                document
-                    .getElementById(
-                        "paid"
-                    )
-                    .value
+                getValue("paid")
             ) || 0,
 
         total_price:
             Number(
-                document
-                    .getElementById(
-                        "totalPrice"
-                    )
-                    .value
+                getValue("totalPrice")
             ) || 0
-
     };
-
 }
-
-
-/* =========================================================
-   SAVE ORDER
-========================================================= */
 
 async function saveOrderFromForm(
     event
 ) {
 
     event.preventDefault();
-
 
     if (
         !currentUser ||
@@ -1543,72 +836,95 @@ async function saveOrderFromForm(
         );
 
         return;
-
     }
 
+    if (!supabaseClient) {
+
+        alert(
+            "❌ Supabase ulanmagan."
+        );
+
+        return;
+    }
 
     const order =
         getOrderFromForm();
 
+    if (!order.client_name) {
+        alert(
+            "❌ Mijoz ismini kiriting."
+        );
+        return;
+    }
+
+    if (!order.client_phone) {
+        alert(
+            "❌ Telefon raqamini kiriting."
+        );
+        return;
+    }
+
+    if (!order.location) {
+        alert(
+            "❌ Manzilni kiriting."
+        );
+        return;
+    }
+
+    if (!order.event_date) {
+        alert(
+            "❌ Tadbir sanasini tanlang."
+        );
+        return;
+    }
+
+    if (!order.event_time) {
+        alert(
+            "❌ Tadbir vaqtini tanlang."
+        );
+        return;
+    }
 
     order.remaining =
         order.total_price -
         order.paid;
 
-
     const editingId =
-        document
-            .getElementById(
-                "editingOrderId"
-            )
-            .value;
-
+        document.getElementById(
+            "editingOrderId"
+        )?.value.trim();
 
     try {
 
+        let result;
+
         if (editingId) {
 
-            const result =
+            result =
                 await supabaseClient
                     .from("orders")
                     .update(order)
                     .eq(
                         "id",
-                        editingId
-                    );
-
-
-            if (result.error) {
-                throw result.error;
-            }
-
-
-            alert(
-                "✅ Zakas yangilandi."
-            );
+                        Number(editingId)
+                    )
+                    .select()
+                    .single();
 
         }
         else {
 
-            const result =
+            result =
                 await supabaseClient
                     .from("orders")
-                    .insert(
-                        [order]
-                    );
-
-
-            if (result.error) {
-                throw result.error;
-            }
-
-
-            alert(
-                "✅ Zakas qo‘shildi."
-            );
-
+                    .insert(order)
+                    .select()
+                    .single();
         }
 
+        if (result.error) {
+            throw result.error;
+        }
 
         resetOrderForm();
 
@@ -1620,38 +936,35 @@ async function saveOrderFromForm(
             "ordersPage"
         );
 
+        alert(
+            editingId
+                ? "✅ Zakas yangilandi."
+                : "✅ Zakas muvaffaqiyatli qo‘shildi."
+        );
+
     }
-    catch (errorObject) {
+    catch (error) {
 
         console.error(
             "ORDER ERROR:",
-            errorObject
+            error
         );
-
 
         alert(
-            "❌ Zakasni saqlashda xatolik: " +
+            "❌ Zakas qo‘shilmadi:\n" +
             (
-                errorObject.message ||
-                ""
+                error.message ||
+                "Noma'lum xatolik"
             )
         );
-
     }
-
 }
-
-
-/* =========================================================
-   GET ORDERS
-========================================================= */
 
 async function getOrders() {
 
     if (!supabaseClient) {
         return [];
     }
-
 
     const result =
         await supabaseClient
@@ -1670,7 +983,6 @@ async function getOrders() {
                 }
             );
 
-
     if (result.error) {
 
         console.error(
@@ -1679,18 +991,10 @@ async function getOrders() {
         );
 
         return [];
-
     }
 
-
     return result.data || [];
-
 }
-
-
-/* =========================================================
-   DISPLAY ORDERS
-========================================================= */
 
 async function displayOrders() {
 
@@ -1699,113 +1003,76 @@ async function displayOrders() {
             "ordersList"
         );
 
-
     if (!container) {
         return;
     }
 
-
     let orders =
         await getOrders();
 
-
-    const searchInput =
-        document.getElementById(
-            "searchInput"
-        );
-
-
     const search =
-        searchInput
-            ? searchInput.value
-                .toLowerCase()
-                .trim()
-            : "";
+        (
+            document.getElementById(
+                "searchInput"
+            )?.value || ""
+        )
+        .toLowerCase()
+        .trim();
 
-
-    if (search !== "") {
+    if (search) {
 
         orders =
-            orders.filter(
-                function(order) {
+            orders.filter(function(order) {
 
-                    return (
+                return (
 
-                        String(
-                            order.client_name
-                        )
-                        .toLowerCase()
-                        .includes(search)
+                    String(
+                        order.client_name
+                    )
+                    .toLowerCase()
+                    .includes(search)
 
-                        ||
+                    ||
 
-                        String(
-                            order.client_phone
-                        )
-                        .toLowerCase()
-                        .includes(search)
+                    String(
+                        order.client_phone
+                    )
+                    .toLowerCase()
+                    .includes(search)
 
-                        ||
+                    ||
 
-                        String(
-                            order.location
-                        )
-                        .toLowerCase()
-                        .includes(search)
+                    String(
+                        order.location
+                    )
+                    .toLowerCase()
+                    .includes(search)
+                );
 
-                    );
-
-                }
-            );
-
+            });
     }
 
-
-    if (
-        orders.length === 0
-    ) {
+    if (!orders.length) {
 
         container.innerHTML = `
-
             <div class="no-orders">
-
-                <h3>
-                    📭 Zakas topilmadi
-                </h3>
-
-                <p>
-                    Hozircha zakas mavjud emas.
-                </p>
-
+                <h3>📭 Zakas topilmadi</h3>
+                <p>Hozircha zakas mavjud emas.</p>
             </div>
-
         `;
 
         return;
-
     }
-
 
     container.innerHTML =
         orders
-            .map(
-                createOrderHTML
-            )
+            .map(createOrderHTML)
             .join("");
-
 }
 
-
-/* =========================================================
-   ORDER HTML
-========================================================= */
-
-function createOrderHTML(
-    order
-) {
+function createOrderHTML(order) {
 
     let adminButtons = "";
-
 
     if (
         currentUser &&
@@ -1813,7 +1080,6 @@ function createOrderHTML(
     ) {
 
         adminButtons = `
-
             <div
                 style="
                     display:flex;
@@ -1822,41 +1088,26 @@ function createOrderHTML(
                     margin-top:15px;
                 "
             >
-
                 <button
                     type="button"
                     class="btn-edit"
-                    onclick="
-                        editOrder(
-                            ${order.id}
-                        )
-                    "
+                    onclick="editOrder(${Number(order.id)})"
                 >
                     ✏️ Tahrirlash
                 </button>
 
-
                 <button
                     type="button"
                     class="btn-delete"
-                    onclick="
-                        deleteOrder(
-                            ${order.id}
-                        )
-                    "
+                    onclick="deleteOrder(${Number(order.id)})"
                 >
-                    🗑️ O‘chirish
+                    🗑 O‘chirish
                 </button>
-
             </div>
-
         `;
-
     }
 
-
     return `
-
         <div class="order-card">
 
             <div class="order-header">
@@ -1864,37 +1115,28 @@ function createOrderHTML(
                 <div>
 
                     <div class="order-client">
-
-                        👤
-                        ${escapeHTML(
+                        👤 ${escapeHTML(
                             order.client_name
                         )}
-
                     </div>
 
                     <div>
-
-                        📞
-                        ${escapeHTML(
+                        📞 ${escapeHTML(
                             order.client_phone
                         )}
-
                     </div>
 
                 </div>
 
-
                 <div class="order-date">
 
-                    📅
-                    ${formatDate(
+                    📅 ${formatDate(
                         order.event_date
                     )}
 
                     <br>
 
-                    ⏰
-                    ${escapeHTML(
+                    ⏰ ${escapeHTML(
                         order.event_time || ""
                     )}
 
@@ -1902,241 +1144,135 @@ function createOrderHTML(
 
             </div>
 
-
             <div class="order-grid">
 
                 <div class="info">
-
-                    <span>
-                        📍 Manzil
-                    </span>
-
+                    <span>📍 Manzil</span>
                     <strong>
                         ${escapeHTML(
                             order.location
                         )}
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        🖥 Ekran
-                    </span>
-
+                    <span>🖥 Ekran</span>
                     <strong>
-
                         ${order.screen_height || 0}m
                         ×
                         ${order.screen_width || 0}m
-
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        🎭 Sahna
-                    </span>
-
+                    <span>🎭 Sahna</span>
                     <strong>
-
                         ${order.stage_width || 0}m
                         ×
                         ${order.stage_length || 0}m
-
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        💡 Chiroq
-                    </span>
-
+                    <span>💡 Chiroq</span>
                     <strong>
                         ${order.lights || 0}
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        🔆 Galava
-                    </span>
-
+                    <span>🔆 Galava</span>
                     <strong>
                         ${order.galava || 0}
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        💡 LED Wash
-                    </span>
-
+                    <span>💡 LED Wash</span>
                     <strong>
                         ${order.ledwash || 0}
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        🎉 Konfetti
-                    </span>
-
+                    <span>🎉 Konfetti</span>
                     <strong>
                         ${order.confetti || 0}
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        💡 Dim
-                    </span>
-
+                    <span>💡 Dim</span>
                     <strong>
                         ${order.dim || 0}
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        🎆 Firework
-                    </span>
-
+                    <span>🎆 Firework</span>
                     <strong>
                         ${order.firework || 0}
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        🖥 Yon ekran
-                    </span>
-
+                    <span>🖥 Yon ekran</span>
                     <strong>
-
-                        ${order.side_screens || 0}
-                        dona
-
+                        ${order.side_screens || 0} dona
                         <br>
-
                         ${order.side_height || 0}m
                         ×
                         ${order.side_width || 0}m
-
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        🎭 Parda
-                    </span>
-
+                    <span>🎭 Parda</span>
                     <strong>
-
                         ${escapeHTML(
-                            order.curtain ||
-                            "Yo‘q"
+                            order.curtain || "Yo‘q"
                         )}
-
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        💰 Jami
-                    </span>
-
+                    <span>💰 Jami</span>
                     <strong class="money">
-
                         ${formatMoney(
                             order.total_price
                         )}
-
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        💵 To‘langan
-                    </span>
-
+                    <span>💵 To‘langan</span>
                     <strong class="money">
-
                         ${formatMoney(
                             order.paid
                         )}
-
                     </strong>
-
                 </div>
 
-
                 <div class="info">
-
-                    <span>
-                        ⚠️ Qolgan
-                    </span>
-
+                    <span>⚠️ Qolgan</span>
                     <strong class="remaining-money">
-
                         ${formatMoney(
                             order.remaining
                         )}
-
                     </strong>
-
                 </div>
 
             </div>
 
-
             ${adminButtons}
 
         </div>
-
     `;
-
 }
 
-
-/* =========================================================
+/* =========================================
    EDIT ORDER
-========================================================= */
+========================================= */
 
 async function editOrder(id) {
 
@@ -2150,20 +1286,14 @@ async function editOrder(id) {
         );
 
         return;
-
     }
-
 
     const result =
         await supabaseClient
             .from("orders")
             .select("*")
-            .eq(
-                "id",
-                id
-            )
+            .eq("id", id)
             .single();
-
 
     if (
         result.error ||
@@ -2175,156 +1305,86 @@ async function editOrder(id) {
         );
 
         return;
-
     }
-
 
     const order =
         result.data;
 
-
     const fields = {
 
-        editingOrderId:
-            "id",
-
-        clientName:
-            "client_name",
-
-        clientPhone:
-            "client_phone",
-
-        location:
-            "location",
-
-        eventDate:
-            "event_date",
-
-        eventTime:
-            "event_time",
-
-        screenHeight:
-            "screen_height",
-
-        screenWidth:
-            "screen_width",
-
-        stageWidth:
-            "stage_width",
-
-        stageLength:
-            "stage_length",
-
-        curtain:
-            "curtain",
-
-        lights:
-            "lights",
-
-        galava:
-            "galava",
-
-        ledwash:
-            "ledwash",
-
-        confetti:
-            "confetti",
-
-        dim:
-            "dim",
-
-        firework:
-            "firework",
-
-        sideScreens:
-            "side_screens",
-
-        sideHeight:
-            "side_height",
-
-        sideWidth:
-            "side_width",
-
-        paid:
-            "paid",
-
-        totalPrice:
-            "total_price"
-
+        editingOrderId: "id",
+        clientName: "client_name",
+        clientPhone: "client_phone",
+        location: "location",
+        eventDate: "event_date",
+        eventTime: "event_time",
+        screenHeight: "screen_height",
+        screenWidth: "screen_width",
+        stageWidth: "stage_width",
+        stageLength: "stage_length",
+        curtain: "curtain",
+        lights: "lights",
+        galava: "galava",
+        ledwash: "ledwash",
+        confetti: "confetti",
+        dim: "dim",
+        firework: "firework",
+        sideScreens: "side_screens",
+        sideHeight: "side_height",
+        sideWidth: "side_width",
+        paid: "paid",
+        totalPrice: "total_price"
     };
 
-
-    Object.entries(
-        fields
-    ).forEach(
-        function([
-            elementId,
-            field
-        ]) {
+    Object.entries(fields)
+        .forEach(function([elementId, field]) {
 
             const element =
                 document.getElementById(
                     elementId
                 );
 
-
             if (element) {
-
                 element.value =
-                    order[field] ??
-                    "";
-
+                    order[field] ?? "";
             }
 
-        }
-    );
-
+        });
 
     document
-        .getElementById(
-            "editBadge"
-        )
-        .classList
-        .remove("hidden");
-
+        .getElementById("editBadge")
+        ?.classList.remove("hidden");
 
     document
-        .getElementById(
-            "cancelEditBtn"
-        )
-        .classList
-        .remove("hidden");
+        .getElementById("cancelEditBtn")
+        ?.classList.remove("hidden");
 
-
-    document
-        .getElementById(
+    const title =
+        document.getElementById(
             "orderFormTitle"
-        )
-        .textContent =
-        "✏️ Zakasni tahrirlash";
+        );
 
+    if (title) {
+        title.textContent =
+            "✏️ Zakasni tahrirlash";
+    }
 
-    document
-        .getElementById(
+    const submitButton =
+        document.getElementById(
             "orderSubmitBtn"
-        )
-        .textContent =
-        "💾 O‘zgarishlarni saqlash";
+        );
 
+    if (submitButton) {
+        submitButton.textContent =
+            "💾 O‘zgarishlarni saqlash";
+    }
 
     calculateRemaining();
-
 
     await showPage(
         "addOrderPage"
     );
-
 }
-
-
-/* =========================================================
-   RESET ORDER FORM
-========================================================= */
 
 function resetOrderForm() {
 
@@ -2333,89 +1393,49 @@ function resetOrderForm() {
             "orderForm"
         );
 
-
     if (form) {
-
         form.reset();
-
     }
-
 
     const editing =
         document.getElementById(
             "editingOrderId"
         );
 
-
     if (editing) {
-
         editing.value = "";
-
     }
 
+    document
+        .getElementById("editBadge")
+        ?.classList.add("hidden");
 
-    const badge =
-        document.getElementById(
-            "editBadge"
-        );
-
-
-    if (badge) {
-
-        badge.classList.add(
-            "hidden"
-        );
-
-    }
-
-
-    const cancelButton =
-        document.getElementById(
-            "cancelEditBtn"
-        );
-
-
-    if (cancelButton) {
-
-        cancelButton.classList.add(
-            "hidden"
-        );
-
-    }
-
+    document
+        .getElementById("cancelEditBtn")
+        ?.classList.add("hidden");
 
     const title =
         document.getElementById(
             "orderFormTitle"
         );
 
-
     if (title) {
-
         title.textContent =
             "➕ Yangi zakas qo‘shish";
-
     }
 
-
-    const submitButton =
+    const button =
         document.getElementById(
             "orderSubmitBtn"
         );
 
-
-    if (submitButton) {
-
-        submitButton.textContent =
+    if (button) {
+        button.textContent =
             "💾 Zakasni saqlash";
-
     }
 
-
     calculateRemaining();
-
 }
-
 
 function cancelEditOrder() {
 
@@ -2424,13 +1444,7 @@ function cancelEditOrder() {
     showPage(
         "ordersPage"
     );
-
 }
-
-
-/* =========================================================
-   DELETE ORDER
-========================================================= */
 
 async function deleteOrder(id) {
 
@@ -2438,26 +1452,17 @@ async function deleteOrder(id) {
         !currentUser ||
         currentUser.role !== "admin"
     ) {
-
-        alert(
-            "❌ Faqat admin."
-        );
-
+        alert("❌ Faqat admin.");
         return;
-
     }
-
 
     if (
         !confirm(
             "Bu zakasni o‘chirmoqchimisiz?"
         )
     ) {
-
         return;
-
     }
-
 
     const result =
         await supabaseClient
@@ -2468,199 +1473,130 @@ async function deleteOrder(id) {
                 id
             );
 
-
     if (result.error) {
-
-        console.error(
-            result.error
-        );
-
 
         alert(
             "❌ " +
-            (
-                result.error.message ||
-                "Zakas o‘chirilmadi."
-            )
+            result.error.message
         );
 
         return;
-
     }
 
-
     await displayOrders();
-
     await updateDashboard();
-
 
     alert(
         "✅ Zakas o‘chirildi."
     );
-
 }
 
-
-/* =========================================================
+/* =========================================
    DASHBOARD
-========================================================= */
+========================================= */
 
 async function updateDashboard() {
 
     const orders =
         await getOrders();
 
-
     const today =
         getToday();
 
-
     const todayOrders =
-        orders.filter(
-            function(order) {
-
-                return (
-                    order.event_date ===
-                    today
-                );
-
-            }
-        );
-
+        orders.filter(function(order) {
+            return order.event_date === today;
+        });
 
     const now =
         new Date();
 
-
     const upcoming =
-        orders.filter(
-            function(order) {
+        orders.filter(function(order) {
 
-                if (
-                    !order.event_date ||
-                    !order.event_time
-                ) {
+            if (
+                !order.event_date ||
+                !order.event_time
+            ) {
+                return false;
+            }
 
-                    return false;
-
-                }
-
-
-                const eventDate =
-                    new Date(
-                        order.event_date +
-                        "T" +
-                        order.event_time
-                    );
-
-
-                const difference =
-                    eventDate.getTime() -
-                    now.getTime();
-
-
-                return (
-                    difference > 0 &&
-                    difference <=
-                    7 *
-                    24 *
-                    60 *
-                    60 *
-                    1000
+            const date =
+                new Date(
+                    `${order.event_date}T${order.event_time}`
                 );
 
-            }
-        );
+            const difference =
+                date.getTime() -
+                now.getTime();
 
+            return (
+                difference > 0 &&
+                difference <=
+                7 *
+                24 *
+                60 *
+                60 *
+                1000
+            );
+        });
 
     const totalMoney =
         orders.reduce(
-            function(
-                sum,
-                order
-            ) {
+            function(sum, order) {
 
-                return (
-                    sum +
+                return sum +
                     Number(
-                        order.total_price ||
-                        0
-                    )
-                );
+                        order.total_price || 0
+                    );
 
             },
             0
         );
-
 
     const totalOrders =
         document.getElementById(
             "totalOrders"
         );
 
-
     const todayOrdersElement =
         document.getElementById(
             "todayOrders"
         );
-
 
     const upcomingOrders =
         document.getElementById(
             "upcomingOrders"
         );
 
-
     const totalMoneyElement =
         document.getElementById(
             "totalMoney"
         );
 
-
     if (totalOrders) {
-
         totalOrders.textContent =
             orders.length;
-
     }
-
 
     if (todayOrdersElement) {
-
         todayOrdersElement.textContent =
             todayOrders.length;
-
     }
-
 
     if (upcomingOrders) {
-
         upcomingOrders.textContent =
             upcoming.length;
-
     }
-
 
     if (totalMoneyElement) {
-
         totalMoneyElement.textContent =
-            formatMoney(
-                totalMoney
-            );
-
+            formatMoney(totalMoney);
     }
 
-
     await displayTodayOrders();
-
     await checkNotifications();
-
 }
-
-
-/* =========================================================
-   TODAY ORDERS
-========================================================= */
 
 async function displayTodayOrders() {
 
@@ -2669,66 +1605,42 @@ async function displayTodayOrders() {
             "todayOrdersList"
         );
 
-
     if (!container) {
         return;
     }
-
 
     const orders =
         (
             await getOrders()
         )
-        .filter(
-            function(order) {
+        .filter(function(order) {
 
-                return (
-                    order.event_date ===
-                    getToday()
-                );
+            return (
+                order.event_date ===
+                getToday()
+            );
 
-            }
-        );
+        });
 
-
-    if (
-        orders.length === 0
-    ) {
+    if (!orders.length) {
 
         container.innerHTML = `
-
             <div class="no-orders">
-
-                <h3>
-                    🎉 Bugun zakas yo‘q
-                </h3>
-
+                <h3>🎉 Bugun zakas yo‘q</h3>
                 <p>
                     Bugungi kun uchun zakas mavjud emas.
                 </p>
-
             </div>
-
         `;
 
         return;
-
     }
-
 
     container.innerHTML =
         orders
-            .map(
-                createOrderHTML
-            )
+            .map(createOrderHTML)
             .join("");
-
 }
-
-
-/* =========================================================
-   NOTIFICATIONS
-========================================================= */
 
 async function checkNotifications() {
 
@@ -2737,110 +1649,87 @@ async function checkNotifications() {
             "notifications"
         );
 
-
     if (!container) {
         return;
     }
 
-
     const orders =
         await getOrders();
-
 
     const now =
         new Date();
 
-
     let html = "";
 
+    orders.forEach(function(order) {
 
-    orders.forEach(
-        function(order) {
-
-            if (
-                !order.event_date ||
-                !order.event_time
-            ) {
-
-                return;
-
-            }
-
-
-            const eventDate =
-                new Date(
-                    order.event_date +
-                    "T" +
-                    order.event_time
-                );
-
-
-            const hours =
-                (
-                    eventDate.getTime() -
-                    now.getTime()
-                ) /
-                3600000;
-
-
-            if (
-                hours > 0 &&
-                hours <= 24
-            ) {
-
-                html += `
-
-                    <div class="notification">
-
-                        <strong>
-                            🔔 Tadbir yaqinlashmoqda!
-                        </strong>
-
-                        👤
-                        ${escapeHTML(
-                            order.client_name
-                        )}
-
-                        <br>
-
-                        📅
-                        ${escapeHTML(
-                            order.event_date
-                        )}
-
-                        <br>
-
-                        ⏰
-                        ${escapeHTML(
-                            order.event_time
-                        )}
-
-                        <br>
-
-                        📍
-                        ${escapeHTML(
-                            order.location
-                        )}
-
-                    </div>
-
-                `;
-
-            }
-
+        if (
+            !order.event_date ||
+            !order.event_time
+        ) {
+            return;
         }
-    );
 
+        const eventDate =
+            new Date(
+                `${order.event_date}T${order.event_time}`
+            );
+
+        const hours =
+            (
+                eventDate.getTime() -
+                now.getTime()
+            ) / 3600000;
+
+        if (
+            hours > 0 &&
+            hours <= 24
+        ) {
+
+            html += `
+                <div class="notification">
+                    <strong>
+                        🔔 Tadbir yaqinlashmoqda!
+                    </strong>
+
+                    👤
+                    ${escapeHTML(
+                        order.client_name
+                    )}
+
+                    <br>
+
+                    📅
+                    ${formatDate(
+                        order.event_date
+                    )}
+
+                    <br>
+
+                    ⏰
+                    ${escapeHTML(
+                        order.event_time
+                    )}
+
+                    <br>
+
+                    📍
+                    ${escapeHTML(
+                        order.location
+                    )}
+                </div>
+            `;
+        }
+
+    });
 
     container.innerHTML =
         html;
-
 }
 
-
-/* =========================================================
+/* =========================================
    USERS
-========================================================= */
+========================================= */
 
 async function displayUsers() {
 
@@ -2849,28 +1738,20 @@ async function displayUsers() {
             "usersList"
         );
 
-
-    if (!container) {
-        return;
-    }
-
-
     if (
+        !container ||
         !currentUser ||
         currentUser.role !== "admin"
     ) {
-
-        container.innerHTML = "";
-
         return;
-
     }
-
 
     const result =
         await supabaseClient
             .from("users")
-            .select("*")
+            .select(
+                "id,name,username,password,role,created_at"
+            )
             .order(
                 "id",
                 {
@@ -2878,442 +1759,151 @@ async function displayUsers() {
                 }
             );
 
-
     if (result.error) {
 
-        console.error(
-            "USERS ERROR:",
-            result.error
-        );
-
-
         container.innerHTML = `
-
             <div class="no-orders">
-
-                ❌
-                ${escapeHTML(
-                    result.error.message ||
-                    "Userlarni olishda xatolik."
+                ❌ ${escapeHTML(
+                    result.error.message
                 )}
-
             </div>
-
         `;
 
         return;
-
     }
-
 
     const users =
         result.data || [];
 
-
-    if (
-        users.length === 0
-    ) {
+    if (!users.length) {
 
         container.innerHTML = `
-
             <div class="no-orders">
-
-                <h3>
-                    👥 Userlar yo‘q
-                </h3>
-
+                <h3>👥 Userlar yo‘q</h3>
             </div>
-
         `;
 
         return;
-
     }
 
-
     container.innerHTML =
-        users
-            .map(
-                function(user) {
+        users.map(function(user) {
 
-                    const role =
-                        String(
-                            user.role ||
-                            ""
-                        )
-                        .toLowerCase();
+            const role =
+                String(
+                    user.role || ""
+                ).toLowerCase();
 
+            return `
+                <div class="user-card">
 
-                    return `
+                    <div class="user-card-header">
 
-                        <div class="user-card">
+                        <div>
 
-                            <div
-                                class="user-card-header"
-                            >
-
-                                <div>
-
-                                    <div
-                                        class="
-                                            user-card-name
-                                        "
-                                    >
-
-                                        👤
-                                        ${escapeHTML(
-                                            user.name
-                                        )}
-
-                                    </div>
-
-
-                                    <span
-                                        class="user-role"
-                                    >
-
-                                        ${
-                                            role ===
-                                            "admin"
-                                                ? "ADMIN"
-                                                : "ISHCHI"
-                                        }
-
-                                    </span>
-
-                                </div>
-
+                            <div class="user-card-name">
+                                👤
+                                ${escapeHTML(
+                                    user.name
+                                )}
                             </div>
 
-
-                            <div
-                                class="user-grid"
-                            >
-
-                                <div
-                                    class="user-detail"
-                                >
-
-                                    <span>
-                                        🔑 Login
-                                    </span>
-
-                                    <strong>
-                                        ${escapeHTML(
-                                            user.username
-                                        )}
-                                    </strong>
-
-                                </div>
-
-
-                                <div
-                                    class="user-detail"
-                                >
-
-                                    <span>
-                                        🔒 Parol
-                                    </span>
-
-                                    <strong
-                                        id="password-${user.id}"
-                                    >
-                                        ••••••••
-                                    </strong>
-
-                                </div>
-
-                            </div>
-
-
-                            <div
-                                class="user-actions"
-                            >
-
-                                <button
-                                    type="button"
-                                    class="btn-view"
-                                    onclick="
-                                        showUserPassword(
-                                            ${user.id}
-                                        )
-                                    "
-                                >
-                                    👁 Ko‘rish
-                                </button>
-
-
-                                <button
-                                    type="button"
-                                    class="btn-edit"
-                                    onclick="
-                                        changeUserPassword(
-                                            ${user.id}
-                                        )
-                                    "
-                                >
-                                    🔑 Parol
-                                </button>
-
-
-                                <button
-                                    type="button"
-                                    class="btn-edit"
-                                    onclick="
-                                        changeUsername(
-                                            ${user.id}
-                                        )
-                                    "
-                                >
-                                    ✏️ Login
-                                </button>
-
-
+                            <span class="user-role">
                                 ${
-                                    Number(
-                                        user.id
-                                    ) !==
-                                    Number(
-                                        currentUser.id
-                                    )
-
-                                    ?
-
-                                    `
-
-                                        <button
-                                            type="button"
-                                            class="btn-delete"
-                                            onclick="
-                                                deleteUser(
-                                                    ${user.id}
-                                                )
-                                            "
-                                        >
-                                            🗑 O‘chirish
-                                        </button>
-
-                                    `
-
-                                    :
-
-                                    ""
-
+                                    role === "admin"
+                                        ? "ADMIN"
+                                        : "ISHCHI"
                                 }
-
-                            </div>
+                            </span>
 
                         </div>
 
-                    `;
+                    </div>
 
-                }
-            )
-            .join("");
+                    <div class="user-grid">
 
+                        <div class="user-detail">
+
+                            <span>
+                                🔑 Login
+                            </span>
+
+                            <strong>
+                                ${escapeHTML(
+                                    user.username
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div class="user-detail">
+
+                            <span>
+                                🔒 Parol
+                            </span>
+
+                            <strong
+                                id="password-${user.id}"
+                                data-visible="false"
+                            >
+                                ••••••••
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                    <div class="user-actions">
+
+                        <button
+                            type="button"
+                            class="btn-view"
+                            onclick="showUserPassword(${Number(user.id)})"
+                        >
+                            👁 Ko‘rish
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn-edit"
+                            onclick="changeUserPassword(${Number(user.id)})"
+                        >
+                            🔑 Parol
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn-edit"
+                            onclick="changeUsername(${Number(user.id)})"
+                        >
+                            ✏️ Login
+                        </button>
+
+                        ${
+                            Number(user.id) !==
+                            Number(currentUser.id)
+
+                                ? `
+                                    <button
+                                        type="button"
+                                        class="btn-delete"
+                                        onclick="deleteUser(${Number(user.id)})"
+                                    >
+                                        🗑 O‘chirish
+                                    </button>
+                                `
+                                : ""
+                        }
+
+                    </div>
+
+                </div>
+            `;
+
+        }).join("");
 }
 
-
-/* =========================================================
-   CREATE USER
-========================================================= */
-
-async function createUser(
-    event
-) {
-
-    event.preventDefault();
-
-
-    if (
-        !currentUser ||
-        currentUser.role !== "admin"
-    ) {
-
-        alert(
-            "❌ Faqat admin user yaratadi."
-        );
-
-        return;
-
-    }
-
-
-    const name =
-        document
-            .getElementById(
-                "newUserName"
-            )
-            .value
-            .trim();
-
-
-    const username =
-        document
-            .getElementById(
-                "newUsername"
-            )
-            .value
-            .trim();
-
-
-    const password =
-        document
-            .getElementById(
-                "newUserPassword"
-            )
-            .value
-            .trim();
-
-
-    const role =
-        document
-            .getElementById(
-                "newUserRole"
-            )
-            .value
-            .trim()
-            .toLowerCase();
-
-
-    if (
-        !name ||
-        !username ||
-        !password
-    ) {
-
-        alert(
-            "❌ Barcha maydonlarni to‘ldiring."
-        );
-
-        return;
-
-    }
-
-
-    if (
-        role !== "admin" &&
-        role !== "user"
-    ) {
-
-        alert(
-            "❌ Rol noto‘g‘ri."
-        );
-
-        return;
-
-    }
-
-
-    const check =
-        await supabaseClient
-            .from("users")
-            .select("id")
-            .eq(
-                "username",
-                username
-            )
-            .limit(1);
-
-
-    if (check.error) {
-
-        console.error(
-            check.error
-        );
-
-
-        alert(
-            "❌ " +
-            (
-                check.error.message ||
-                "Userni tekshirishda xatolik."
-            )
-        );
-
-        return;
-
-    }
-
-
-    if (
-        check.data &&
-        check.data.length > 0
-    ) {
-
-        alert(
-            "❌ Bu login allaqachon mavjud."
-        );
-
-        return;
-
-    }
-
-
-    const result =
-        await supabaseClient
-            .from("users")
-            .insert([
-                {
-                    name:
-                        name,
-
-                    username:
-                        username,
-
-                    password:
-                        password,
-
-                    role:
-                        role
-                }
-            ]);
-
-
-    if (result.error) {
-
-        console.error(
-            result.error
-        );
-
-
-        alert(
-            "❌ " +
-            (
-                result.error.message ||
-                "User yaratilmadi."
-            )
-        );
-
-        return;
-
-    }
-
-
-    document
-        .getElementById(
-            "userForm"
-        )
-        .reset();
-
-
-    await displayUsers();
-
-
-    alert(
-        "✅ User muvaffaqiyatli yaratildi."
-    );
-
-}
-
-
-/* =========================================================
-   GET USER
-========================================================= */
-
-async function getUser(
-    id
-) {
+async function getUser(id) {
 
     const result =
         await supabaseClient
@@ -3325,210 +1915,263 @@ async function getUser(
             )
             .single();
 
-
     if (result.error) {
-
-        console.error(
-            result.error
-        );
-
+        console.error(result.error);
         return null;
-
     }
 
-
     return result.data;
-
 }
 
-
-/* =========================================================
-   SHOW PASSWORD
-========================================================= */
-
-async function showUserPassword(
-    id
-) {
+async function showUserPassword(id) {
 
     if (
         !currentUser ||
         currentUser.role !== "admin"
     ) {
-
         return;
-
     }
-
-
-    const user =
-        await getUser(id);
-
 
     const element =
         document.getElementById(
-            "password-" +
-            id
+            "password-" + id
         );
 
-
-    if (
-        !user ||
-        !element
-    ) {
-
+    if (!element) {
         return;
-
     }
-
 
     if (
-        element.textContent.trim() ===
-        "••••••••"
+        element.dataset.visible ===
+        "true"
     ) {
-
-        element.textContent =
-            user.password;
-
-    }
-    else {
 
         element.textContent =
             "••••••••";
 
+        element.dataset.visible =
+            "false";
+
+        return;
     }
 
+    const result =
+        await supabaseClient
+            .from("users")
+            .select("password")
+            .eq(
+                "id",
+                id
+            )
+            .single();
+
+    if (result.error) {
+
+        alert(
+            "❌ Parolni olishda xatolik:\n" +
+            result.error.message
+        );
+
+        return;
+    }
+
+    element.textContent =
+        result.data.password ||
+        "Parol mavjud emas";
+
+    element.dataset.visible =
+        "true";
 }
 
+async function createUser(event) {
 
-/* =========================================================
-   CHANGE PASSWORD
-========================================================= */
-
-async function changeUserPassword(
-    id
-) {
+    event.preventDefault();
 
     if (
         !currentUser ||
         currentUser.role !== "admin"
     ) {
+        alert(
+            "❌ Faqat admin user yaratadi."
+        );
 
-        return;
-
-    }
-
-
-    const user =
-        await getUser(id);
-
-
-    if (!user) {
         return;
     }
 
+    const name =
+        document.getElementById(
+            "newUserName"
+        ).value.trim();
 
-    const newPassword =
+    const username =
+        document.getElementById(
+            "newUsername"
+        ).value.trim();
+
+    const password =
+        document.getElementById(
+            "newUserPassword"
+        ).value.trim();
+
+    const role =
+        document.getElementById(
+            "newUserRole"
+        ).value.trim()
+        .toLowerCase();
+
+    if (!name || !username || !password) {
+
+        alert(
+            "❌ Barcha maydonlarni to‘ldiring."
+        );
+
+        return;
+    }
+
+    const check =
+        await supabaseClient
+            .from("users")
+            .select("id")
+            .eq(
+                "username",
+                username
+            )
+            .limit(1);
+
+    if (check.error) {
+
+        alert(
+            "❌ " +
+            check.error.message
+        );
+
+        return;
+    }
+
+    if (
+        check.data &&
+        check.data.length
+    ) {
+
+        alert(
+            "❌ Bu login allaqachon mavjud."
+        );
+
+        return;
+    }
+
+    const result =
+        await supabaseClient
+            .from("users")
+            .insert({
+
+                name:
+                    name,
+
+                username:
+                    username,
+
+                password:
+                    password,
+
+                role:
+                    role
+
+            });
+
+    if (result.error) {
+
+        alert(
+            "❌ " +
+            result.error.message
+        );
+
+        return;
+    }
+
+    document
+        .getElementById("userForm")
+        .reset();
+
+    await displayUsers();
+
+    alert(
+        "✅ User muvaffaqiyatli yaratildi."
+    );
+}
+
+async function changeUserPassword(id) {
+
+    if (
+        !currentUser ||
+        currentUser.role !== "admin"
+    ) {
+        return;
+    }
+
+    const password =
         prompt(
             "Yangi parolni kiriting:",
             ""
         );
 
-
-    if (
-        newPassword === null
-    ) {
-
+    if (password === null) {
         return;
-
     }
 
-
-    const password =
-        newPassword.trim();
-
-
-    if (!password) {
+    if (!password.trim()) {
 
         alert(
             "❌ Parol bo‘sh bo‘lmasligi kerak."
         );
 
         return;
-
     }
-
 
     const result =
         await supabaseClient
             .from("users")
-            .update(
-                {
-                    password:
-                        password
-                }
-            )
+            .update({
+                password:
+                    password.trim()
+            })
             .eq(
                 "id",
                 id
             );
 
-
     if (result.error) {
-
-        console.error(
-            result.error
-        );
-
 
         alert(
             "❌ " +
-            (
-                result.error.message ||
-                "Parol o‘zgartirilmadi."
-            )
+            result.error.message
         );
 
         return;
-
     }
 
-
     await displayUsers();
-
 
     alert(
         "✅ Parol o‘zgartirildi."
     );
-
 }
 
-
-/* =========================================================
-   CHANGE USERNAME
-========================================================= */
-
-async function changeUsername(
-    id
-) {
+async function changeUsername(id) {
 
     if (
         !currentUser ||
         currentUser.role !== "admin"
     ) {
-
         return;
-
     }
-
 
     const user =
         await getUser(id);
 
-
     if (!user) {
         return;
     }
-
 
     const newUsername =
         prompt(
@@ -3536,19 +2179,12 @@ async function changeUsername(
             user.username
         );
 
-
-    if (
-        newUsername === null
-    ) {
-
+    if (newUsername === null) {
         return;
-
     }
-
 
     const username =
         newUsername.trim();
-
 
     if (!username) {
 
@@ -3557,9 +2193,7 @@ async function changeUsername(
         );
 
         return;
-
     }
-
 
     const check =
         await supabaseClient
@@ -3575,30 +2209,19 @@ async function changeUsername(
             )
             .limit(1);
 
-
     if (check.error) {
-
-        console.error(
-            check.error
-        );
-
 
         alert(
             "❌ " +
-            (
-                check.error.message ||
-                "Loginni tekshirishda xatolik."
-            )
+            check.error.message
         );
 
         return;
-
     }
-
 
     if (
         check.data &&
-        check.data.length > 0
+        check.data.length
     ) {
 
         alert(
@@ -3606,83 +2229,53 @@ async function changeUsername(
         );
 
         return;
-
     }
-
 
     const result =
         await supabaseClient
             .from("users")
-            .update(
-                {
-                    username:
-                        username
-                }
-            )
+            .update({
+                username:
+                    username
+            })
             .eq(
                 "id",
                 id
             );
 
-
     if (result.error) {
-
-        console.error(
-            result.error
-        );
-
 
         alert(
             "❌ " +
-            (
-                result.error.message ||
-                "Login o‘zgartirilmadi."
-            )
+            result.error.message
         );
 
         return;
-
     }
-
 
     if (
         Number(id) ===
         Number(currentUser.id)
     ) {
-
         currentUser.username =
             username;
-
     }
 
-
     await displayUsers();
-
 
     alert(
         "✅ Login o‘zgartirildi."
     );
-
 }
 
-
-/* =========================================================
-   DELETE USER
-========================================================= */
-
-async function deleteUser(
-    id
-) {
+async function deleteUser(id) {
 
     if (
         !currentUser ||
         currentUser.role !== "admin"
     ) {
-
         return;
-
     }
-
 
     if (
         Number(id) ===
@@ -3694,20 +2287,15 @@ async function deleteUser(
         );
 
         return;
-
     }
-
 
     if (
         !confirm(
             "Bu userni o‘chirmoqchimisiz?"
         )
     ) {
-
         return;
-
     }
-
 
     const result =
         await supabaseClient
@@ -3718,40 +2306,26 @@ async function deleteUser(
                 id
             );
 
-
     if (result.error) {
-
-        console.error(
-            result.error
-        );
-
 
         alert(
             "❌ " +
-            (
-                result.error.message ||
-                "User o‘chirilmadi."
-            )
+            result.error.message
         );
 
         return;
-
     }
 
-
     await displayUsers();
-
 
     alert(
         "✅ User o‘chirildi."
     );
-
 }
 
-
-/* =========================================================
+/* =========================================
    EVENTS
-========================================================= */
+========================================= */
 
 async function getEvents() {
 
@@ -3766,7 +2340,6 @@ async function getEvents() {
                 }
             );
 
-
     if (result.error) {
 
         console.error(
@@ -3775,28 +2348,18 @@ async function getEvents() {
         );
 
         return [];
-
     }
 
-
     return result.data || [];
-
 }
 
-
-function createEventHTML(
-    event
-) {
-
-    let imageHTML;
-
+function eventImage(event) {
 
     if (
         event.image_url
     ) {
 
-        imageHTML = `
-
+        return `
             <img
                 src="${escapeHTML(
                     event.image_url
@@ -3806,86 +2369,113 @@ function createEventHTML(
                 )}"
                 class="event-card-image"
             >
-
         `;
 
     }
-    else {
-
-        imageHTML = `
-
-            <div
-                class="event-card-image"
-                style="
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    font-size:55px;
-                "
-            >
-                🎪
-            </div>
-
-        `;
-
-    }
-
 
     return `
+        <div
+            class="event-card-image"
+            style="
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:55px;
+            "
+        >
+            🎪
+        </div>
+    `;
+}
 
+function createEventHTML(event) {
+
+    return `
         <article class="event-card">
 
-            ${imageHTML}
+            ${eventImage(event)}
 
-            <div
-                class="event-card-body"
-            >
+            <div class="event-card-body">
 
-                <div
-                    class="event-card-title"
-                >
-
+                <div class="event-card-title">
                     ${escapeHTML(
                         event.title
                     )}
-
                 </div>
 
-
-                <div
-                    class="event-card-description"
-                >
-
+                <div class="event-card-description">
                     ${escapeHTML(
                         event.description ||
                         "Tavsif mavjud emas."
                     )}
-
                 </div>
 
-
-                <div
-                    class="event-card-date"
-                >
-
+                <div class="event-card-date">
                     ${formatDateTime(
                         event.created_at
                     )}
-
                 </div>
 
             </div>
 
         </article>
-
     `;
-
 }
 
+function createWorkerEventHTML(event) {
 
-/* =========================================================
-   CUSTOMER EVENTS
-========================================================= */
+    const deleteButton =
+        currentUser &&
+        currentUser.role === "admin"
+
+            ? `
+                <div class="event-admin-actions">
+
+                    <button
+                        type="button"
+                        class="btn-delete"
+                        onclick="deleteEvent(${Number(event.id)})"
+                    >
+                        🗑 O‘chirish
+                    </button>
+
+                </div>
+            `
+            : "";
+
+    return `
+        <article class="event-card">
+
+            ${eventImage(event)}
+
+            <div class="event-card-body">
+
+                <div class="event-card-title">
+                    ${escapeHTML(
+                        event.title
+                    )}
+                </div>
+
+                <div class="event-card-description">
+                    ${escapeHTML(
+                        event.description ||
+                        "Tavsif mavjud emas."
+                    )}
+                </div>
+
+                <div class="event-card-date">
+                    ${formatDateTime(
+                        event.created_at
+                    )}
+                </div>
+
+                ${deleteButton}
+
+            </div>
+
+        </article>
+    `;
+}
 
 async function loadCustomerEvents() {
 
@@ -3894,26 +2484,20 @@ async function loadCustomerEvents() {
             "customerEventsList"
         );
 
-
     const pagination =
         document.getElementById(
             "customerPagination"
         );
 
-
     if (
         !container ||
         !pagination
     ) {
-
         return;
-
     }
-
 
     const events =
         await getEvents();
-
 
     const totalPages =
         Math.max(
@@ -3924,17 +2508,11 @@ async function loadCustomerEvents() {
             )
         );
 
-
-    if (
-        customerEventsPage >
-        totalPages
-    ) {
-
-        customerEventsPage =
-            totalPages;
-
-    }
-
+    customerEventsPage =
+        Math.min(
+            customerEventsPage,
+            totalPages
+        );
 
     const start =
         (
@@ -3943,21 +2521,23 @@ async function loadCustomerEvents() {
         ) *
         EVENTS_PER_PAGE;
 
-
     const pageEvents =
         events.slice(
             start,
-            start +
-            EVENTS_PER_PAGE
+            start + EVENTS_PER_PAGE
         );
 
+    if (pageEvents.length) {
 
-    if (
-        pageEvents.length === 0
-    ) {
+        container.innerHTML =
+            pageEvents
+                .map(createEventHTML)
+                .join("");
+
+    }
+    else {
 
         container.innerHTML = `
-
             <div class="no-orders">
 
                 <h3>
@@ -3969,21 +2549,8 @@ async function loadCustomerEvents() {
                 </p>
 
             </div>
-
         `;
-
     }
-    else {
-
-        container.innerHTML =
-            pageEvents
-                .map(
-                    createEventHTML
-                )
-                .join("");
-
-    }
-
 
     renderPagination(
         pagination,
@@ -3996,22 +2563,88 @@ async function loadCustomerEvents() {
 
             loadCustomerEvents();
 
-            window.scrollTo(
-                {
-                    top: 0,
-                    behavior: "smooth"
-                }
-            );
-
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
         }
     );
-
 }
 
+async function loadWorkerEvents() {
 
-/* =========================================================
-   PAGINATION
-========================================================= */
+    const container =
+        document.getElementById(
+            "workerEventsList"
+        );
+
+    const pagination =
+        document.getElementById(
+            "workerPagination"
+        );
+
+    if (
+        !container ||
+        !pagination
+    ) {
+        return;
+    }
+
+    const events =
+        await getEvents();
+
+    const totalPages =
+        Math.max(
+            1,
+            Math.ceil(
+                events.length /
+                EVENTS_PER_PAGE
+            )
+        );
+
+    workerEventsPage =
+        Math.min(
+            workerEventsPage,
+            totalPages
+        );
+
+    const start =
+        (
+            workerEventsPage -
+            1
+        ) *
+        EVENTS_PER_PAGE;
+
+    const pageEvents =
+        events.slice(
+            start,
+            start + EVENTS_PER_PAGE
+        );
+
+    container.innerHTML =
+        pageEvents.length
+            ? pageEvents
+                .map(createWorkerEventHTML)
+                .join("")
+            : `
+                <div class="no-orders">
+                    <h3>🎪 Tadbirlar yo‘q</h3>
+                </div>
+            `;
+
+    renderPagination(
+        pagination,
+        totalPages,
+        workerEventsPage,
+        function(page) {
+
+            workerEventsPage =
+                page;
+
+            loadWorkerEvents();
+        }
+    );
+}
 
 function renderPagination(
     container,
@@ -4028,29 +2661,19 @@ function renderPagination(
             "";
 
         return;
-
     }
-
 
     let html = "";
 
-
     html += `
-
         <button
             type="button"
-            id="previousPage"
-            ${
-                currentPage === 1
-                    ? "disabled"
-                    : ""
-            }
+            data-page="${currentPage - 1}"
+            ${currentPage === 1 ? "disabled" : ""}
         >
             ← Oldingi
         </button>
-
     `;
-
 
     for (
         let i = 1;
@@ -4059,417 +2682,74 @@ function renderPagination(
     ) {
 
         html += `
-
             <button
                 type="button"
                 data-page="${i}"
-                class="${
-                    i === currentPage
-                        ? "active"
-                        : ""
-                }"
+                class="${i === currentPage ? "active" : ""}"
             >
                 ${i}
             </button>
-
         `;
-
     }
 
-
     html += `
-
         <button
             type="button"
-            id="nextPage"
-            ${
-                currentPage === totalPages
-                    ? "disabled"
-                    : ""
-            }
+            data-page="${currentPage + 1}"
+            ${currentPage === totalPages ? "disabled" : ""}
         >
             Keyingi sahifa →
         </button>
 
-
         <span>
-
-            ${currentPage}
-            /
-            ${totalPages}
-
+            ${currentPage}/${totalPages}
         </span>
-
     `;
-
 
     container.innerHTML =
         html;
 
-
     container
         .querySelectorAll(
-            "[data-page]"
+            "button[data-page]"
         )
-        .forEach(
-            function(button) {
+        .forEach(function(button) {
 
-                button.addEventListener(
-                    "click",
-                    function() {
+            button.addEventListener(
+                "click",
+                function() {
 
-                        onPage(
-                            Number(
-                                button.dataset.page
-                            )
+                    const page =
+                        Number(
+                            button.dataset.page
                         );
 
+                    if (
+                        page >= 1 &&
+                        page <= totalPages
+                    ) {
+
+                        onPage(page);
                     }
-                );
-
-            }
-        );
-
-
-    const previous =
-        document.getElementById(
-            "previousPage"
-        );
-
-
-    if (previous) {
-
-        previous.addEventListener(
-            "click",
-            function() {
-
-                if (
-                    currentPage > 1
-                ) {
-
-                    onPage(
-                        currentPage - 1
-                    );
-
                 }
-
-            }
-        );
-
-    }
-
-
-    const next =
-        document.getElementById(
-            "nextPage"
-        );
-
-
-    if (next) {
-
-        next.addEventListener(
-            "click",
-            function() {
-
-                if (
-                    currentPage <
-                    totalPages
-                ) {
-
-                    onPage(
-                        currentPage + 1
-                    );
-
-                }
-
-            }
-        );
-
-    }
-
+            );
+        });
 }
 
-
-/* =========================================================
-   WORKER / ADMIN EVENTS
-========================================================= */
-
-function createWorkerEventHTML(
-    event
-) {
-
-    let imageHTML;
-
-
-    if (
-        event.image_url
-    ) {
-
-        imageHTML = `
-
-            <img
-                src="${escapeHTML(
-                    event.image_url
-                )}"
-                alt="${escapeHTML(
-                    event.title
-                )}"
-                class="event-card-image"
-            >
-
-        `;
-
-    }
-    else {
-
-        imageHTML = `
-
-            <div
-                class="event-card-image"
-                style="
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    font-size:55px;
-                "
-            >
-                🎪
-            </div>
-
-        `;
-
-    }
-
-
-    let deleteButton = "";
-
-
-    if (
-        currentUser &&
-        currentUser.role === "admin"
-    ) {
-
-        deleteButton = `
-
-            <div
-                class="event-admin-actions"
-            >
-
-                <button
-                    type="button"
-                    class="btn-delete"
-                    onclick="
-                        deleteEvent(
-                            ${event.id}
-                        )
-                    "
-                >
-                    🗑 O‘chirish
-                </button>
-
-            </div>
-
-        `;
-
-    }
-
-
-    return `
-
-        <article
-            class="event-card"
-        >
-
-            ${imageHTML}
-
-
-            <div
-                class="event-card-body"
-            >
-
-                <div
-                    class="event-card-title"
-                >
-
-                    ${escapeHTML(
-                        event.title
-                    )}
-
-                </div>
-
-
-                <div
-                    class="event-card-description"
-                >
-
-                    ${escapeHTML(
-                        event.description ||
-                        "Tavsif mavjud emas."
-                    )}
-
-                </div>
-
-
-                <div
-                    class="event-card-date"
-                >
-
-                    ${formatDateTime(
-                        event.created_at
-                    )}
-
-                </div>
-
-
-                ${deleteButton}
-
-            </div>
-
-        </article>
-
-    `;
-
-}
-
-
-async function loadWorkerEvents() {
-
-    const container =
-        document.getElementById(
-            "workerEventsList"
-        );
-
-
-    const pagination =
-        document.getElementById(
-            "workerPagination"
-        );
-
-
-    if (
-        !container ||
-        !pagination
-    ) {
-
-        return;
-
-    }
-
-
-    const events =
-        await getEvents();
-
-
-    const totalPages =
-        Math.max(
-            1,
-            Math.ceil(
-                events.length /
-                EVENTS_PER_PAGE
-            )
-        );
-
-
-    if (
-        workerEventsPage >
-        totalPages
-    ) {
-
-        workerEventsPage =
-            totalPages;
-
-    }
-
-
-    const start =
-        (
-            workerEventsPage -
-            1
-        ) *
-        EVENTS_PER_PAGE;
-
-
-    const pageEvents =
-        events.slice(
-            start,
-            start +
-            EVENTS_PER_PAGE
-        );
-
-
-    if (
-        pageEvents.length === 0
-    ) {
-
-        container.innerHTML = `
-
-            <div class="no-orders">
-
-                <h3>
-                    🎪 Tadbirlar yo‘q
-                </h3>
-
-            </div>
-
-        `;
-
-    }
-    else {
-
-        container.innerHTML =
-            pageEvents
-                .map(
-                    createWorkerEventHTML
-                )
-                .join("");
-
-    }
-
-
-    renderPagination(
-        pagination,
-        totalPages,
-        workerEventsPage,
-        function(page) {
-
-            workerEventsPage =
-                page;
-
-            loadWorkerEvents();
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   FILE TO DATA URL
-========================================================= */
-
-function fileToDataURL(
-    file
-) {
+function fileToDataURL(file) {
 
     return new Promise(
-        function(
-            resolve,
-            reject
-        ) {
+        function(resolve, reject) {
 
             const reader =
                 new FileReader();
 
-
             reader.onload =
                 function() {
-
                     resolve(
                         reader.result
                     );
-
                 };
-
 
             reader.onerror =
                 function() {
@@ -4479,30 +2759,18 @@ function fileToDataURL(
                             "Rasm o‘qilmadi."
                         )
                     );
-
                 };
 
-
-            reader.readAsDataURL(
-                file
-            );
-
+            reader.readAsDataURL(file);
         }
     );
-
 }
-
-
-/* =========================================================
-   SAVE EVENT
-========================================================= */
 
 async function saveEventFromForm(
     event
 ) {
 
     event.preventDefault();
-
 
     if (
         !currentUser ||
@@ -4514,35 +2782,44 @@ async function saveEventFromForm(
         );
 
         return;
-
     }
 
+    const titleElement =
+        document.getElementById(
+            "eventTitle"
+        );
+
+    const descriptionElement =
+        document.getElementById(
+            "eventDescription"
+        );
+
+    const imageElement =
+        document.getElementById(
+            "eventImage"
+        );
+
+    if (
+        !titleElement ||
+        !descriptionElement ||
+        !imageElement
+    ) {
+
+        alert(
+            "❌ Tadbir formasi topilmadi."
+        );
+
+        return;
+    }
 
     const title =
-        document
-            .getElementById(
-                "eventTitle"
-            )
-            .value
-            .trim();
-
+        titleElement.value.trim();
 
     const description =
-        document
-            .getElementById(
-                "eventDescription"
-            )
-            .value
-            .trim();
-
+        descriptionElement.value.trim();
 
     const file =
-        document
-            .getElementById(
-                "eventImage"
-            )
-            .files[0];
-
+        imageElement.files[0];
 
     if (!title) {
 
@@ -4551,141 +2828,121 @@ async function saveEventFromForm(
         );
 
         return;
-
     }
-
 
     let imageUrl = "";
 
+    try {
 
-    if (file) {
+        if (file) {
 
-        if (
-            file.size >
-            3 * 1024 * 1024
-        ) {
+            if (
+                !file.type.startsWith(
+                    "image/"
+                )
+            ) {
 
-            alert(
-                "❌ Rasm 3 MB dan kichik bo‘lsin."
-            );
+                alert(
+                    "❌ Faqat rasm fayli yuklang."
+                );
 
-            return;
+                return;
+            }
 
-        }
+            if (
+                file.size >
+                2 * 1024 * 1024
+            ) {
 
+                alert(
+                    "❌ Rasm hajmi 2 MB dan kichik bo‘lsin."
+                );
 
-        try {
+                return;
+            }
 
             imageUrl =
                 await fileToDataURL(
                     file
                 );
-
-        }
-        catch (errorObject) {
-
-            console.error(
-                errorObject
-            );
-
-            alert(
-                "❌ Rasmni o‘qib bo‘lmadi."
-            );
-
-            return;
-
         }
 
-    }
-
-
-    const result =
-        await supabaseClient
-            .from("events")
-            .insert([
-                {
+        const result =
+            await supabaseClient
+                .from("events")
+                .insert({
                     title:
                         title,
 
                     description:
-                        description,
+                        description ||
+                        null,
 
                     image_url:
-                        imageUrl
-                }
-            ]);
+                        imageUrl ||
+                        null
+                })
+                .select()
+                .single();
 
+        if (result.error) {
 
-    if (result.error) {
+            alert(
+                "❌ Tadbir qo‘shilmadi:\n" +
+                result.error.message
+            );
 
-        console.error(
-            "EVENT INSERT ERROR:",
-            result.error
-        );
+            return;
+        }
 
+        document
+            .getElementById(
+                "eventForm"
+            )
+            .reset();
+
+        workerEventsPage = 1;
+
+        await loadWorkerEvents();
 
         alert(
-            "❌ " +
-            (
-                result.error.message ||
-                "Tadbirni saqlashda xatolik."
-            )
+            "✅ Tadbir muvaffaqiyatli qo‘shildi."
         );
 
-        return;
-
     }
+    catch (error) {
 
+        console.error(
+            "EVENT ERROR:",
+            error
+        );
 
-    document
-        .getElementById(
-            "eventForm"
-        )
-        .reset();
-
-
-    await loadWorkerEvents();
-
-
-    alert(
-        "✅ Tadbir muvaffaqiyatli qo‘shildi."
-    );
-
+        alert(
+            "❌ Tadbir qo‘shishda xatolik:\n" +
+            (
+                error.message ||
+                "Noma'lum xatolik"
+            )
+        );
+    }
 }
 
-
-/* =========================================================
-   DELETE EVENT
-========================================================= */
-
-async function deleteEvent(
-    id
-) {
+async function deleteEvent(id) {
 
     if (
         !currentUser ||
         currentUser.role !== "admin"
     ) {
-
-        alert(
-            "❌ Faqat admin."
-        );
-
         return;
-
     }
-
 
     if (
         !confirm(
             "Bu tadbirni o‘chirmoqchimisiz?"
         )
     ) {
-
         return;
-
     }
-
 
     const result =
         await supabaseClient
@@ -4696,40 +2953,26 @@ async function deleteEvent(
                 id
             );
 
-
     if (result.error) {
-
-        console.error(
-            result.error
-        );
-
 
         alert(
             "❌ " +
-            (
-                result.error.message ||
-                "Tadbir o‘chirilmadi."
-            )
+            result.error.message
         );
 
         return;
-
     }
 
-
     await loadWorkerEvents();
-
 
     alert(
         "✅ Tadbir o‘chirildi."
     );
-
 }
 
-
-/* =========================================================
-   ORDER MODAL
-========================================================= */
+/* =========================================
+   APPLICATION
+========================================= */
 
 function openOrderModal() {
 
@@ -4738,44 +2981,29 @@ function openOrderModal() {
             "orderModal"
         );
 
-
     if (!modal) {
         return;
     }
 
-
     modal.classList.remove(
         "hidden"
     );
-
 
     const message =
         document.getElementById(
             "applicationMessage"
         );
 
-
     if (message) {
-
         message.innerHTML = "";
-
     }
 
-
-    const nameInput =
-        document.getElementById(
+    document
+        .getElementById(
             "applicationName"
-        );
-
-
-    if (nameInput) {
-
-        nameInput.focus();
-
-    }
-
+        )
+        ?.focus();
 }
-
 
 function closeOrderModal() {
 
@@ -4784,21 +3012,12 @@ function closeOrderModal() {
             "orderModal"
         );
 
-
     if (modal) {
-
         modal.classList.add(
             "hidden"
         );
-
     }
-
 }
-
-
-/* =========================================================
-   CUSTOMER APPLICATION
-========================================================= */
 
 async function submitApplication(
     event
@@ -4806,30 +3025,20 @@ async function submitApplication(
 
     event.preventDefault();
 
-
     const name =
-        document
-            .getElementById(
-                "applicationName"
-            )
-            .value
-            .trim();
-
+        document.getElementById(
+            "applicationName"
+        ).value.trim();
 
     const phone =
-        document
-            .getElementById(
-                "applicationPhone"
-            )
-            .value
-            .trim();
-
+        document.getElementById(
+            "applicationPhone"
+        ).value.trim();
 
     const message =
         document.getElementById(
             "applicationMessage"
         );
-
 
     if (
         !name ||
@@ -4837,77 +3046,58 @@ async function submitApplication(
     ) {
 
         message.innerHTML = `
-
             <div class="error">
-
-                ❌ Ism va telefonni kiriting.
-
+                ❌ Ism va telefon raqamini kiriting.
             </div>
-
         `;
 
         return;
-
     }
-
 
     try {
 
         const result =
             await supabaseClient
                 .from("applications")
-                .insert([
-                    {
-                        full_name:
-                            name,
+                .insert({
+                    full_name:
+                        name,
 
-                        phone:
-                            phone,
+                    phone:
+                        phone,
 
-                        status:
-                            "new"
-                    }
-                ])
+                    status:
+                        "new"
+                })
                 .select()
                 .single();
 
-
         if (result.error) {
-
             throw result.error;
-
         }
-
 
         const application =
             result.data;
 
-
         localStorage.setItem(
             "goldshow_application_id",
-            String(
-                application.id
-            )
+            String(application.id)
         );
-
 
         localStorage.setItem(
             "goldshow_application_phone",
             phone
         );
 
-
         message.innerHTML = `
-
             <div
                 style="
                     padding:15px;
                     border-radius:10px;
                     background:#dcfce7;
-                    color:#15803d;
+                    color:#15803d
                 "
             >
-
                 ✅ Arizangiz yuborildi!
 
                 <br><br>
@@ -4920,11 +3110,8 @@ async function submitApplication(
                 <br><br>
 
                 Biz siz bilan bog‘lanamiz.
-
             </div>
-
         `;
-
 
         document
             .getElementById(
@@ -4932,45 +3119,31 @@ async function submitApplication(
             )
             .reset();
 
-
         startApplicationPolling(
             application.id,
             phone
         );
 
     }
-    catch (errorObject) {
+    catch (error) {
 
         console.error(
             "APPLICATION ERROR:",
-            errorObject
+            error
         );
 
-
         message.innerHTML = `
-
             <div class="error">
-
-                ❌
-                ${
-                    escapeHTML(
-                        errorObject.message ||
-                        "Ariza yuborishda xatolik."
-                    )
-                }
-
+                ❌ Ariza yuborishda xatolik:
+                <br>
+                ${escapeHTML(
+                    error.message ||
+                    "Noma'lum xatolik"
+                )}
             </div>
-
         `;
-
     }
-
 }
-
-
-/* =========================================================
-   APPLICATION STATUS
-========================================================= */
 
 function startApplicationPolling(
     id,
@@ -4978,19 +3151,15 @@ function startApplicationPolling(
 ) {
 
     if (applicationTimer) {
-
         clearInterval(
             applicationTimer
         );
-
     }
-
 
     checkApplicationStatus(
         id,
         phone
     );
-
 
     applicationTimer =
         setInterval(
@@ -5004,9 +3173,7 @@ function startApplicationPolling(
             },
             8000
         );
-
 }
-
 
 function restoreApplicationStatus() {
 
@@ -5015,12 +3182,10 @@ function restoreApplicationStatus() {
             "goldshow_application_id"
         );
 
-
     const phone =
         localStorage.getItem(
             "goldshow_application_phone"
         );
-
 
     if (
         id &&
@@ -5031,11 +3196,8 @@ function restoreApplicationStatus() {
             id,
             phone
         );
-
     }
-
 }
-
 
 async function checkApplicationStatus(
     id,
@@ -5058,31 +3220,24 @@ async function checkApplicationStatus(
             )
             .maybeSingle();
 
-
     if (
         result.error ||
         !result.data
     ) {
-
         return;
-
     }
-
 
     const application =
         result.data;
-
 
     const box =
         document.getElementById(
             "customerStatusBox"
         );
 
-
     if (!box) {
         return;
     }
-
 
     if (
         application.status ===
@@ -5093,13 +3248,10 @@ async function checkApplicationStatus(
             "hidden"
         );
 
-
         box.style.borderLeftColor =
             "#16a34a";
 
-
         box.innerHTML = `
-
             <strong>
                 ✅ Sizning arizangiz qabul qilindi
             </strong>
@@ -5112,22 +3264,16 @@ async function checkApplicationStatus(
 
             Ariza:
             #${application.id}
-
         `;
-
 
         clearInterval(
             applicationTimer
         );
 
-
-        applicationTimer =
-            null;
-
+        applicationTimer = null;
     }
 
-
-    if (
+    else if (
         application.status ===
         "rejected"
     ) {
@@ -5136,13 +3282,10 @@ async function checkApplicationStatus(
             "hidden"
         );
 
-
         box.style.borderLeftColor =
             "#dc2626";
 
-
         box.innerHTML = `
-
             <strong>
                 ❌ Arizangiz rad etildi.
             </strong>
@@ -5151,26 +3294,19 @@ async function checkApplicationStatus(
 
             Ariza:
             #${application.id}
-
         `;
-
 
         clearInterval(
             applicationTimer
         );
 
-
-        applicationTimer =
-            null;
-
+        applicationTimer = null;
     }
-
 }
 
-
-/* =========================================================
+/* =========================================
    ADMIN APPLICATIONS
-========================================================= */
+========================================= */
 
 async function loadApplications() {
 
@@ -5179,24 +3315,13 @@ async function loadApplications() {
             "applicationsList"
         );
 
-
-    if (!container) {
-        return;
-    }
-
-
     if (
+        !container ||
         !currentUser ||
         currentUser.role !== "admin"
     ) {
-
-        container.innerHTML =
-            "";
-
         return;
-
     }
-
 
     const result =
         await supabaseClient
@@ -5205,50 +3330,30 @@ async function loadApplications() {
             .order(
                 "created_at",
                 {
-                    ascending:
-                        false
+                    ascending: false
                 }
             );
 
-
     if (result.error) {
 
-        console.error(
-            "APPLICATION LOAD ERROR:",
-            result.error
-        );
-
-
         container.innerHTML = `
-
             <div class="no-orders">
-
                 ❌
                 ${escapeHTML(
-                    result.error.message ||
-                    "Arizalarni olishda xatolik."
+                    result.error.message
                 )}
-
             </div>
-
         `;
 
         return;
-
     }
-
 
     const applications =
         result.data || [];
 
-
-    if (
-        applications.length ===
-        0
-    ) {
+    if (!applications.length) {
 
         container.innerHTML = `
-
             <div class="no-orders">
 
                 <h3>
@@ -5260,70 +3365,47 @@ async function loadApplications() {
                 </p>
 
             </div>
-
         `;
 
         return;
-
     }
-
 
     container.innerHTML =
         applications
-            .map(
-                createApplicationHTML
-            )
+            .map(createApplicationHTML)
             .join("");
-
 }
-
-
-/* =========================================================
-   APPLICATION HTML
-========================================================= */
 
 function createApplicationHTML(
     application
 ) {
 
-    let statusClass =
-        "status-new";
+    const statuses = {
 
+        new: [
+            "status-new",
+            "Yangi"
+        ],
 
-    let statusText =
-        "Yangi";
+        accepted: [
+            "status-accepted",
+            "Qabul qilingan"
+        ],
 
+        rejected: [
+            "status-rejected",
+            "Rad etilgan"
+        ]
 
-    if (
-        application.status ===
-        "accepted"
-    ) {
+    };
 
-        statusClass =
-            "status-accepted";
-
-        statusText =
-            "Qabul qilingan";
-
-    }
-
-
-    if (
-        application.status ===
-        "rejected"
-    ) {
-
-        statusClass =
-            "status-rejected";
-
-        statusText =
-            "Rad etilgan";
-
-    }
-
+    const status =
+        statuses[
+            application.status
+        ] ||
+        statuses.new;
 
     let buttons = "";
-
 
     if (
         application.status ===
@@ -5331,17 +3413,14 @@ function createApplicationHTML(
     ) {
 
         buttons = `
-
-            <div
-                class="application-actions"
-            >
+            <div class="application-actions">
 
                 <button
                     type="button"
                     class="accept-btn"
                     onclick="
                         updateApplicationStatus(
-                            ${application.id},
+                            ${Number(application.id)},
                             'accepted'
                         )
                     "
@@ -5349,13 +3428,12 @@ function createApplicationHTML(
                     ✅ Qabul qilish
                 </button>
 
-
                 <button
                     type="button"
                     class="reject-btn"
                     onclick="
                         updateApplicationStatus(
-                            ${application.id},
+                            ${Number(application.id)},
                             'rejected'
                         )
                     "
@@ -5364,58 +3442,36 @@ function createApplicationHTML(
                 </button>
 
             </div>
-
         `;
-
     }
 
-
     return `
+        <div class="application-card">
 
-        <div
-            class="application-card"
-        >
-
-            <div
-                class="application-header"
-            >
+            <div class="application-header">
 
                 <div>
 
-                    <div
-                        class="application-name"
-                    >
-
+                    <div class="application-name">
                         👤
                         ${escapeHTML(
                             application.full_name
                         )}
-
                     </div>
 
                 </div>
 
-
-                <div
-                    class="application-time"
-                >
-
+                <div class="application-time">
                     ${formatDateTime(
                         application.created_at
                     )}
-
                 </div>
 
             </div>
 
+            <div class="application-info">
 
-            <div
-                class="application-info"
-            >
-
-                <div
-                    class="application-detail"
-                >
+                <div class="application-detail">
 
                     <span>
                         📞 Telefon
@@ -5429,46 +3485,33 @@ function createApplicationHTML(
 
                 </div>
 
-
-                <div
-                    class="application-detail"
-                >
+                <div class="application-detail">
 
                     <span>
                         🆔 Ariza
                     </span>
 
                     <strong>
-                        #${application.id}
+                        #${Number(
+                            application.id
+                        )}
                     </strong>
 
                 </div>
 
             </div>
 
-
             <span
-                class="
-                    application-status
-                    ${statusClass}
-                "
+                class="application-status ${status[0]}"
             >
-                ${statusText}
+                ${status[1]}
             </span>
-
 
             ${buttons}
 
         </div>
-
     `;
-
 }
-
-
-/* =========================================================
-   UPDATE APPLICATION
-========================================================= */
 
 async function updateApplicationStatus(
     id,
@@ -5479,283 +3522,169 @@ async function updateApplicationStatus(
         !currentUser ||
         currentUser.role !== "admin"
     ) {
-
-        alert(
-            "❌ Faqat admin."
-        );
-
         return;
-
     }
-
 
     const question =
         status === "accepted"
-
             ? "Bu arizani qabul qilasizmi?"
-
             : "Bu arizani rad qilasizmi?";
 
-
-    if (
-        !confirm(
-            question
-        )
-    ) {
-
+    if (!confirm(question)) {
         return;
-
     }
 
-
     const updateData = {
-
-        status:
-            status
-
+        status: status
     };
 
-
     if (
-        status ===
-        "accepted"
+        status === "accepted"
     ) {
 
         updateData.accepted_at =
             new Date()
                 .toISOString();
-
     }
-
 
     const result =
         await supabaseClient
             .from("applications")
-            .update(
-                updateData
-            )
+            .update(updateData)
             .eq(
                 "id",
                 id
             );
 
-
     if (result.error) {
-
-        console.error(
-            result.error
-        );
-
 
         alert(
             "❌ " +
-            (
-                result.error.message ||
-                "Ariza statusini o‘zgartirib bo‘lmadi."
-            )
+            result.error.message
         );
 
         return;
-
     }
 
-
     await loadApplications();
-
 
     alert(
         status === "accepted"
             ? "✅ Ariza qabul qilindi."
             : "❌ Ariza rad etildi."
     );
-
 }
 
-
-/* =========================================================
+/* =========================================
    START
-========================================================= */
+========================================= */
 
 document.addEventListener(
     "DOMContentLoaded",
-    async function() {
+    function() {
 
         updateDate();
-
-
-        /*
-           LOGIN
-        */
 
         const loginForm =
             document.getElementById(
                 "loginForm"
             );
 
-
         if (loginForm) {
-
             loginForm.addEventListener(
                 "submit",
                 login
             );
-
         }
-
-
-        /*
-           ORDER
-        */
 
         const orderForm =
             document.getElementById(
                 "orderForm"
             );
 
-
         if (orderForm) {
-
             orderForm.addEventListener(
                 "submit",
                 saveOrderFromForm
             );
-
         }
-
-
-        /*
-           USER
-        */
 
         const userForm =
             document.getElementById(
                 "userForm"
             );
 
-
         if (userForm) {
-
             userForm.addEventListener(
                 "submit",
                 createUser
             );
-
         }
-
-
-        /*
-           EVENT
-        */
 
         const eventForm =
             document.getElementById(
                 "eventForm"
             );
 
-
         if (eventForm) {
-
             eventForm.addEventListener(
                 "submit",
                 saveEventFromForm
             );
-
         }
-
-
-        /*
-           APPLICATION
-        */
 
         const applicationForm =
             document.getElementById(
                 "applicationForm"
             );
 
-
         if (applicationForm) {
-
             applicationForm.addEventListener(
                 "submit",
                 submitApplication
             );
-
         }
-
-
-        /*
-           SEARCH
-        */
 
         const searchInput =
             document.getElementById(
                 "searchInput"
             );
 
-
         if (searchInput) {
-
             searchInput.addEventListener(
                 "input",
-                function() {
-
-                    displayOrders();
-
-                }
+                displayOrders
             );
-
         }
-
-
-        /*
-           TOTAL PRICE
-        */
 
         const totalPrice =
             document.getElementById(
                 "totalPrice"
             );
 
-
         if (totalPrice) {
-
             totalPrice.addEventListener(
                 "input",
                 calculateRemaining
             );
-
         }
-
-
-        /*
-           PAID
-        */
 
         const paid =
             document.getElementById(
                 "paid"
             );
 
-
         if (paid) {
-
             paid.addEventListener(
                 "input",
                 calculateRemaining
             );
-
         }
-
-
-        /*
-           MODAL
-        */
 
         const modal =
             document.getElementById(
                 "orderModal"
             );
-
 
         if (modal) {
 
@@ -5769,29 +3698,13 @@ document.addEventListener(
                     ) {
 
                         closeOrderModal();
-
                     }
 
                 }
             );
-
         }
 
-
-        /*
-           REMAINING
-        */
-
         calculateRemaining();
-
-
-        /*
-           SUPABASE TEST
-           
-           Bu yerda konsolda ulanish natijasi chiqadi.
-        */
-
-        await testSupabaseConnection();
 
     }
 );

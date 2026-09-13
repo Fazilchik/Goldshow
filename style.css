@@ -29,10 +29,9 @@ textarea {
     display: none !important;
 }
 
-
-/* ================================
+/* =========================================
    BOSHLANG'ICH SAHIFA
-================================ */
+========================================= */
 
 .landing-page {
     min-height: 100vh;
@@ -40,7 +39,6 @@ textarea {
     justify-content: center;
     align-items: center;
     padding: 20px;
-
     background:
         radial-gradient(
             circle at top,
@@ -55,12 +53,9 @@ textarea {
     max-width: 100%;
     padding: 50px 35px;
     text-align: center;
-
-    background: #ffffff;
+    background: #fff;
     border-radius: 25px;
-
-    box-shadow:
-        0 25px 80px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 25px 80px rgba(0,0,0,.45);
 }
 
 .landing-logo {
@@ -69,13 +64,15 @@ textarea {
     color: #111827;
 }
 
-.landing-logo span {
+.landing-logo span,
+.logo span,
+.sidebar-logo span,
+.customer-logo span {
     color: #d89b00;
 }
 
 .landing-subtitle {
-    margin-top: 10px;
-    margin-bottom: 35px;
+    margin: 10px 0 35px;
     color: #6b7280;
 }
 
@@ -87,13 +84,11 @@ textarea {
 
 .landing-btn {
     padding: 20px 15px;
-    border: none;
+    border: 0;
     border-radius: 15px;
-
     font-size: 18px;
-    font-weight: bold;
-
-    transition: 0.2s;
+    font-weight: 700;
+    transition: .2s;
 }
 
 .landing-btn:hover {
@@ -102,7 +97,7 @@ textarea {
 
 .customer-btn {
     background: #d89b00;
-    color: white;
+    color: #fff;
 }
 
 .customer-btn:hover {
@@ -111,27 +106,23 @@ textarea {
 
 .worker-btn {
     background: #111827;
-    color: white;
+    color: #fff;
 }
 
 .worker-btn:hover {
     background: #273244;
 }
 
-
-/* ================================
+/* =========================================
    LOGIN
-================================ */
+========================================= */
 
 .login-page {
     min-height: 100vh;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     padding: 20px;
-
     background:
         linear-gradient(
             135deg,
@@ -144,47 +135,33 @@ textarea {
 .login-box {
     width: 390px;
     max-width: 100%;
-
     padding: 40px;
-
-    background: white;
+    background: #fff;
     border-radius: 20px;
-
-    box-shadow:
-        0 20px 60px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
 }
 
 .logo {
     text-align: center;
     font-size: 34px;
     font-weight: 900;
-
     color: #111827;
-
     margin-bottom: 10px;
-}
-
-.logo span {
-    color: #d89b00;
 }
 
 .login-title {
     text-align: center;
     color: #6b7280;
-
     margin-bottom: 30px;
 }
 
 .login-box input {
     width: 100%;
-
     padding: 14px;
     margin-bottom: 15px;
-
     border: 1px solid #d1d5db;
     border-radius: 10px;
-
-    outline: none;
+    outline: 0;
     font-size: 15px;
 }
 
@@ -194,17 +171,13 @@ textarea {
 
 .login-box form button {
     width: 100%;
-
     padding: 14px;
-
-    border: none;
+    border: 0;
     border-radius: 10px;
-
     background: #d89b00;
-    color: white;
-
+    color: #fff;
     font-size: 16px;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .login-box form button:hover {
@@ -213,28 +186,23 @@ textarea {
 
 .back-home-btn {
     width: 100%;
-
     margin-top: 12px;
     padding: 12px;
-
     border: 1px solid #d1d5db;
     border-radius: 10px;
-
-    background: white;
+    background: #fff;
     color: #374151;
 }
 
 .error {
     color: #dc2626;
     text-align: center;
-
     margin-top: 15px;
 }
 
-
-/* ================================
+/* =========================================
    MAIN PANEL
-================================ */
+========================================= */
 
 .main-page {
     min-height: 100vh;
@@ -244,70 +212,48 @@ textarea {
 .sidebar {
     width: 250px;
     min-height: 100vh;
-
     position: fixed;
     left: 0;
     top: 0;
     bottom: 0;
-
     display: flex;
     flex-direction: column;
-
     padding: 25px 15px;
-
     background: #111827;
-    color: white;
-
+    color: #fff;
     z-index: 20;
-
     overflow-y: auto;
 }
 
 .sidebar-logo {
     font-size: 28px;
     font-weight: 900;
-
     text-align: center;
-
     margin-bottom: 30px;
-}
-
-.sidebar-logo span {
-    color: #d89b00;
 }
 
 .user-info {
     display: flex;
     align-items: center;
-
     gap: 12px;
-
     padding: 15px;
-
     margin-bottom: 25px;
-
-    background: rgba(255,255,255,0.06);
-
+    background: rgba(255,255,255,.06);
     border-radius: 12px;
 }
 
 .avatar {
     width: 42px;
     height: 42px;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     flex-shrink: 0;
-
     border-radius: 50%;
-
     background: #d89b00;
-    color: white;
-
+    color: #fff;
     font-size: 18px;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .user-info strong {
@@ -326,50 +272,39 @@ nav {
 
 .menu-btn {
     width: 100%;
-
     padding: 13px 15px;
-
-    border: none;
+    border: 0;
     border-radius: 9px;
-
     background: transparent;
     color: #d1d5db;
-
     text-align: left;
-
     font-size: 15px;
 }
 
 .menu-btn:hover,
 .menu-btn.active {
     background: #d89b00;
-    color: white;
+    color: #fff;
 }
 
 .logout-btn {
     width: 100%;
-
     margin-top: auto;
-
     padding: 13px;
-
     border: 1px solid #374151;
     border-radius: 9px;
-
     background: transparent;
     color: #d1d5db;
 }
 
 .logout-btn:hover {
     background: #dc2626;
-    color: white;
+    color: #fff;
 }
 
 .content {
     width: calc(100% - 250px);
-
     margin-left: 250px;
-
     padding: 30px;
 }
 
@@ -377,9 +312,7 @@ nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-
     gap: 20px;
-
     margin-bottom: 30px;
 }
 
@@ -393,23 +326,16 @@ nav {
 }
 
 .today {
-    background: white;
-
+    background: #fff;
     padding: 12px 20px;
-
     border-radius: 12px;
-
-    box-shadow:
-        0 3px 15px rgba(0, 0, 0, 0.05);
-
+    box-shadow: 0 3px 15px rgba(0,0,0,.05);
     text-align: right;
 }
 
 .today span {
     display: block;
-
     color: #6b7280;
-
     font-size: 12px;
 }
 
@@ -417,60 +343,43 @@ nav {
     font-size: 16px;
 }
 
-
-/* ================================
+/* =========================================
    STATISTIKA
-================================ */
+========================================= */
 
 .stats {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-
     gap: 20px;
-
     margin-bottom: 30px;
 }
 
 .stat-card {
     display: flex;
     align-items: center;
-
     gap: 15px;
-
     padding: 22px;
-
-    background: white;
-
+    background: #fff;
     border-radius: 15px;
-
-    box-shadow:
-        0 4px 20px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 20px rgba(0,0,0,.05);
 }
 
 .stat-icon {
     width: 50px;
     height: 50px;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     flex-shrink: 0;
-
     border-radius: 12px;
-
     background: #fff4d6;
-
     font-size: 23px;
 }
 
 .stat-card span {
     display: block;
-
     color: #6b7280;
-
     font-size: 13px;
-
     margin-bottom: 5px;
 }
 
@@ -482,18 +391,15 @@ nav {
     color: #159447;
 }
 
-
-/* ================================
+/* =========================================
    SECTION
-================================ */
+========================================= */
 
 .section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-
     gap: 20px;
-
     margin-bottom: 20px;
 }
 
@@ -513,42 +419,32 @@ nav {
 
 #searchInput {
     width: 280px;
-
     padding: 11px 14px;
-
     border: 1px solid #d1d5db;
     border-radius: 9px;
-
-    outline: none;
+    outline: 0;
 }
 
-
-/* ================================
+/* =========================================
    NOTIFICATION
-================================ */
+========================================= */
 
 .notification {
     background: #fff4d6;
-
     border-left: 5px solid #d89b00;
-
     padding: 18px;
-
     border-radius: 10px;
-
     margin-bottom: 20px;
 }
 
 .notification strong {
     display: block;
-
     margin-bottom: 5px;
 }
 
-
-/* ================================
+/* =========================================
    ORDERS
-================================ */
+========================================= */
 
 .orders-list {
     display: flex;
@@ -557,70 +453,54 @@ nav {
 }
 
 .order-card {
-    background: white;
-
+    background: #fff;
     border-radius: 15px;
-
     padding: 20px;
-
-    box-shadow:
-        0 3px 15px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 3px 15px rgba(0,0,0,.05);
 }
 
 .order-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-
     gap: 15px;
-
     padding-bottom: 15px;
-
     margin-bottom: 15px;
-
     border-bottom: 1px solid #e5e7eb;
 }
 
 .order-client {
     font-size: 20px;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .order-date {
     color: #d89b00;
-    font-weight: bold;
-
+    font-weight: 700;
     text-align: right;
 }
 
 .order-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-
     gap: 12px;
 }
 
 .info {
     padding: 10px;
-
     background: #f9fafb;
-
     border-radius: 8px;
 }
 
 .info span {
     display: block;
-
     color: #6b7280;
-
     font-size: 12px;
-
     margin-bottom: 4px;
 }
 
 .info strong {
     font-size: 14px;
-
     word-break: break-word;
 }
 
@@ -634,32 +514,22 @@ nav {
 
 .no-orders {
     padding: 50px;
-
-    background: white;
-
+    background: #fff;
     border-radius: 15px;
-
     color: #6b7280;
-
     text-align: center;
 }
 
-
-/* ================================
+/* =========================================
    FORM
-================================ */
+========================================= */
 
 .form-container {
     max-width: 1000px;
-
     padding: 30px;
-
-    background: white;
-
+    background: #fff;
     border-radius: 18px;
-
-    box-shadow:
-        0 3px 20px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 3px 20px rgba(0,0,0,.05);
 }
 
 .form-title {
@@ -675,25 +545,20 @@ nav {
 }
 
 form h3 {
-    margin-top: 30px;
-    margin-bottom: 15px;
-
+    margin: 30px 0 15px;
     padding-bottom: 10px;
-
     border-bottom: 1px solid #e5e7eb;
 }
 
 .form-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-
     gap: 18px;
 }
 
 .form-group {
     display: flex;
     flex-direction: column;
-
     gap: 7px;
 }
 
@@ -703,22 +568,17 @@ form h3 {
 
 .form-group label {
     font-size: 14px;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
     width: 100%;
-
     padding: 12px;
-
     border: 1px solid #d1d5db;
-
     border-radius: 8px;
-
-    outline: none;
-
+    outline: 0;
     font-size: 14px;
 }
 
@@ -735,32 +595,22 @@ form h3 {
 
 .remaining {
     padding: 12px;
-
     border-radius: 8px;
-
     background: #fff4d6;
-
-    font-weight: bold;
-
+    font-weight: 700;
     color: #dc2626;
 }
 
 .save-btn {
     width: 100%;
-
     margin-top: 30px;
-
     padding: 15px;
-
-    border: none;
-
+    border: 0;
     border-radius: 10px;
-
     background: #d89b00;
-    color: white;
-
+    color: #fff;
     font-size: 16px;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .save-btn:hover {
@@ -769,19 +619,13 @@ form h3 {
 
 .cancel-btn {
     width: 100%;
-
     margin-top: 10px;
-
     padding: 13px;
-
-    border: none;
-
+    border: 0;
     border-radius: 10px;
-
     background: #6b7280;
-    color: white;
-
-    font-weight: bold;
+    color: #fff;
+    font-weight: 700;
 }
 
 .cancel-btn:hover {
@@ -790,24 +634,17 @@ form h3 {
 
 .edit-badge {
     display: inline-block;
-
     padding: 8px 12px;
-
     margin-bottom: 15px;
-
     border-radius: 8px;
-
     background: #fff4d6;
-
     color: #b87f00;
-
-    font-weight: bold;
+    font-weight: 700;
 }
 
-
-/* ================================
+/* =========================================
    USERS
-================================ */
+========================================= */
 
 .users-section {
     margin-top: 25px;
@@ -821,110 +658,86 @@ form h3 {
 
 .user-card {
     padding: 20px;
-
-    background: white;
-
+    background: #fff;
     border-radius: 15px;
-
-    box-shadow:
-        0 3px 15px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 3px 15px rgba(0,0,0,.05);
 }
 
 .user-card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-
     gap: 15px;
-
     margin-bottom: 15px;
 }
 
 .user-card-name {
     font-size: 19px;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .user-role {
     display: inline-block;
-
     margin-top: 5px;
-
     padding: 5px 10px;
-
     border-radius: 20px;
-
     background: #fff4d6;
     color: #b87f00;
-
     font-size: 12px;
-
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .user-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-
     gap: 12px;
-
     margin-bottom: 15px;
 }
 
 .user-detail {
     padding: 11px;
-
     background: #f9fafb;
-
     border-radius: 8px;
 }
 
 .user-detail span {
     display: block;
-
     color: #6b7280;
-
     font-size: 12px;
-
     margin-bottom: 4px;
 }
 
 .user-detail strong {
     font-size: 14px;
-
     word-break: break-word;
 }
 
 .user-actions {
     display: flex;
     flex-wrap: wrap;
-
     gap: 8px;
 }
 
 .user-actions button {
-    border: none;
-
+    border: 0;
     padding: 9px 13px;
-
     border-radius: 7px;
-
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .btn-view {
     background: #111827;
-    color: white;
+    color: #fff;
 }
 
 .btn-edit {
     background: #d89b00;
-    color: white;
+    color: #fff;
 }
 
 .btn-delete {
     background: #dc2626;
-    color: white;
+    color: #fff;
 }
 
 .btn-view:hover {
@@ -939,10 +752,9 @@ form h3 {
     background: #b91c1c;
 }
 
-
-/* ================================
+/* =========================================
    CUSTOMER
-================================ */
+========================================= */
 
 .customer-page {
     min-height: 100vh;
@@ -952,22 +764,15 @@ form h3 {
 .customer-header {
     position: sticky;
     top: 0;
-
     z-index: 30;
-
     display: flex;
     justify-content: space-between;
     align-items: center;
-
     gap: 15px;
-
     padding: 18px 30px;
-
     background: #111827;
-    color: white;
-
-    box-shadow:
-        0 4px 15px rgba(0, 0, 0, 0.15);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(0,0,0,.15);
 }
 
 .customer-logo {
@@ -975,21 +780,13 @@ form h3 {
     font-weight: 900;
 }
 
-.customer-logo span {
-    color: #d89b00;
-}
-
 .customer-order-btn {
     padding: 12px 18px;
-
-    border: none;
-
+    border: 0;
     border-radius: 10px;
-
     background: #d89b00;
-    color: white;
-
-    font-weight: bold;
+    color: #fff;
+    font-weight: 700;
 }
 
 .customer-order-btn:hover {
@@ -998,9 +795,7 @@ form h3 {
 
 .customer-container {
     max-width: 1250px;
-
     margin: auto;
-
     padding: 35px 20px 50px;
 }
 
@@ -1008,9 +803,7 @@ form h3 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-
     gap: 20px;
-
     margin-bottom: 25px;
 }
 
@@ -1020,49 +813,35 @@ form h3 {
 
 .customer-title-row p {
     color: #6b7280;
-
     margin-top: 6px;
 }
 
 .customer-back-btn {
     padding: 11px 15px;
-
-    border: none;
-
+    border: 0;
     border-radius: 9px;
-
-    background: white;
-
-    box-shadow:
-        0 3px 15px rgba(0, 0, 0, 0.05);
+    background: #fff;
+    box-shadow: 0 3px 15px rgba(0,0,0,.05);
 }
 
 .customer-events-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-
     gap: 20px;
 }
 
 .event-card {
     overflow: hidden;
-
-    background: white;
-
+    background: #fff;
     border-radius: 16px;
-
-    box-shadow:
-        0 5px 20px rgba(0, 0, 0, 0.07);
+    box-shadow: 0 5px 20px rgba(0,0,0,.07);
 }
 
 .event-card-image {
     width: 100%;
     height: 210px;
-
     display: block;
-
     object-fit: cover;
-
     background: #e5e7eb;
 }
 
@@ -1072,40 +851,29 @@ form h3 {
 
 .event-card-title {
     margin-bottom: 8px;
-
     font-size: 20px;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .event-card-description {
     color: #6b7280;
-
     line-height: 1.6;
-
     white-space: pre-wrap;
 }
 
 .event-card-date {
     margin-top: 13px;
-
     color: #b87f00;
-
     font-size: 12px;
-
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .event-admin-form {
     margin-bottom: 25px;
-
     padding: 25px;
-
-    background: white;
-
+    background: #fff;
     border-radius: 15px;
-
-    box-shadow:
-        0 3px 20px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 3px 20px rgba(0,0,0,.05);
 }
 
 .event-admin-form h3 {
@@ -1115,36 +883,28 @@ form h3 {
 .event-admin-actions {
     display: flex;
     gap: 8px;
-
     margin-top: 15px;
 }
 
-
-/* ================================
+/* =========================================
    PAGINATION
-================================ */
+========================================= */
 
 .pagination {
     display: flex;
     justify-content: center;
     align-items: center;
-
     flex-wrap: wrap;
-
     gap: 8px;
-
     margin-top: 30px;
 }
 
 .pagination button {
     padding: 10px 15px;
-
-    border: none;
-
+    border: 0;
     border-radius: 8px;
-
     background: #111827;
-    color: white;
+    color: #fff;
 }
 
 .pagination button:hover:not(:disabled) {
@@ -1156,7 +916,7 @@ form h3 {
 }
 
 .pagination button:disabled {
-    opacity: 0.45;
+    opacity: .45;
     cursor: not-allowed;
 }
 
@@ -1164,42 +924,34 @@ form h3 {
     color: #6b7280;
 }
 
-
-/* ================================
+/* =========================================
    ARIZALAR
-================================ */
+========================================= */
 
 .applications-list {
     display: flex;
     flex-direction: column;
-
     gap: 15px;
 }
 
 .application-card {
     padding: 20px;
-
-    background: white;
-
+    background: #fff;
     border-radius: 15px;
-
-    box-shadow:
-        0 3px 15px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 3px 15px rgba(0,0,0,.05);
 }
 
 .application-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-
     gap: 15px;
-
     margin-bottom: 15px;
 }
 
 .application-name {
     font-size: 20px;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .application-time {
@@ -1211,25 +963,19 @@ form h3 {
 .application-info {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-
     gap: 12px;
 }
 
 .application-detail {
     padding: 12px;
-
     background: #f9fafb;
-
     border-radius: 9px;
 }
 
 .application-detail span {
     display: block;
-
     color: #6b7280;
-
     font-size: 12px;
-
     margin-bottom: 5px;
 }
 
@@ -1239,16 +985,11 @@ form h3 {
 
 .application-status {
     display: inline-block;
-
     margin-top: 15px;
-
     padding: 7px 11px;
-
     border-radius: 20px;
-
     font-size: 12px;
-
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .status-new {
@@ -1269,96 +1010,71 @@ form h3 {
 .application-actions {
     display: flex;
     flex-wrap: wrap;
-
     gap: 10px;
-
     margin-top: 15px;
 }
 
 .application-actions button {
     padding: 10px 14px;
-
-    border: none;
-
+    border: 0;
     border-radius: 8px;
-
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .accept-btn {
     background: #16a34a;
-    color: white;
+    color: #fff;
 }
 
 .reject-btn {
     background: #dc2626;
-    color: white;
+    color: #fff;
 }
 
-
-/* ================================
+/* =========================================
    MODAL
-================================ */
+========================================= */
 
 .modal-overlay {
     position: fixed;
     inset: 0;
-
     z-index: 100;
-
     display: flex;
-
     justify-content: center;
     align-items: center;
-
     padding: 20px;
-
-    background: rgba(0, 0, 0, 0.65);
+    background: rgba(0,0,0,.65);
 }
 
 .modal-box {
     position: relative;
-
     width: 500px;
     max-width: 100%;
     max-height: 90vh;
-
     overflow-y: auto;
-
     padding: 30px;
-
-    background: white;
-
+    background: #fff;
     border-radius: 20px;
-
-    box-shadow:
-        0 25px 90px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 25px 90px rgba(0,0,0,.35);
 }
 
 .modal-box h2 {
     padding-right: 35px;
-
     line-height: 1.3;
 }
 
 .modal-subtitle {
     margin-top: 7px;
-
     color: #6b7280;
 }
 
 .modal-close {
     position: absolute;
-
     right: 15px;
     top: 10px;
-
-    border: none;
-
+    border: 0;
     background: transparent;
-
     color: #6b7280;
-
     font-size: 32px;
 }
 
@@ -1366,13 +1082,9 @@ form h3 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-
     margin: 20px 0;
-
     padding: 14px;
-
     border-radius: 10px;
-
     background: #fff4d6;
 }
 
@@ -1382,43 +1094,31 @@ form h3 {
 
 .trust-number strong {
     color: #b87f00;
-
     font-size: 20px;
 }
 
 .application-message {
     margin-top: 15px;
-
     line-height: 1.5;
 }
 
 .customer-status-box {
     position: fixed;
-
     left: 20px;
     bottom: 20px;
-
     z-index: 50;
-
     width: 350px;
     max-width: calc(100% - 40px);
-
     padding: 16px;
-
     border-left: 5px solid #16a34a;
-
     border-radius: 12px;
-
-    background: white;
-
-    box-shadow:
-        0 10px 30px rgba(0, 0, 0, 0.15);
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(0,0,0,.15);
 }
 
-
-/* ================================
+/* =========================================
    MOBILE
-================================ */
+========================================= */
 
 @media (max-width: 1100px) {
 
@@ -1435,7 +1135,6 @@ form h3 {
     }
 }
 
-
 @media (max-width: 700px) {
 
     .landing-buttons {
@@ -1448,7 +1147,6 @@ form h3 {
 
     .sidebar {
         width: 70px;
-
         padding: 15px 8px;
     }
 
@@ -1458,9 +1156,7 @@ form h3 {
 
     .sidebar-logo::after {
         content: "G";
-
         font-size: 25px;
-
         color: #d89b00;
     }
 
@@ -1474,7 +1170,6 @@ form h3 {
 
     .menu-btn {
         font-size: 0;
-
         text-align: center;
     }
 
@@ -1488,9 +1183,7 @@ form h3 {
 
     .content {
         width: calc(100% - 70px);
-
         margin-left: 70px;
-
         padding: 15px;
     }
 
@@ -1512,13 +1205,11 @@ form h3 {
 
     .top-header {
         flex-direction: column;
-
         align-items: flex-start;
     }
 
     .section-header {
         flex-direction: column;
-
         align-items: flex-start;
     }
 
@@ -1536,13 +1227,11 @@ form h3 {
 
     .customer-order-btn {
         padding: 9px 12px;
-
         font-size: 13px;
     }
 
     .customer-title-row {
         flex-direction: column;
-
         align-items: flex-start;
     }
 
@@ -1556,7 +1245,6 @@ form h3 {
 
     .application-header {
         flex-direction: column;
-
         align-items: flex-start;
     }
 
