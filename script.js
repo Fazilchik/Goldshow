@@ -12,19 +12,42 @@
 const SUPABASE_URL =
     "https://mvrrftlhjlbrsiexnwjq.supabase.co";
 
+/*
+   BU YERGA O'ZINGIZNING PUBLISHABLE KEYINGIZNI QO'YING.
+   SECRET KEYNI QO'YMANG.
+*/
 const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_MFI3LFGRmSviFv6ygJnXyg_wFktEpyP";
 
 
-const supabaseClient =
-    window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_PUBLISHABLE_KEY
+/*
+   Supabase kutubxonasi tekshiriladi.
+*/
+let supabaseClient = null;
+
+if (
+    window.supabase &&
+    typeof window.supabase.createClient === "function"
+) {
+
+    supabaseClient =
+        window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_PUBLISHABLE_KEY
+        );
+
+}
+else {
+
+    console.error(
+        "Supabase JavaScript kutubxonasi yuklanmagan."
     );
+
+}
 
 
 /* =========================================================
-   GLOBAL VARIABLES
+   GLOBAL
 ========================================================= */
 
 let currentUser = null;
@@ -39,7 +62,7 @@ let applicationTimer = null;
 
 
 /* =========================================================
-   BASIC HELPERS
+   HELPERS
 ========================================================= */
 
 function escapeHTML(value) {
@@ -56,9 +79,11 @@ function escapeHTML(value) {
 
 function formatMoney(value) {
 
-    return Number(value || 0)
-        .toLocaleString("uz-UZ") +
-        " so‘m";
+    return (
+        Number(value || 0)
+            .toLocaleString("uz-UZ")
+        + " so‘m"
+    );
 
 }
 
@@ -140,26 +165,84 @@ function updateDate() {
     }
 
     element.textContent =
-        new Date()
-            .toLocaleDateString(
-                "uz-UZ",
-                {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric"
-                }
-            );
+        new Date().toLocaleDateString(
+            "uz-UZ",
+            {
+                day: "2-digit",
+                month: "long",
+                year: "numeric"
+            }
+        );
 
 }
 
 
 /* =========================================================
-   PAGE VISIBILITY
+   SUPABASE CONNECTION TEST
+========================================================= */
+
+async function testSupabaseConnection() {
+
+    if (!supabaseClient) {
+
+        console.error(
+            "Supabase client mavjud emas."
+        );
+
+        return false;
+
+    }
+
+
+    try {
+
+        const result =
+            await supabaseClient
+                .from("users")
+                .select("id")
+                .limit(1);
+
+
+        if (result.error) {
+
+            console.error(
+                "SUPABASE CONNECTION ERROR:",
+                result.error
+            );
+
+            return false;
+
+        }
+
+
+        console.log(
+            "✅ Supabase ulanishi ishlayapti."
+        );
+
+        return true;
+
+    }
+    catch (error) {
+
+        console.error(
+            "SUPABASE CONNECTION EXCEPTION:",
+            error
+        );
+
+        return false;
+
+    }
+
+}
+
+
+/* =========================================================
+   PAGE CONTROL
 ========================================================= */
 
 function hideAllPages() {
 
-    const ids = [
+    const pages = [
         "landingPage",
         "loginPage",
         "customerPage",
@@ -167,7 +250,7 @@ function hideAllPages() {
     ];
 
 
-    ids.forEach(
+    pages.forEach(
         function(id) {
 
             const element =
@@ -189,13 +272,12 @@ function hideAllPages() {
 }
 
 
-/* =========================================================
-   LANDING
-========================================================= */
-
 function backToLanding() {
 
+    currentUser = null;
+
     hideAllPages();
+
 
     const landing =
         document.getElementById(
@@ -216,6 +298,45 @@ function backToLanding() {
 
 }
 
+
+/* =========================================================
+   CUSTOMER
+========================================================= */
+
+async function openCustomerPage() {
+
+    hideAllPages();
+
+
+    const page =
+        document.getElementById(
+            "customerPage"
+        );
+
+
+    if (page) {
+
+        page.classList.remove(
+            "hidden"
+        );
+
+    }
+
+
+    customerEventsPage = 1;
+
+
+    await loadCustomerEvents();
+
+
+    restoreApplicationStatus();
+
+}
+
+
+/* =========================================================
+   WORKER LOGIN
+========================================================= */
 
 function openWorkerLogin() {
 
@@ -244,39 +365,10 @@ function openWorkerLogin() {
 
 
     if (username) {
+
         username.focus();
-    }
-
-}
-
-
-async function openCustomerPage() {
-
-    hideAllPages();
-
-
-    const customerPage =
-        document.getElementById(
-            "customerPage"
-        );
-
-
-    if (customerPage) {
-
-        customerPage.classList.remove(
-            "hidden"
-        );
 
     }
-
-
-    customerEventsPage = 1;
-
-
-    await loadCustomerEvents();
-
-
-    restoreApplicationStatus();
 
 }
 
@@ -308,6 +400,17 @@ async function login(event) {
         );
 
 
+    if (
+        !usernameElement ||
+        !passwordElement ||
+        !errorElement
+    ) {
+
+        return;
+
+    }
+
+
     const username =
         usernameElement
             .value
@@ -336,7 +439,31 @@ async function login(event) {
     }
 
 
+    /*
+       Supabase mavjudligini tekshiramiz.
+    */
+
+    if (!supabaseClient) {
+
+        errorElement.textContent =
+            "❌ Supabase kutubxonasi yuklanmagan.";
+
+        return;
+
+    }
+
+
     try {
+
+        console.log(
+            "Login tekshirilmoqda:",
+            username
+        );
+
+
+        /*
+           USERS jadvalidan login/parolni qidirish.
+        */
 
         const result =
             await supabaseClient
@@ -352,7 +479,7 @@ async function login(event) {
                     "password",
                     password
                 )
-                .maybeSingle();
+                .limit(1);
 
 
         console.log(
@@ -360,6 +487,10 @@ async function login(event) {
             result
         );
 
+
+        /*
+           SUPABASE XATOSI
+        */
 
         if (result.error) {
 
@@ -370,14 +501,25 @@ async function login(event) {
 
 
             errorElement.textContent =
-                "❌ Server bilan ulanishda xatolik.";
+                "❌ " +
+                (
+                    result.error.message ||
+                    "Server bilan ulanishda xatolik."
+                );
 
             return;
 
         }
 
 
-        if (!result.data) {
+        /*
+           USER TOPILMADI
+        */
+
+        if (
+            !result.data ||
+            result.data.length === 0
+        ) {
 
             errorElement.textContent =
                 "❌ Login yoki parol noto‘g‘ri.";
@@ -387,9 +529,17 @@ async function login(event) {
         }
 
 
-        const user =
-            result.data;
+        /*
+           USER
+        */
 
+        const user =
+            result.data[0];
+
+
+        /*
+           ROLE
+        */
 
         const role =
             String(
@@ -400,7 +550,7 @@ async function login(event) {
 
 
         /*
-           Faqat admin va user role qabul qilinadi.
+           FAQAT ADMIN VA USER
         */
 
         if (
@@ -421,21 +571,29 @@ async function login(event) {
         }
 
 
+        /*
+           CURRENT USER
+        */
+
         currentUser = {
 
-            id: user.id,
+            id:
+                user.id,
 
-            name: user.name,
+            name:
+                user.name,
 
-            username: user.username,
+            username:
+                user.username,
 
-            role: role
+            role:
+                role
 
         };
 
 
         /*
-           Inputlarni tozalash.
+           INPUTLARNI TOZALASH
         */
 
         usernameElement.value = "";
@@ -444,12 +602,11 @@ async function login(event) {
 
 
         /*
-           ROLE BO‘YICHA KIRISH.
+           ADMIN
         */
 
         if (
-            currentUser.role ===
-            "admin"
+            currentUser.role === "admin"
         ) {
 
             await openAdminPage();
@@ -459,9 +616,12 @@ async function login(event) {
         }
 
 
+        /*
+           ISHCHI
+        */
+
         if (
-            currentUser.role ===
-            "user"
+            currentUser.role === "user"
         ) {
 
             await openWorkerPage();
@@ -474,13 +634,17 @@ async function login(event) {
     catch (errorObject) {
 
         console.error(
-            "LOGIN ERROR:",
+            "LOGIN EXCEPTION:",
             errorObject
         );
 
 
         errorElement.textContent =
-            "❌ Server bilan ulanishda xatolik.";
+            "❌ " +
+            (
+                errorObject.message ||
+                "Server bilan ulanishda xatolik."
+            );
 
     }
 
@@ -497,10 +661,6 @@ async function openAdminPage() {
         "ADMIN PANEL"
     );
 
-
-    /*
-       ADMIN FUNKSIYALARI
-    */
 
     const addOrderMenu =
         document.getElementById(
@@ -576,10 +736,6 @@ async function openWorkerPage() {
         "ISHCHI PANEL"
     );
 
-
-    /*
-       ISHCHI ADMIN HUQUQLARINI KO‘RMAYDI.
-    */
 
     const addOrderMenu =
         document.getElementById(
@@ -663,7 +819,13 @@ async function prepareMainPage(
 
 
     if (!mainPage) {
+
+        console.error(
+            "mainPage topilmadi."
+        );
+
         return;
+
     }
 
 
@@ -673,7 +835,7 @@ async function prepareMainPage(
 
 
     /*
-       USER NAME
+       USER
     */
 
     const currentUserElement =
@@ -682,7 +844,10 @@ async function prepareMainPage(
         );
 
 
-    if (currentUserElement) {
+    if (
+        currentUserElement &&
+        currentUser
+    ) {
 
         currentUserElement.textContent =
             currentUser.name;
@@ -700,7 +865,10 @@ async function prepareMainPage(
         );
 
 
-    if (roleElement) {
+    if (
+        roleElement &&
+        currentUser
+    ) {
 
         roleElement.textContent =
             currentUser.role === "admin"
@@ -720,7 +888,10 @@ async function prepareMainPage(
         );
 
 
-    if (avatar) {
+    if (
+        avatar &&
+        currentUser
+    ) {
 
         avatar.textContent =
             currentUser.name
@@ -752,19 +923,33 @@ async function prepareMainPage(
 
 
     /*
-       MA'LUMOTLARNI YUKLASH
+       DASHBOARD
     */
 
     await updateDashboard();
 
+
+    /*
+       ZAKASLAR
+    */
+
     await displayOrders();
+
+
+    /*
+       TADBIRLAR
+    */
 
     await loadWorkerEvents();
 
 
+    /*
+       FAQAT ADMIN
+    */
+
     if (
-        currentUser.role ===
-        "admin"
+        currentUser &&
+        currentUser.role === "admin"
     ) {
 
         await displayUsers();
@@ -776,20 +961,21 @@ async function prepareMainPage(
 }
 
 
-/*
-   Eski kod bilan moslik uchun.
-*/
+/* =========================================================
+   COMPATIBILITY
+========================================================= */
 
 async function openMainPage() {
 
     if (!currentUser) {
+
         return;
+
     }
 
 
     if (
-        currentUser.role ===
-        "admin"
+        currentUser.role === "admin"
     ) {
 
         await openAdminPage();
@@ -830,7 +1016,7 @@ function logout() {
 
 
 /* =========================================================
-   MAIN MENU
+   MENU
 ========================================================= */
 
 async function showPage(
@@ -839,7 +1025,7 @@ async function showPage(
 ) {
 
     /*
-       ADMIN HUQUQLARI
+       USERLAR FAQAT ADMIN
     */
 
     if (
@@ -859,6 +1045,10 @@ async function showPage(
     }
 
 
+    /*
+       ARIZALAR FAQAT ADMIN
+    */
+
     if (
         pageId === "applicationsPage" &&
         (
@@ -875,6 +1065,10 @@ async function showPage(
 
     }
 
+
+    /*
+       ZAKAS QO'SHISH FAQAT ADMIN
+    */
 
     if (
         pageId === "addOrderPage" &&
@@ -894,7 +1088,7 @@ async function showPage(
 
 
     /*
-       BARCHA PAGE'LARNI YOPISH
+       BOSHQA PAGE'LARNI YOPISH
     */
 
     const pages =
@@ -915,7 +1109,7 @@ async function showPage(
 
 
     /*
-       KERAKLI PAGE
+       TARGET
     */
 
     const target =
@@ -925,7 +1119,14 @@ async function showPage(
 
 
     if (!target) {
+
+        console.error(
+            "Page topilmadi:",
+            pageId
+        );
+
         return;
+
     }
 
 
@@ -935,7 +1136,7 @@ async function showPage(
 
 
     /*
-       PAGE NOMLARI
+       TITLE
     */
 
     const titles = {
@@ -980,7 +1181,7 @@ async function showPage(
 
 
     /*
-       ACTIVE MENU
+       ACTIVE
     */
 
     document
@@ -1033,10 +1234,20 @@ async function showPage(
 
     if (
         pageId ===
-        "usersPage"
+        "addOrderPage"
     ) {
 
-        await displayUsers();
+        calculateRemaining();
+
+    }
+
+
+    if (
+        pageId ===
+        "workerEventsPage"
+    ) {
+
+        await loadWorkerEvents();
 
     }
 
@@ -1053,10 +1264,10 @@ async function showPage(
 
     if (
         pageId ===
-        "workerEventsPage"
+        "usersPage"
     ) {
 
-        await loadWorkerEvents();
+        await displayUsers();
 
     }
 
@@ -1064,7 +1275,7 @@ async function showPage(
 
 
 /* =========================================================
-   CALCULATE REMAINING
+   ORDER CALCULATION
 ========================================================= */
 
 function calculateRemaining() {
@@ -1092,7 +1303,9 @@ function calculateRemaining() {
         !paidElement ||
         !remainingElement
     ) {
+
         return;
+
     }
 
 
@@ -1117,7 +1330,7 @@ function calculateRemaining() {
 
 
 /* =========================================================
-   ORDER FORM DATA
+   GET ORDER FORM
 ========================================================= */
 
 function getOrderFromForm() {
@@ -1380,9 +1593,9 @@ async function saveOrderFromForm(
             const result =
                 await supabaseClient
                     .from("orders")
-                    .insert([
-                        order
-                    ]);
+                    .insert(
+                        [order]
+                    );
 
 
             if (result.error) {
@@ -1399,11 +1612,9 @@ async function saveOrderFromForm(
 
         resetOrderForm();
 
-
-        await updateDashboard();
-
         await displayOrders();
 
+        await updateDashboard();
 
         await showPage(
             "ordersPage"
@@ -1419,7 +1630,11 @@ async function saveOrderFromForm(
 
 
         alert(
-            "❌ Zakasni saqlashda xatolik."
+            "❌ Zakasni saqlashda xatolik: " +
+            (
+                errorObject.message ||
+                ""
+            )
         );
 
     }
@@ -1432,6 +1647,11 @@ async function saveOrderFromForm(
 ========================================================= */
 
 async function getOrders() {
+
+    if (!supabaseClient) {
+        return [];
+    }
+
 
     const result =
         await supabaseClient
@@ -1457,7 +1677,6 @@ async function getOrders() {
             "ORDERS ERROR:",
             result.error
         );
-
 
         return [];
 
@@ -1515,24 +1734,24 @@ async function displayOrders() {
                         String(
                             order.client_name
                         )
-                            .toLowerCase()
-                            .includes(search)
+                        .toLowerCase()
+                        .includes(search)
 
                         ||
 
                         String(
                             order.client_phone
                         )
-                            .toLowerCase()
-                            .includes(search)
+                        .toLowerCase()
+                        .includes(search)
 
                         ||
 
                         String(
                             order.location
                         )
-                            .toLowerCase()
-                            .includes(search)
+                        .toLowerCase()
+                        .includes(search)
 
                     );
 
@@ -1578,7 +1797,7 @@ async function displayOrders() {
 
 
 /* =========================================================
-   CREATE ORDER HTML
+   ORDER HTML
 ========================================================= */
 
 function createOrderHTML(
@@ -1709,15 +1928,9 @@ function createOrderHTML(
 
                     <strong>
 
-                        ${
-                            order.screen_height || 0
-                        }m
-
+                        ${order.screen_height || 0}m
                         ×
-
-                        ${
-                            order.screen_width || 0
-                        }m
+                        ${order.screen_width || 0}m
 
                     </strong>
 
@@ -1732,15 +1945,9 @@ function createOrderHTML(
 
                     <strong>
 
-                        ${
-                            order.stage_width || 0
-                        }m
-
+                        ${order.stage_width || 0}m
                         ×
-
-                        ${
-                            order.stage_length || 0
-                        }m
+                        ${order.stage_length || 0}m
 
                     </strong>
 
@@ -1931,9 +2138,7 @@ function createOrderHTML(
    EDIT ORDER
 ========================================================= */
 
-async function editOrder(
-    id
-) {
+async function editOrder(id) {
 
     if (
         !currentUser ||
@@ -1978,136 +2183,101 @@ async function editOrder(
         result.data;
 
 
-    document.getElementById(
-        "editingOrderId"
-    ).value =
-        order.id;
+    const fields = {
+
+        editingOrderId:
+            "id",
+
+        clientName:
+            "client_name",
+
+        clientPhone:
+            "client_phone",
+
+        location:
+            "location",
+
+        eventDate:
+            "event_date",
+
+        eventTime:
+            "event_time",
+
+        screenHeight:
+            "screen_height",
+
+        screenWidth:
+            "screen_width",
+
+        stageWidth:
+            "stage_width",
+
+        stageLength:
+            "stage_length",
+
+        curtain:
+            "curtain",
+
+        lights:
+            "lights",
+
+        galava:
+            "galava",
+
+        ledwash:
+            "ledwash",
+
+        confetti:
+            "confetti",
+
+        dim:
+            "dim",
+
+        firework:
+            "firework",
+
+        sideScreens:
+            "side_screens",
+
+        sideHeight:
+            "side_height",
+
+        sideWidth:
+            "side_width",
+
+        paid:
+            "paid",
+
+        totalPrice:
+            "total_price"
+
+    };
 
 
-    document.getElementById(
-        "clientName"
-    ).value =
-        order.client_name || "";
+    Object.entries(
+        fields
+    ).forEach(
+        function([
+            elementId,
+            field
+        ]) {
+
+            const element =
+                document.getElementById(
+                    elementId
+                );
 
 
-    document.getElementById(
-        "clientPhone"
-    ).value =
-        order.client_phone || "";
+            if (element) {
 
+                element.value =
+                    order[field] ??
+                    "";
 
-    document.getElementById(
-        "location"
-    ).value =
-        order.location || "";
+            }
 
-
-    document.getElementById(
-        "eventDate"
-    ).value =
-        order.event_date || "";
-
-
-    document.getElementById(
-        "eventTime"
-    ).value =
-        order.event_time || "";
-
-
-    document.getElementById(
-        "screenHeight"
-    ).value =
-        order.screen_height || 0;
-
-
-    document.getElementById(
-        "screenWidth"
-    ).value =
-        order.screen_width || 0;
-
-
-    document.getElementById(
-        "stageWidth"
-    ).value =
-        order.stage_width || 0;
-
-
-    document.getElementById(
-        "stageLength"
-    ).value =
-        order.stage_length || 0;
-
-
-    document.getElementById(
-        "curtain"
-    ).value =
-        order.curtain || "Yo‘q";
-
-
-    document.getElementById(
-        "lights"
-    ).value =
-        order.lights || 0;
-
-
-    document.getElementById(
-        "galava"
-    ).value =
-        order.galava || 0;
-
-
-    document.getElementById(
-        "ledwash"
-    ).value =
-        order.ledwash || 0;
-
-
-    document.getElementById(
-        "confetti"
-    ).value =
-        order.confetti || 0;
-
-
-    document.getElementById(
-        "dim"
-    ).value =
-        order.dim || 0;
-
-
-    document.getElementById(
-        "firework"
-    ).value =
-        order.firework || 0;
-
-
-    document.getElementById(
-        "sideScreens"
-    ).value =
-        order.side_screens || 0;
-
-
-    document.getElementById(
-        "sideHeight"
-    ).value =
-        order.side_height || 0;
-
-
-    document.getElementById(
-        "sideWidth"
-    ).value =
-        order.side_width || 0;
-
-
-    document.getElementById(
-        "paid"
-    ).value =
-        order.paid || 0;
-
-
-    document.getElementById(
-        "totalPrice"
-    ).value =
-        order.total_price || 0;
+        }
+    );
 
 
     document
@@ -2153,7 +2323,7 @@ async function editOrder(
 
 
 /* =========================================================
-   RESET ORDER
+   RESET ORDER FORM
 ========================================================= */
 
 function resetOrderForm() {
@@ -2171,41 +2341,75 @@ function resetOrderForm() {
     }
 
 
-    document.getElementById(
-        "editingOrderId"
-    ).value = "";
+    const editing =
+        document.getElementById(
+            "editingOrderId"
+        );
 
 
-    document
-        .getElementById(
+    if (editing) {
+
+        editing.value = "";
+
+    }
+
+
+    const badge =
+        document.getElementById(
             "editBadge"
-        )
-        .classList
-        .add("hidden");
+        );
 
 
-    document
-        .getElementById(
+    if (badge) {
+
+        badge.classList.add(
+            "hidden"
+        );
+
+    }
+
+
+    const cancelButton =
+        document.getElementById(
             "cancelEditBtn"
-        )
-        .classList
-        .add("hidden");
+        );
 
 
-    document
-        .getElementById(
+    if (cancelButton) {
+
+        cancelButton.classList.add(
+            "hidden"
+        );
+
+    }
+
+
+    const title =
+        document.getElementById(
             "orderFormTitle"
-        )
-        .textContent =
-        "➕ Yangi zakas qo‘shish";
+        );
 
 
-    document
-        .getElementById(
+    if (title) {
+
+        title.textContent =
+            "➕ Yangi zakas qo‘shish";
+
+    }
+
+
+    const submitButton =
+        document.getElementById(
             "orderSubmitBtn"
-        )
-        .textContent =
-        "💾 Zakasni saqlash";
+        );
+
+
+    if (submitButton) {
+
+        submitButton.textContent =
+            "💾 Zakasni saqlash";
+
+    }
 
 
     calculateRemaining();
@@ -2228,9 +2432,7 @@ function cancelEditOrder() {
    DELETE ORDER
 ========================================================= */
 
-async function deleteOrder(
-    id
-) {
+async function deleteOrder(id) {
 
     if (
         !currentUser ||
@@ -2273,8 +2475,13 @@ async function deleteOrder(
             result.error
         );
 
+
         alert(
-            "❌ Zakas o‘chirilmadi."
+            "❌ " +
+            (
+                result.error.message ||
+                "Zakas o‘chirilmadi."
+            )
         );
 
         return;
@@ -2684,7 +2891,11 @@ async function displayUsers() {
 
             <div class="no-orders">
 
-                ❌ Userlarni olishda xatolik.
+                ❌
+                ${escapeHTML(
+                    result.error.message ||
+                    "Userlarni olishda xatolik."
+                )}
 
             </div>
 
@@ -2725,6 +2936,14 @@ async function displayUsers() {
             .map(
                 function(user) {
 
+                    const role =
+                        String(
+                            user.role ||
+                            ""
+                        )
+                        .toLowerCase();
+
+
                     return `
 
                         <div class="user-card">
@@ -2736,7 +2955,9 @@ async function displayUsers() {
                                 <div>
 
                                     <div
-                                        class="user-card-name"
+                                        class="
+                                            user-card-name
+                                        "
                                     >
 
                                         👤
@@ -2752,14 +2973,9 @@ async function displayUsers() {
                                     >
 
                                         ${
-                                            String(
-                                                user.role
-                                            )
-                                            .toLowerCase() ===
+                                            role ===
                                             "admin"
-
                                                 ? "ADMIN"
-
                                                 : "ISHCHI"
                                         }
 
@@ -2770,7 +2986,9 @@ async function displayUsers() {
                             </div>
 
 
-                            <div class="user-grid">
+                            <div
+                                class="user-grid"
+                            >
 
                                 <div
                                     class="user-detail"
@@ -2798,9 +3016,7 @@ async function displayUsers() {
                                     </span>
 
                                     <strong
-                                        id="
-                                            password-${user.id}
-                                        "
+                                        id="password-${user.id}"
                                     >
                                         ••••••••
                                     </strong>
@@ -2861,7 +3077,7 @@ async function displayUsers() {
                                         currentUser.id
                                     )
 
-                                        ?
+                                    ?
 
                                     `
 
@@ -2879,7 +3095,7 @@ async function displayUsers() {
 
                                     `
 
-                                        :
+                                    :
 
                                     ""
 
@@ -3006,8 +3222,13 @@ async function createUser(
             check.error
         );
 
+
         alert(
-            "❌ Userni tekshirishda xatolik."
+            "❌ " +
+            (
+                check.error.message ||
+                "Userni tekshirishda xatolik."
+            )
         );
 
         return;
@@ -3034,10 +3255,17 @@ async function createUser(
             .from("users")
             .insert([
                 {
-                    name: name,
-                    username: username,
-                    password: password,
-                    role: role
+                    name:
+                        name,
+
+                    username:
+                        username,
+
+                    password:
+                        password,
+
+                    role:
+                        role
                 }
             ]);
 
@@ -3048,8 +3276,13 @@ async function createUser(
             result.error
         );
 
+
         alert(
-            "❌ User yaratilmadi."
+            "❌ " +
+            (
+                result.error.message ||
+                "User yaratilmadi."
+            )
         );
 
         return;
@@ -3133,7 +3366,8 @@ async function showUserPassword(
 
     const element =
         document.getElementById(
-            "password-" + id
+            "password-" +
+            id
         );
 
 
@@ -3148,8 +3382,7 @@ async function showUserPassword(
 
 
     if (
-        element.textContent
-            .trim() ===
+        element.textContent.trim() ===
         "••••••••"
     ) {
 
@@ -3246,8 +3479,13 @@ async function changeUserPassword(
             result.error
         );
 
+
         alert(
-            "❌ Parol o‘zgartirilmadi."
+            "❌ " +
+            (
+                result.error.message ||
+                "Parol o‘zgartirilmadi."
+            )
         );
 
         return;
@@ -3344,8 +3582,13 @@ async function changeUsername(
             check.error
         );
 
+
         alert(
-            "❌ Loginni tekshirishda xatolik."
+            "❌ " +
+            (
+                check.error.message ||
+                "Loginni tekshirishda xatolik."
+            )
         );
 
         return;
@@ -3388,8 +3631,13 @@ async function changeUsername(
             result.error
         );
 
+
         alert(
-            "❌ Login o‘zgartirilmadi."
+            "❌ " +
+            (
+                result.error.message ||
+                "Login o‘zgartirilmadi."
+            )
         );
 
         return;
@@ -3477,8 +3725,13 @@ async function deleteUser(
             result.error
         );
 
+
         alert(
-            "❌ User o‘chirilmadi."
+            "❌ " +
+            (
+                result.error.message ||
+                "User o‘chirilmadi."
+            )
         );
 
         return;
@@ -3517,7 +3770,7 @@ async function getEvents() {
     if (result.error) {
 
         console.error(
-            "EVENTS ERROR:",
+            "EVENT ERROR:",
             result.error
         );
 
@@ -3531,15 +3784,11 @@ async function getEvents() {
 }
 
 
-/* =========================================================
-   EVENT HTML
-========================================================= */
-
 function createEventHTML(
     event
 ) {
 
-    let imageHTML = "";
+    let imageHTML;
 
 
     if (
@@ -3584,12 +3833,9 @@ function createEventHTML(
 
     return `
 
-        <article
-            class="event-card"
-        >
+        <article class="event-card">
 
             ${imageHTML}
-
 
             <div
                 class="event-card-body"
@@ -3692,7 +3938,8 @@ async function loadCustomerEvents() {
 
     const start =
         (
-            customerEventsPage - 1
+            customerEventsPage -
+            1
         ) *
         EVENTS_PER_PAGE;
 
@@ -3846,9 +4093,11 @@ function renderPagination(
 
 
         <span>
+
             ${currentPage}
             /
             ${totalPages}
+
         </span>
 
     `;
@@ -3942,14 +4191,14 @@ function renderPagination(
 
 
 /* =========================================================
-   WORKER EVENTS
+   WORKER / ADMIN EVENTS
 ========================================================= */
 
 function createWorkerEventHTML(
     event
 ) {
 
-    let imageHTML = "";
+    let imageHTML;
 
 
     if (
@@ -4134,7 +4383,8 @@ async function loadWorkerEvents() {
 
     const start =
         (
-            workerEventsPage - 1
+            workerEventsPage -
+            1
         ) *
         EVENTS_PER_PAGE;
 
@@ -4194,7 +4444,7 @@ async function loadWorkerEvents() {
 
 
 /* =========================================================
-   EVENT IMAGE
+   FILE TO DATA URL
 ========================================================= */
 
 function fileToDataURL(
@@ -4373,8 +4623,13 @@ async function saveEventFromForm(
             result.error
         );
 
+
         alert(
-            "❌ Tadbirni saqlashda xatolik."
+            "❌ " +
+            (
+                result.error.message ||
+                "Tadbirni saqlashda xatolik."
+            )
         );
 
         return;
@@ -4448,8 +4703,13 @@ async function deleteEvent(
             result.error
         );
 
+
         alert(
-            "❌ Tadbir o‘chirilmadi."
+            "❌ " +
+            (
+                result.error.message ||
+                "Tadbir o‘chirilmadi."
+            )
         );
 
         return;
@@ -4468,7 +4728,7 @@ async function deleteEvent(
 
 
 /* =========================================================
-   CUSTOMER ORDER MODAL
+   ORDER MODAL
 ========================================================= */
 
 function openOrderModal() {
@@ -4496,19 +4756,22 @@ function openOrderModal() {
 
 
     if (message) {
-        message.innerHTML =
-            "";
+
+        message.innerHTML = "";
+
     }
 
 
-    const name =
+    const nameInput =
         document.getElementById(
             "applicationName"
         );
 
 
-    if (name) {
-        name.focus();
+    if (nameInput) {
+
+        nameInput.focus();
+
     }
 
 }
@@ -4688,7 +4951,13 @@ async function submitApplication(
 
             <div class="error">
 
-                ❌ Ariza yuborishda xatolik.
+                ❌
+                ${
+                    escapeHTML(
+                        errorObject.message ||
+                        "Ariza yuborishda xatolik."
+                    )
+                }
 
             </div>
 
@@ -4700,7 +4969,7 @@ async function submitApplication(
 
 
 /* =========================================================
-   APPLICATION POLLING
+   APPLICATION STATUS
 ========================================================= */
 
 function startApplicationPolling(
@@ -4954,7 +5223,11 @@ async function loadApplications() {
 
             <div class="no-orders">
 
-                ❌ Arizalarni olishda xatolik.
+                ❌
+                ${escapeHTML(
+                    result.error.message ||
+                    "Arizalarni olishda xatolik."
+                )}
 
             </div>
 
@@ -5149,11 +5422,9 @@ function createApplicationHTML(
                     </span>
 
                     <strong>
-
                         ${escapeHTML(
                             application.phone
                         )}
-
                     </strong>
 
                 </div>
@@ -5168,9 +5439,7 @@ function createApplicationHTML(
                     </span>
 
                     <strong>
-
                         #${application.id}
-
                     </strong>
 
                 </div>
@@ -5198,7 +5467,7 @@ function createApplicationHTML(
 
 
 /* =========================================================
-   UPDATE APPLICATION STATUS
+   UPDATE APPLICATION
 ========================================================= */
 
 async function updateApplicationStatus(
@@ -5221,8 +5490,7 @@ async function updateApplicationStatus(
 
 
     const question =
-        status ===
-        "accepted"
+        status === "accepted"
 
             ? "Bu arizani qabul qilasizmi?"
 
@@ -5280,7 +5548,11 @@ async function updateApplicationStatus(
 
 
         alert(
-            "❌ Ariza statusini o‘zgartirib bo‘lmadi."
+            "❌ " +
+            (
+                result.error.message ||
+                "Ariza statusini o‘zgartirib bo‘lmadi."
+            )
         );
 
         return;
@@ -5292,8 +5564,7 @@ async function updateApplicationStatus(
 
 
     alert(
-        status ===
-        "accepted"
+        status === "accepted"
             ? "✅ Ariza qabul qilindi."
             : "❌ Ariza rad etildi."
     );
@@ -5302,18 +5573,18 @@ async function updateApplicationStatus(
 
 
 /* =========================================================
-   PAGE LOAD
+   START
 ========================================================= */
 
 document.addEventListener(
     "DOMContentLoaded",
-    function() {
+    async function() {
 
         updateDate();
 
 
         /*
-           LOGIN FORM
+           LOGIN
         */
 
         const loginForm =
@@ -5333,7 +5604,7 @@ document.addEventListener(
 
 
         /*
-           ORDER FORM
+           ORDER
         */
 
         const orderForm =
@@ -5353,7 +5624,7 @@ document.addEventListener(
 
 
         /*
-           USER FORM
+           USER
         */
 
         const userForm =
@@ -5373,7 +5644,7 @@ document.addEventListener(
 
 
         /*
-           EVENT FORM
+           EVENT
         */
 
         const eventForm =
@@ -5393,7 +5664,7 @@ document.addEventListener(
 
 
         /*
-           APPLICATION FORM
+           APPLICATION
         */
 
         const applicationForm =
@@ -5507,7 +5778,20 @@ document.addEventListener(
         }
 
 
+        /*
+           REMAINING
+        */
+
         calculateRemaining();
+
+
+        /*
+           SUPABASE TEST
+           
+           Bu yerda konsolda ulanish natijasi chiqadi.
+        */
+
+        await testSupabaseConnection();
 
     }
 );
