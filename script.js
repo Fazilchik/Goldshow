@@ -138,8 +138,7 @@ function formatDateTime(value) {
 }
 
 function updateDate() {
-    const element =
-        document.getElementById("todayDate");
+    const element = document.getElementById("todayDate");
 
     if (!element) {
         return;
@@ -147,8 +146,13 @@ function updateDate() {
 
     const date = new Date();
 
+    const day = date.getDate();
+    const month = UZ_MONTHS[date.getMonth()];
+    const year = date.getFullYear();
+
     element.textContent =
-        `${date.getDate()}-${UZ_MONTHS[date.getMonth()]} ${date.getFullYear()}-yil`;
+        `${day}-${month} ${year}-yil`;
+}
 }
 
 /* =========================================================
