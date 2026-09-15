@@ -1,5 +1,5 @@
 /* =========================================================
-   GOLD SHOW - OWNER / ADMIN / ISHCHI
+   GOLD SHOW - OWNER / ADMIN / ISHCHI SYSTEM
 ========================================================= */
 
 
@@ -13,8 +13,41 @@ const SUPABASE_URL =
 const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_MFI3LFGRmSviFv6ygJnXyg_wFktEpyP";
 
-
 let supabaseClient = null;
+
+if (
+    window.supabase &&
+    typeof window.supabase.createClient === "function"
+) {
+    supabaseClient =
+        window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_PUBLISHABLE_KEY
+        );
+}
+
+
+/* =========================================================
+   OWNER BOOTSTRAP LOGIN
+========================================================= */
+
+/*
+   Vaqtinchalik Owner login.
+
+   Login: Foziljon
+   Parol: Foziljon2010
+
+   Bu Supabase users jadvalidagi eski Otabek
+   muammosini chetlab o'tadi.
+*/
+
+const OWNER_LOGIN = "Foziljon";
+const OWNER_PASSWORD = "Foziljon2010";
+
+
+/* =========================================================
+   GLOBAL VARIABLES
+========================================================= */
 
 let currentUser = null;
 
@@ -27,31 +60,8 @@ const EVENTS_PER_PAGE = 10;
 let applicationTimer = null;
 
 
-if(
-    window.supabase &&
-    typeof window.supabase.createClient === "function"
-){
-
-    supabaseClient =
-        window.supabase.createClient(
-            SUPABASE_URL,
-            SUPABASE_PUBLISHABLE_KEY
-        );
-
-}
-
-
 /* =========================================================
-   OWNER
-========================================================= */
-
-const OWNER_USERNAME = "Otabek";
-
-const OWNER_PASSWORD = "goldshow";
-
-
-/* =========================================================
-   HELPERS
+   MONTHS
 ========================================================= */
 
 const UZ_MONTHS = [
@@ -70,103 +80,94 @@ const UZ_MONTHS = [
 ];
 
 
-function escapeHTML(value){
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function escapeHTML(value) {
 
     return String(value ?? "")
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;")
-        .replace(/'/g,"&#039;");
-
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 
-function formatMoney(value){
+function formatMoney(value) {
 
     return Number(value || 0)
-        .toLocaleString("uz-UZ")
-        + " so‘m";
-
+        .toLocaleString("uz-UZ") +
+        " so‘m";
 }
 
 
-function getToday(){
+function getToday() {
 
     const now = new Date();
 
     return `${now.getFullYear()}-${String(
-        now.getMonth()+1
-    ).padStart(2,"0")}-${String(
+        now.getMonth() + 1
+    ).padStart(2, "0")}-${String(
         now.getDate()
-    ).padStart(2,"0")}`;
-
+    ).padStart(2, "0")}`;
 }
 
 
-function formatDate(value){
+function formatDate(value) {
 
-    if(!value) return "—";
+    if (!value) return "—";
 
     const p = String(value).split("-");
 
-    if(p.length !== 3)
+    if (p.length !== 3) {
         return String(value);
+    }
 
     const y = Number(p[0]);
     const m = Number(p[1]);
     const d = Number(p[2]);
 
-    if(!y || !m || !d)
+    if (!y || !m || !d) {
         return String(value);
+    }
 
-    return `${d}-${UZ_MONTHS[m-1]} ${y}-yil`;
-
+    return `${d}-${UZ_MONTHS[m - 1]} ${y}-yil`;
 }
 
 
-function formatDateTime(value){
+function formatDateTime(value) {
 
-    if(!value)
-        return "—";
+    if (!value) return "—";
 
     const d = new Date(value);
 
-    if(Number.isNaN(d.getTime()))
+    if (Number.isNaN(d.getTime())) {
         return "—";
+    }
 
-    const day =
-        String(d.getDate()).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
 
-    const month =
-        String(d.getMonth()+1).padStart(2,"0");
-
-    const year =
-        d.getFullYear();
-
-    const hour =
-        String(d.getHours()).padStart(2,"0");
-
-    const minute =
-        String(d.getMinutes()).padStart(2,"0");
+    const hour = String(d.getHours()).padStart(2, "0");
+    const minute = String(d.getMinutes()).padStart(2, "0");
 
     return `${day}.${month}.${year} ${hour}:${minute}`;
-
 }
 
 
-function updateDate(){
+function updateDate() {
 
-    const el =
-        document.getElementById("todayDate");
+    const el = document.getElementById("todayDate");
 
-    if(!el) return;
+    if (!el) return;
 
     const d = new Date();
 
     el.textContent =
         `${d.getDate()}-${UZ_MONTHS[d.getMonth()]} ${d.getFullYear()}-yil`;
-
 }
 
 
@@ -174,34 +175,24 @@ function updateDate(){
    ROLE HELPERS
 ========================================================= */
 
-function isOwner(){
+function isOwner() {
 
     return currentUser?.role === "owner";
-
 }
 
 
-function isAdmin(){
+function isAdmin() {
 
     return currentUser?.role === "admin";
-
 }
 
 
-function canManage(){
+function isManager() {
 
     return (
         currentUser?.role === "owner" ||
         currentUser?.role === "admin"
     );
-
-}
-
-
-function canManageUsers(){
-
-    return canManage();
-
 }
 
 
@@ -209,7 +200,7 @@ function canManageUsers(){
    PAGE CONTROL
 ========================================================= */
 
-function hideAllPages(){
+function hideAllPages() {
 
     [
         "landingPage",
@@ -223,16 +214,16 @@ function hideAllPages(){
             ?.classList.add("hidden");
 
     });
-
 }
 
 
-function backToLanding(){
+function backToLanding() {
 
     currentUser = null;
 
-    if(applicationTimer)
+    if (applicationTimer) {
         clearInterval(applicationTimer);
+    }
 
     applicationTimer = null;
 
@@ -243,11 +234,10 @@ function backToLanding(){
         ?.classList.remove("hidden");
 
     closeOrderModal();
-
 }
 
 
-async function openCustomerPage(){
+async function openCustomerPage() {
 
     hideAllPages();
 
@@ -260,11 +250,10 @@ async function openCustomerPage(){
     await loadCustomerEvents();
 
     restoreApplicationStatus();
-
 }
 
 
-function openWorkerLogin(){
+function openWorkerLogin() {
 
     hideAllPages();
 
@@ -275,7 +264,6 @@ function openWorkerLogin(){
     document
         .getElementById("username")
         ?.focus();
-
 }
 
 
@@ -283,10 +271,11 @@ function openWorkerLogin(){
    LOGIN
 ========================================================= */
 
-async function login(event){
+async function login(event) {
 
-    if(event)
+    if (event) {
         event.preventDefault();
+    }
 
     const usernameElement =
         document.getElementById("username");
@@ -298,12 +287,13 @@ async function login(event){
         document.getElementById("loginError");
 
 
-    if(
+    if (
         !usernameElement ||
         !passwordElement ||
         !errorElement
-    )
+    ) {
         return;
+    }
 
 
     const username =
@@ -316,7 +306,7 @@ async function login(event){
     errorElement.textContent = "";
 
 
-    if(!username || !password){
+    if (!username || !password) {
 
         errorElement.textContent =
             "❌ Login va parolni kiriting.";
@@ -325,7 +315,48 @@ async function login(event){
     }
 
 
-    if(!supabaseClient){
+    /*
+       =====================================================
+       OWNER BOOTSTRAP
+       =====================================================
+    */
+
+    if (
+        username === OWNER_LOGIN &&
+        password === OWNER_PASSWORD
+    ) {
+
+        currentUser = {
+
+            id: null,
+
+            name: "Foziljon",
+
+            username: "Foziljon",
+
+            role: "owner"
+
+        };
+
+
+        usernameElement.value = "";
+
+        passwordElement.value = "";
+
+
+        await openOwnerPage();
+
+        return;
+    }
+
+
+    /*
+       =====================================================
+       SUPABASE LOGIN
+       =====================================================
+    */
+
+    if (!supabaseClient) {
 
         errorElement.textContent =
             "❌ Supabase ulanmagan.";
@@ -334,7 +365,7 @@ async function login(event){
     }
 
 
-    try{
+    try {
 
         const result =
             await supabaseClient
@@ -342,12 +373,12 @@ async function login(event){
                 .select(
                     "id,name,username,password,role"
                 )
-                .eq("username",username)
-                .eq("password",password)
+                .eq("username", username)
+                .eq("password", password)
                 .limit(1);
 
 
-        if(result.error){
+        if (result.error) {
 
             errorElement.textContent =
                 "❌ " + result.error.message;
@@ -356,7 +387,7 @@ async function login(event){
         }
 
 
-        if(!result.data?.length){
+        if (!result.data?.length) {
 
             errorElement.textContent =
                 "❌ Login yoki parol noto‘g‘ri.";
@@ -365,8 +396,7 @@ async function login(event){
         }
 
 
-        const user =
-            result.data[0];
+        const user = result.data[0];
 
 
         const role =
@@ -375,13 +405,13 @@ async function login(event){
                 .toLowerCase();
 
 
-        if(
+        if (
             ![
                 "owner",
                 "admin",
                 "user"
             ].includes(role)
-        ){
+        ) {
 
             errorElement.textContent =
                 "❌ User roli noto‘g‘ri.";
@@ -392,21 +422,15 @@ async function login(event){
 
         currentUser = {
 
-            id:user.id,
+            id: user.id,
 
-            name:user.name,
+            name: user.name,
 
-            username:user.username,
+            username: user.username,
 
-            role:role
+            role: role
 
         };
-
-
-        localStorage.setItem(
-            "goldshow_user_id",
-            String(user.id)
-        );
 
 
         usernameElement.value = "";
@@ -414,38 +438,36 @@ async function login(event){
         passwordElement.value = "";
 
 
-        if(role === "owner"){
+        if (role === "owner") {
 
             await openOwnerPage();
 
         }
 
-        else if(role === "admin"){
+        else if (role === "admin") {
 
             await openAdminPage();
 
         }
 
-        else{
+        else {
 
             await openWorkerPage();
 
         }
 
+    }
 
-    }catch(err){
+    catch (err) {
 
         console.error(err);
 
         errorElement.textContent =
             "❌ " +
-            (
-                err.message ||
-                "Kirishda xatolik."
-            );
+            (err.message ||
+                "Kirishda xatolik.");
 
     }
-
 }
 
 
@@ -453,56 +475,41 @@ async function login(event){
    OPEN PANELS
 ========================================================= */
 
-async function openOwnerPage(){
+async function openOwnerPage() {
 
-    await prepareMainPage(
-        "OWNER PANEL 👑"
-    );
+    await prepareMainPage("OWNER PANEL 👑");
 
     toggleRoleMenus(true);
 
-    await showPage(
-        "dashboardPage"
-    );
-
+    await showPage("dashboardPage");
 }
 
 
-async function openAdminPage(){
+async function openAdminPage() {
 
-    await prepareMainPage(
-        "ADMIN PANEL"
-    );
+    await prepareMainPage("ADMIN PANEL");
 
     toggleRoleMenus(true);
 
-    await showPage(
-        "dashboardPage"
-    );
-
+    await showPage("dashboardPage");
 }
 
 
-async function openWorkerPage(){
+async function openWorkerPage() {
 
-    await prepareMainPage(
-        "ISHCHI PANEL"
-    );
+    await prepareMainPage("ISHCHI PANEL");
 
     toggleRoleMenus(false);
 
-    await showPage(
-        "dashboardPage"
-    );
-
+    await showPage("dashboardPage");
 }
 
 
 /* =========================================================
-   MENUS
+   ROLE MENUS
 ========================================================= */
 
-function toggleRoleMenus(isManager){
+function toggleRoleMenus(isManagerRole) {
 
     [
         "addOrderMenu",
@@ -513,13 +520,12 @@ function toggleRoleMenus(isManager){
         const el =
             document.getElementById(id);
 
-        if(el){
+        if (el) {
 
             el.style.display =
-                isManager
-                ? "block"
-                : "none";
-
+                isManagerRole
+                    ? "block"
+                    : "none";
         }
 
     });
@@ -529,17 +535,16 @@ function toggleRoleMenus(isManager){
         .getElementById("workerEventAdminForm")
         ?.classList.toggle(
             "hidden",
-            !isManager
+            !isManagerRole
         );
-
 }
 
 
 /* =========================================================
-   MAIN PAGE
+   PREPARE MAIN PAGE
 ========================================================= */
 
-async function prepareMainPage(panelTitle){
+async function prepareMainPage(panelTitle) {
 
     hideAllPages();
 
@@ -548,71 +553,37 @@ async function prepareMainPage(panelTitle){
         ?.classList.remove("hidden");
 
 
-    if(currentUser){
+    if (currentUser) {
 
-        const currentUserElement =
-            document.getElementById("currentUser");
-
-        const roleElement =
-            document.getElementById("userRole");
-
-        const avatarElement =
-            document.getElementById("userAvatar");
+        document.getElementById(
+            "currentUser"
+        ).textContent =
+            currentUser.name;
 
 
-        if(currentUserElement){
-
-            currentUserElement.textContent =
-                currentUser.name;
-
-        }
-
-
-        if(roleElement){
-
-            if(currentUser.role === "owner"){
-
-                roleElement.textContent =
-                    "OWNER 👑";
-
-            }
-
-            else if(currentUser.role === "admin"){
-
-                roleElement.textContent =
-                    "ADMIN";
-
-            }
-
-            else{
-
-                roleElement.textContent =
-                    "ISHCHI";
-
-            }
-
-        }
+        document.getElementById(
+            "userRole"
+        ).textContent =
+            currentUser.role === "owner"
+                ? "OWNER 👑"
+                : currentUser.role === "admin"
+                    ? "ADMIN"
+                    : "ISHCHI";
 
 
-        if(avatarElement){
-
-            avatarElement.textContent =
-                (
-                    currentUser.name ||
-                    "G"
-                )
+        document.getElementById(
+            "userAvatar"
+        ).textContent =
+            (currentUser.name || "G")
                 .charAt(0)
                 .toUpperCase();
-
-        }
 
     }
 
 
-    document
-        .getElementById("pageTitle")
-        .textContent =
-            panelTitle;
+    document.getElementById(
+        "pageTitle"
+    ).textContent = panelTitle;
 
 
     updateDate();
@@ -625,7 +596,7 @@ async function prepareMainPage(panelTitle){
     await loadWorkerEvents();
 
 
-    if(canManageUsers()){
+    if (isManager()) {
 
         await displayUsers();
 
@@ -636,25 +607,28 @@ async function prepareMainPage(panelTitle){
 }
 
 
-async function openMainPage(){
+/* =========================================================
+   OPEN MAIN
+========================================================= */
 
-    if(!currentUser)
-        return;
+async function openMainPage() {
+
+    if (!currentUser) return;
 
 
-    if(currentUser.role === "owner"){
+    if (isOwner()) {
 
         await openOwnerPage();
 
     }
 
-    else if(currentUser.role === "admin"){
+    else if (isAdmin()) {
 
         await openAdminPage();
 
     }
 
-    else{
+    else {
 
         await openWorkerPage();
 
@@ -663,19 +637,21 @@ async function openMainPage(){
 }
 
 
-function logout(){
+/* =========================================================
+   LOGOUT
+========================================================= */
 
-    if(applicationTimer)
+function logout() {
+
+    if (applicationTimer) {
+
         clearInterval(applicationTimer);
+
+    }
 
     applicationTimer = null;
 
-    localStorage.removeItem(
-        "goldshow_user_id"
-    );
-
     backToLanding();
-
 }
 
 
@@ -683,26 +659,19 @@ function logout(){
    SHOW PAGE
 ========================================================= */
 
-async function showPage(
-    pageId,
-    button = null
-){
+async function showPage(pageId, button = null) {
 
     const managerOnly = [
-
         "usersPage",
-
         "applicationsPage",
-
         "addOrderPage"
-
     ];
 
 
-    if(
+    if (
         managerOnly.includes(pageId) &&
-        !canManage()
-    ){
+        !isManager()
+    ) {
 
         alert(
             "❌ Bu sahifa faqat Admin yoki Owner uchun."
@@ -713,11 +682,9 @@ async function showPage(
 
 
     document
-        .querySelectorAll(
-            "#mainPage .page"
-        )
-        .forEach(
-            p => p.classList.add("hidden")
+        .querySelectorAll("#mainPage .page")
+        .forEach(p =>
+            p.classList.add("hidden")
         );
 
 
@@ -725,8 +692,7 @@ async function showPage(
         document.getElementById(pageId);
 
 
-    if(!target)
-        return;
+    if (!target) return;
 
 
     target.classList.remove("hidden");
@@ -759,51 +725,68 @@ async function showPage(
     };
 
 
-    document
-        .getElementById("pageTitle")
-        .textContent =
-            titles[pageId] ||
-            "Gold Show";
+    document.getElementById(
+        "pageTitle"
+    ).textContent =
+        titles[pageId] || "Gold Show";
 
 
     document
         .querySelectorAll(
             "#mainPage .menu-btn"
         )
-        .forEach(
-            b => b.classList.remove("active")
+        .forEach(b =>
+            b.classList.remove("active")
         );
 
 
-    if(button){
+    if (button) {
 
         button.classList.add("active");
 
     }
 
 
-    if(pageId === "dashboardPage")
+    if (pageId === "dashboardPage") {
+
         await updateDashboard();
 
+    }
 
-    if(pageId === "ordersPage")
+
+    if (pageId === "ordersPage") {
+
         await displayOrders();
 
+    }
 
-    if(pageId === "addOrderPage")
+
+    if (pageId === "addOrderPage") {
+
         calculateRemaining();
 
+    }
 
-    if(pageId === "workerEventsPage")
+
+    if (pageId === "workerEventsPage") {
+
         await loadWorkerEvents();
 
+    }
 
-    if(pageId === "applicationsPage")
+
+    if (pageId === "applicationsPage") {
+
         await loadApplications();
 
+    }
 
-    if(pageId === "usersPage")
+
+    if (pageId === "usersPage") {
+
         await displayUsers();
+
+    }
 
 }
 
@@ -812,7 +795,7 @@ async function showPage(
    ORDER FORM
 ========================================================= */
 
-function calculateRemaining(){
+function calculateRemaining() {
 
     const total =
         Number(
@@ -836,7 +819,7 @@ function calculateRemaining(){
         );
 
 
-    if(el){
+    if (el) {
 
         el.textContent =
             formatMoney(
@@ -848,13 +831,10 @@ function calculateRemaining(){
 }
 
 
-function getOrderFromForm(){
+function getOrderFromForm() {
 
-    const v =
-        id =>
-            document
-                .getElementById(id)
-                ?.value ?? "";
+    const v = id =>
+        document.getElementById(id)?.value ?? "";
 
 
     return {
@@ -927,16 +907,12 @@ function getOrderFromForm(){
 }
 
 
-/* =========================================================
-   SAVE ORDER
-========================================================= */
-
-async function saveOrderFromForm(event){
+async function saveOrderFromForm(event) {
 
     event.preventDefault();
 
 
-    if(!canManage()){
+    if (!isManager()) {
 
         alert(
             "❌ Faqat Admin yoki Owner zakas qo‘sha oladi."
@@ -950,7 +926,7 @@ async function saveOrderFromForm(event){
         getOrderFromForm();
 
 
-    if(!order.client_name){
+    if (!order.client_name) {
 
         alert(
             "❌ Mijoz ismini kiriting."
@@ -960,7 +936,7 @@ async function saveOrderFromForm(event){
     }
 
 
-    if(!order.client_phone){
+    if (!order.client_phone) {
 
         alert(
             "❌ Telefon raqamini kiriting."
@@ -970,7 +946,7 @@ async function saveOrderFromForm(event){
     }
 
 
-    if(!order.location){
+    if (!order.location) {
 
         alert(
             "❌ Manzilni kiriting."
@@ -980,7 +956,7 @@ async function saveOrderFromForm(event){
     }
 
 
-    if(!order.event_date){
+    if (!order.event_date) {
 
         alert(
             "❌ Tadbir sanasini tanlang."
@@ -990,7 +966,7 @@ async function saveOrderFromForm(event){
     }
 
 
-    if(!order.event_time){
+    if (!order.event_time) {
 
         alert(
             "❌ Tadbir vaqtini tanlang."
@@ -1010,38 +986,36 @@ async function saveOrderFromForm(event){
             .getElementById(
                 "editingOrderId"
             )
-            ?.value
-            .trim();
+            ?.value.trim();
 
 
-    try{
+    try {
 
         const result =
             editingId
 
-            ?
+                ? await supabaseClient
+                    .from("orders")
+                    .update(order)
+                    .eq(
+                        "id",
+                        Number(editingId)
+                    )
+                    .select()
+                    .single()
 
-            await supabaseClient
-                .from("orders")
-                .update(order)
-                .eq(
-                    "id",
-                    Number(editingId)
-                )
-                .select()
-                .single()
-
-            :
-
-            await supabaseClient
-                .from("orders")
-                .insert(order)
-                .select()
-                .single();
+                : await supabaseClient
+                    .from("orders")
+                    .insert(order)
+                    .select()
+                    .single();
 
 
-        if(result.error)
+        if (result.error) {
+
             throw result.error;
+
+        }
 
 
         resetOrderForm();
@@ -1061,8 +1035,9 @@ async function saveOrderFromForm(event){
                 : "✅ Zakas muvaffaqiyatli qo‘shildi."
         );
 
+    }
 
-    }catch(err){
+    catch (err) {
 
         console.error(err);
 
@@ -1080,13 +1055,16 @@ async function saveOrderFromForm(event){
 
 
 /* =========================================================
-   GET ORDERS
+   ORDERS
 ========================================================= */
 
-async function getOrders(){
+async function getOrders() {
 
-    if(!supabaseClient)
+    if (!supabaseClient) {
+
         return [];
+
+    }
 
 
     const result =
@@ -1095,19 +1073,17 @@ async function getOrders(){
             .select("*")
             .order(
                 "event_date",
-                {ascending:false}
+                { ascending: false }
             )
             .order(
                 "event_time",
-                {ascending:false}
+                { ascending: false }
             );
 
 
-    if(result.error){
+    if (result.error) {
 
-        console.error(
-            result.error
-        );
+        console.error(result.error);
 
         return [];
 
@@ -1119,11 +1095,7 @@ async function getOrders(){
 }
 
 
-/* =========================================================
-   DISPLAY ORDERS
-========================================================= */
-
-async function displayOrders(){
+async function displayOrders() {
 
     const container =
         document.getElementById(
@@ -1131,8 +1103,7 @@ async function displayOrders(){
         );
 
 
-    if(!container)
-        return;
+    if (!container) return;
 
 
     let orders =
@@ -1149,45 +1120,54 @@ async function displayOrders(){
         .trim();
 
 
-    if(search){
+    if (search) {
 
         orders =
-            orders.filter(
-                o =>
-                    String(
-                        o.client_name
-                    )
-                    .toLowerCase()
-                    .includes(search)
+            orders.filter(o =>
 
-                    ||
+                String(
+                    o.client_name
+                )
+                .toLowerCase()
+                .includes(search)
 
-                    String(
-                        o.client_phone
-                    )
-                    .toLowerCase()
-                    .includes(search)
+                ||
 
-                    ||
+                String(
+                    o.client_phone
+                )
+                .toLowerCase()
+                .includes(search)
 
-                    String(
-                        o.location
-                    )
-                    .toLowerCase()
-                    .includes(search)
+                ||
+
+                String(
+                    o.location
+                )
+                .toLowerCase()
+                .includes(search)
+
             );
 
     }
 
 
-    if(!orders.length){
+    if (!orders.length) {
 
-        container.innerHTML = `
+        container.innerHTML =
+            `
             <div class="no-orders">
-                <h3>📭 Zakas topilmadi</h3>
-                <p>Hozircha zakas mavjud emas.</p>
+
+                <h3>
+                    📭 Zakas topilmadi
+                </h3>
+
+                <p>
+                    Hozircha zakas mavjud emas.
+                </p>
+
             </div>
-        `;
+            `;
 
         return;
 
@@ -1202,16 +1182,12 @@ async function displayOrders(){
 }
 
 
-/* =========================================================
-   ORDER HTML
-========================================================= */
+function createOrderHTML(order) {
 
-function createOrderHTML(order){
+    const adminButtons =
+        isManager()
 
-    const managerButtons =
-        canManage()
-
-        ?
+            ?
 
         `
         <div
@@ -1222,24 +1198,20 @@ function createOrderHTML(order){
                 type="button"
                 class="btn-edit"
                 onclick="editOrder(${Number(order.id)})">
-
                 ✏️ Tahrirlash
-
             </button>
 
             <button
                 type="button"
                 class="btn-delete"
                 onclick="deleteOrder(${Number(order.id)})">
-
                 🗑 O‘chirish
-
             </button>
 
         </div>
         `
 
-        :
+            :
 
         "";
 
@@ -1253,22 +1225,31 @@ function createOrderHTML(order){
             <div>
 
                 <div class="order-client">
-                    👤 ${escapeHTML(order.client_name)}
+                    👤 ${escapeHTML(
+                        order.client_name
+                    )}
                 </div>
 
                 <div>
-                    📞 ${escapeHTML(order.client_phone)}
+                    📞 ${escapeHTML(
+                        order.client_phone
+                    )}
                 </div>
 
             </div>
 
+
             <div class="order-date">
 
-                📅 ${formatDate(order.event_date)}
+                📅 ${formatDate(
+                    order.event_date
+                )}
 
                 <br>
 
-                ⏰ ${escapeHTML(order.event_time || "")}
+                ⏰ ${escapeHTML(
+                    order.event_time || ""
+                )}
 
             </div>
 
@@ -1285,7 +1266,9 @@ function createOrderHTML(order){
                 </span>
 
                 <strong>
-                    ${escapeHTML(order.location)}
+                    ${escapeHTML(
+                        order.location
+                    )}
                 </strong>
 
             </div>
@@ -1298,7 +1281,8 @@ function createOrderHTML(order){
                 </span>
 
                 <strong>
-                    ${order.screen_height || 0}m ×
+                    ${order.screen_height || 0}m
+                    ×
                     ${order.screen_width || 0}m
                 </strong>
 
@@ -1312,7 +1296,8 @@ function createOrderHTML(order){
                 </span>
 
                 <strong>
-                    ${order.stage_width || 0}m ×
+                    ${order.stage_width || 0}m
+                    ×
                     ${order.stage_length || 0}m
                 </strong>
 
@@ -1405,8 +1390,11 @@ function createOrderHTML(order){
 
                 <strong>
                     ${order.side_screens || 0} dona
+
                     <br>
-                    ${order.side_height || 0}m ×
+
+                    ${order.side_height || 0}m
+                    ×
                     ${order.side_width || 0}m
                 </strong>
 
@@ -1420,7 +1408,9 @@ function createOrderHTML(order){
                 </span>
 
                 <strong>
-                    ${escapeHTML(order.curtain || "Yo‘q")}
+                    ${escapeHTML(
+                        order.curtain || "Yo‘q"
+                    )}
                 </strong>
 
             </div>
@@ -1433,7 +1423,9 @@ function createOrderHTML(order){
                 </span>
 
                 <strong class="money">
-                    ${formatMoney(order.total_price)}
+                    ${formatMoney(
+                        order.total_price
+                    )}
                 </strong>
 
             </div>
@@ -1446,7 +1438,9 @@ function createOrderHTML(order){
                 </span>
 
                 <strong class="money">
-                    ${formatMoney(order.paid)}
+                    ${formatMoney(
+                        order.paid
+                    )}
                 </strong>
 
             </div>
@@ -1459,16 +1453,17 @@ function createOrderHTML(order){
                 </span>
 
                 <strong class="remaining-money">
-                    ${formatMoney(order.remaining)}
+                    ${formatMoney(
+                        order.remaining
+                    )}
                 </strong>
 
             </div>
 
-
         </div>
 
 
-        ${managerButtons}
+        ${adminButtons}
 
     </div>
 
@@ -1481,21 +1476,20 @@ function createOrderHTML(order){
    EDIT ORDER
 ========================================================= */
 
-async function editOrder(id){
+async function editOrder(id) {
 
-    if(!canManage())
-        return;
+    if (!isManager()) return;
 
 
     const result =
         await supabaseClient
             .from("orders")
             .select("*")
-            .eq("id",id)
+            .eq("id", id)
             .single();
 
 
-    if(result.error){
+    if (result.error) {
 
         alert(
             "❌ Zakas topilmadi.\n" +
@@ -1506,107 +1500,97 @@ async function editOrder(id){
     }
 
 
-    const o =
-        result.data;
+    const o = result.data;
 
 
     const map = {
 
-        editingOrderId:"id",
+        editingOrderId: "id",
 
-        clientName:"client_name",
+        clientName: "client_name",
 
-        clientPhone:"client_phone",
+        clientPhone: "client_phone",
 
-        location:"location",
+        location: "location",
 
-        eventDate:"event_date",
+        eventDate: "event_date",
 
-        eventTime:"event_time",
+        eventTime: "event_time",
 
-        screenHeight:"screen_height",
+        screenHeight: "screen_height",
 
-        screenWidth:"screen_width",
+        screenWidth: "screen_width",
 
-        stageWidth:"stage_width",
+        stageWidth: "stage_width",
 
-        stageLength:"stage_length",
+        stageLength: "stage_length",
 
-        curtain:"curtain",
+        curtain: "curtain",
 
-        lights:"lights",
+        lights: "lights",
 
-        galava:"galava",
+        galava: "galava",
 
-        ledwash:"ledwash",
+        ledwash: "ledwash",
 
-        confetti:"confetti",
+        confetti: "confetti",
 
-        dim:"dim",
+        dim: "dim",
 
-        firework:"firework",
+        firework: "firework",
 
-        sideScreens:"side_screens",
+        sideScreens: "side_screens",
 
-        sideHeight:"side_height",
+        sideHeight: "side_height",
 
-        sideWidth:"side_width",
+        sideWidth: "side_width",
 
-        paid:"paid",
+        paid: "paid",
 
-        totalPrice:"total_price"
+        totalPrice: "total_price"
 
     };
 
 
-    Object
-        .entries(map)
-        .forEach(
-            ([id,key]) => {
+    Object.entries(map).forEach(
+        ([id, key]) => {
 
-                const el =
-                    document.getElementById(id);
+            const el =
+                document.getElementById(id);
 
-                if(el)
-                    el.value =
-                        o[key] ?? "";
+            if (el) {
+
+                el.value =
+                    o[key] ?? "";
 
             }
-        );
+
+        }
+    );
 
 
     document
-        .getElementById(
-            "editBadge"
-        )
-        ?.classList.remove(
-            "hidden"
-        );
+        .getElementById("editBadge")
+        ?.classList.remove("hidden");
 
 
     document
-        .getElementById(
-            "cancelEditBtn"
-        )
-        ?.classList.remove(
-            "hidden"
-        );
+        .getElementById("cancelEditBtn")
+        ?.classList.remove("hidden");
 
 
     document
         .getElementById(
             "orderFormTitle"
-        )
-        .textContent =
-            "✏️ Zakasni tahrirlash";
+        ).textContent =
+        "✏️ Zakasni tahrirlash";
 
 
     document
         .getElementById(
             "orderSubmitBtn"
-        )
-        .textContent =
-            "💾 O‘zgarishlarni saqlash";
+        ).textContent =
+        "💾 O‘zgarishlarni saqlash";
 
 
     calculateRemaining();
@@ -1619,12 +1603,10 @@ async function editOrder(id){
 }
 
 
-function resetOrderForm(){
+function resetOrderForm() {
 
     document
-        .getElementById(
-            "orderForm"
-        )
+        .getElementById("orderForm")
         ?.reset();
 
 
@@ -1635,37 +1617,27 @@ function resetOrderForm(){
 
 
     document
-        .getElementById(
-            "editBadge"
-        )
-        ?.classList.add(
-            "hidden"
-        );
+        .getElementById("editBadge")
+        ?.classList.add("hidden");
 
 
     document
-        .getElementById(
-            "cancelEditBtn"
-        )
-        ?.classList.add(
-            "hidden"
-        );
+        .getElementById("cancelEditBtn")
+        ?.classList.add("hidden");
 
 
     document
         .getElementById(
             "orderFormTitle"
-        )
-        .textContent =
-            "➕ Yangi zakas qo‘shish";
+        ).textContent =
+        "➕ Yangi zakas qo‘shish";
 
 
     document
         .getElementById(
             "orderSubmitBtn"
-        )
-        .textContent =
-            "💾 Zakasni saqlash";
+        ).textContent =
+        "💾 Zakasni saqlash";
 
 
     calculateRemaining();
@@ -1673,7 +1645,7 @@ function resetOrderForm(){
 }
 
 
-function cancelEditOrder(){
+function cancelEditOrder() {
 
     resetOrderForm();
 
@@ -1684,32 +1656,30 @@ function cancelEditOrder(){
 }
 
 
-/* =========================================================
-   DELETE ORDER
-========================================================= */
+async function deleteOrder(id) {
 
-async function deleteOrder(id){
-
-    if(!canManage())
-        return;
+    if (!isManager()) return;
 
 
-    if(
+    if (
         !confirm(
             "Bu zakasni o‘chirmoqchimisiz?"
         )
-    )
+    ) {
+
         return;
+
+    }
 
 
     const result =
         await supabaseClient
             .from("orders")
             .delete()
-            .eq("id",id);
+            .eq("id", id);
 
 
-    if(result.error){
+    if (result.error) {
 
         alert(
             "❌ " +
@@ -1717,6 +1687,7 @@ async function deleteOrder(id){
         );
 
         return;
+
     }
 
 
@@ -1736,7 +1707,7 @@ async function deleteOrder(id){
    DASHBOARD
 ========================================================= */
 
-async function updateDashboard(){
+async function updateDashboard() {
 
     const orders =
         await getOrders();
@@ -1748,8 +1719,7 @@ async function updateDashboard(){
 
     const todayOrders =
         orders.filter(
-            o =>
-                o.event_date === today
+            o => o.event_date === today
         );
 
 
@@ -1760,11 +1730,14 @@ async function updateDashboard(){
     const upcoming =
         orders.filter(o => {
 
-            if(
+            if (
                 !o.event_date ||
                 !o.event_time
-            )
+            ) {
+
                 return false;
+
+            }
 
 
             const d =
@@ -1789,7 +1762,7 @@ async function updateDashboard(){
 
     const totalMoney =
         orders.reduce(
-            (s,o) =>
+            (s, o) =>
                 s +
                 Number(
                     o.total_price || 0
@@ -1822,24 +1795,26 @@ async function updateDashboard(){
         );
 
 
-    if(totalOrdersEl)
+    if (totalOrdersEl)
         totalOrdersEl.textContent =
             orders.length;
 
 
-    if(todayOrdersEl)
+    if (todayOrdersEl)
         todayOrdersEl.textContent =
             todayOrders.length;
 
 
-    if(upcomingOrdersEl)
+    if (upcomingOrdersEl)
         upcomingOrdersEl.textContent =
             upcoming.length;
 
 
-    if(totalMoneyEl)
+    if (totalMoneyEl)
         totalMoneyEl.textContent =
-            formatMoney(totalMoney);
+            formatMoney(
+                totalMoney
+            );
 
 
     await displayTodayOrders();
@@ -1849,11 +1824,7 @@ async function updateDashboard(){
 }
 
 
-/* =========================================================
-   TODAY ORDERS
-========================================================= */
-
-async function displayTodayOrders(){
+async function displayTodayOrders() {
 
     const c =
         document.getElementById(
@@ -1861,8 +1832,7 @@ async function displayTodayOrders(){
         );
 
 
-    if(!c)
-        return;
+    if (!c) return;
 
 
     const orders =
@@ -1879,13 +1849,13 @@ async function displayTodayOrders(){
     c.innerHTML =
         orders.length
 
-        ?
+            ?
 
         orders
             .map(createOrderHTML)
             .join("")
 
-        :
+            :
 
         `
         <div class="no-orders">
@@ -1904,11 +1874,7 @@ async function displayTodayOrders(){
 }
 
 
-/* =========================================================
-   NOTIFICATIONS
-========================================================= */
-
-async function checkNotifications(){
+async function checkNotifications() {
 
     const c =
         document.getElementById(
@@ -1916,8 +1882,7 @@ async function checkNotifications(){
         );
 
 
-    if(!c)
-        return;
+    if (!c) return;
 
 
     const now =
@@ -1932,11 +1897,14 @@ async function checkNotifications(){
     )
     .forEach(o => {
 
-        if(
+        if (
             !o.event_date ||
             !o.event_time
-        )
+        ) {
+
             return;
+
+        }
 
 
         const d =
@@ -1946,39 +1914,46 @@ async function checkNotifications(){
 
 
         const h =
-            (
-                d - now
-            ) / 3600000;
+            (d - now) /
+            3600000;
 
 
-        if(
+        if (
             h > 0 &&
             h <= 24
-        ){
+        ) {
 
             html += `
 
-            <div class="notification">
+                <div class="notification">
 
-                <strong>
-                    🔔 Tadbir yaqinlashmoqda!
-                </strong>
+                    <strong>
+                        🔔 Tadbir yaqinlashmoqda!
+                    </strong>
 
-                👤 ${escapeHTML(o.client_name)}
+                    👤 ${escapeHTML(
+                        o.client_name
+                    )}
 
-                <br>
+                    <br>
 
-                📅 ${formatDate(o.event_date)}
+                    📅 ${formatDate(
+                        o.event_date
+                    )}
 
-                <br>
+                    <br>
 
-                ⏰ ${escapeHTML(o.event_time)}
+                    ⏰ ${escapeHTML(
+                        o.event_time
+                    )}
 
-                <br>
+                    <br>
 
-                📍 ${escapeHTML(o.location)}
+                    📍 ${escapeHTML(
+                        o.location
+                    )}
 
-            </div>
+                </div>
 
             `;
 
@@ -1987,8 +1962,7 @@ async function checkNotifications(){
     });
 
 
-    c.innerHTML =
-        html;
+    c.innerHTML = html;
 
 }
 
@@ -1997,7 +1971,7 @@ async function checkNotifications(){
    USERS
 ========================================================= */
 
-async function displayUsers(){
+async function displayUsers() {
 
     const c =
         document.getElementById(
@@ -2005,11 +1979,14 @@ async function displayUsers(){
         );
 
 
-    if(
+    if (
         !c ||
-        !canManageUsers()
-    )
+        !isManager()
+    ) {
+
         return;
+
+    }
 
 
     const result =
@@ -2020,24 +1997,20 @@ async function displayUsers(){
             )
             .order(
                 "id",
-                {ascending:true}
+                { ascending: true }
             );
 
 
-    if(result.error){
+    if (result.error) {
 
-        c.innerHTML = `
-
+        c.innerHTML =
+            `
             <div class="no-orders">
-
-                ❌
-                ${escapeHTML(
+                ❌ ${escapeHTML(
                     result.error.message
                 )}
-
             </div>
-
-        `;
+            `;
 
         return;
     }
@@ -2047,10 +2020,10 @@ async function displayUsers(){
         result.data || [];
 
 
-    if(!users.length){
+    if (!users.length) {
 
-        c.innerHTML = `
-
+        c.innerHTML =
+            `
             <div class="no-orders">
 
                 <h3>
@@ -2058,243 +2031,231 @@ async function displayUsers(){
                 </h3>
 
             </div>
-
-        `;
+            `;
 
         return;
+
     }
 
 
     c.innerHTML =
         users
-            .map(
-                createUserHTML
-            )
-            .join("");
+            .map(user => {
 
-}
+                const role =
+                    String(
+                        user.role || ""
+                    )
+                    .toLowerCase();
 
 
-/* =========================================================
-   USER HTML
-========================================================= */
+                const isTargetOwner =
+                    role === "owner";
 
-function createUserHTML(user){
 
-    const role =
-        String(
-            user.role || ""
-        )
-        .toLowerCase();
+                /*
+                   OWNER:
+                   - user -> boshqaradi
+                   - admin -> boshqaradi
+                   - owner -> tegmaydi
 
+                   ADMIN:
+                   - user -> boshqaradi
+                   - admin -> tegmaydi
+                   - owner -> tegmaydi
+                */
 
-    let roleText =
-        "ISHCHI";
+                let canManageTarget =
+                    false;
 
 
-    let roleClass =
-        "worker-role";
+                if (isOwner()) {
 
+                    canManageTarget =
+                        !isTargetOwner;
 
-    if(role === "owner"){
+                }
 
-        roleText =
-            "OWNER 👑";
+                else if (isAdmin()) {
 
-        roleClass =
-            "owner-role";
+                    canManageTarget =
+                        role === "user";
 
-    }
+                }
 
 
-    else if(role === "admin"){
+                const roleText =
+                    isTargetOwner
+                        ? "OWNER 👑"
+                        : role === "admin"
+                            ? "ADMIN"
+                            : "ISHCHI";
 
-        roleText =
-            "ADMIN";
 
-        roleClass =
-            "admin-role";
+                const roleClass =
+                    isTargetOwner
+                        ? "owner-badge"
+                        : "user-role";
 
-    }
 
+                const actions =
+                    canManageTarget
 
-    let canEdit =
-        false;
+                        ?
 
+                    `
 
-    /*
-        OWNER:
-        - Adminni boshqaradi
-        - Ishchini boshqaradi
-        - Ownerga tegmaydi
+                    <button
+                        type="button"
+                        class="btn-view"
+                        onclick="showUserPassword(${Number(user.id)})">
+                        👁 Ko‘rish
+                    </button>
 
-        ADMIN:
-        - Ishchini boshqaradi
-        - Adminni boshqara olmaydi
-        - Ownerga tegolmaydi
-    */
 
+                    <button
+                        type="button"
+                        class="btn-edit"
+                        onclick="changeUserPassword(${Number(user.id)})">
+                        🔑 Parol
+                    </button>
 
-    if(isOwner()){
 
-        if(role !== "owner"){
+                    <button
+                        type="button"
+                        class="btn-edit"
+                        onclick="changeUsername(${Number(user.id)})">
+                        ✏️ Login
+                    </button>
 
-            canEdit = true;
 
-        }
+                    ${
+                        Number(user.id) !==
+                        Number(currentUser?.id)
 
-    }
+                            ?
 
+                        `
+                        <button
+                            type="button"
+                            class="btn-delete"
+                            onclick="deleteUser(${Number(user.id)})">
+                            🗑 O‘chirish
+                        </button>
+                        `
 
-    else if(isAdmin()){
+                            :
 
-        if(role === "user"){
+                        ""
+                    }
 
-            canEdit = true;
+                    `
 
-        }
+                        :
 
-    }
+                    `
+                    <span
+                        class="protected-badge user-role">
+                        🔒 Himoyalangan
+                    </span>
+                    `;
 
 
-    let buttons = "";
+                return `
 
+                <div class="user-card">
 
-    if(canEdit){
+                    <div class="user-card-header">
 
-        buttons = `
+                        <div>
 
-            <button
-                type="button"
-                class="btn-view"
-                onclick="showUserPassword(${Number(user.id)})">
+                            <div class="user-card-name">
 
-                👁 Parol
+                                👤 ${escapeHTML(
+                                    user.name
+                                )}
 
-            </button>
+                            </div>
 
 
-            <button
-                type="button"
-                class="btn-edit"
-                onclick="changeUserPassword(${Number(user.id)})">
+                            <span
+                                class="${roleClass}">
+                                ${roleText}
+                            </span>
 
-                🔑 Parolni o‘zgartirish
+                        </div>
 
-            </button>
+                    </div>
 
 
-            <button
-                type="button"
-                class="btn-edit"
-                onclick="changeUsername(${Number(user.id)})">
+                    <div class="user-grid">
 
-                ✏️ Login
+                        <div class="user-detail">
 
-            </button>
+                            <span>
+                                🔑 Login
+                            </span>
 
+                            <strong>
+                                ${escapeHTML(
+                                    user.username
+                                )}
+                            </strong>
 
-            <button
-                type="button"
-                class="btn-delete"
-                onclick="deleteUser(${Number(user.id)})">
+                        </div>
 
-                🗑 O‘chirish
 
-            </button>
+                        <div class="user-detail">
 
-        `;
+                            <span>
+                                🔒 Parol
+                            </span>
 
-    }
+                            <strong
+                                id="password-${user.id}"
+                                data-visible="false">
 
+                                ••••••••
 
-    else{
+                            </strong>
 
-        buttons = `
+                        </div>
 
-            <span class="protected-user">
+                    </div>
 
-                🔒 Himoyalangan
 
-            </span>
+                    <div class="user-actions">
 
-        `;
+                        ${actions}
 
-    }
+                    </div>
 
 
-    return `
+                    ${
+                        isTargetOwner
 
-    <div class="user-card">
+                            ?
 
-        <div class="user-card-header">
+                        `
+                        <div class="owner-note">
 
-            <div>
+                            👑 Bu Owner hisob.
+                            Uni Admin o‘zgartira olmaydi.
 
-                <div class="user-card-name">
+                        </div>
+                        `
 
-                    👤
-                    ${escapeHTML(user.name)}
+                            :
+
+                        ""
+                    }
 
                 </div>
 
-                <span
-                    class="user-role ${roleClass}">
+                `;
 
-                    ${roleText}
-
-                </span>
-
-            </div>
-
-        </div>
-
-
-        <div class="user-grid">
-
-            <div class="user-detail">
-
-                <span>
-                    🔑 Login
-                </span>
-
-                <strong>
-                    ${escapeHTML(
-                        user.username
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div class="user-detail">
-
-                <span>
-                    🔒 Parol
-                </span>
-
-                <strong
-                    id="password-${user.id}"
-                    data-visible="false">
-
-                    ••••••••
-
-                </strong>
-
-            </div>
-
-        </div>
-
-
-        <div class="user-actions">
-
-            ${buttons}
-
-        </div>
-
-    </div>
-
-    `;
+            })
+            .join("");
 
 }
 
@@ -2303,21 +2264,19 @@ function createUserHTML(user){
    GET USER
 ========================================================= */
 
-async function getUser(id){
+async function getUser(id) {
 
     const r =
         await supabaseClient
             .from("users")
             .select("*")
-            .eq("id",id)
+            .eq("id", id)
             .single();
 
 
-    if(r.error){
+    if (r.error) {
 
-        console.error(
-            r.error
-        );
+        console.error(r.error);
 
         return null;
 
@@ -2333,43 +2292,46 @@ async function getUser(id){
    SHOW PASSWORD
 ========================================================= */
 
-async function showUserPassword(id){
+async function showUserPassword(id) {
 
-    const user =
+    if (!isManager()) return;
+
+
+    const target =
         await getUser(id);
 
 
-    if(!user)
-        return;
+    if (!target) return;
 
 
-    const role =
-        String(
-            user.role || ""
-        )
-        .toLowerCase();
+    /*
+       Admin Owner parolini ko‘ra olmaydi.
+    */
 
-
-    if(
-        isAdmin() &&
-        role !== "user"
-    ){
+    if (
+        target.role === "owner" &&
+        !isOwner()
+    ) {
 
         alert(
-            "❌ Admin faqat Ishchi parolini ko‘rishi mumkin."
+            "❌ Owner himoyalangan."
         );
 
         return;
     }
 
 
-    if(
-        isOwner() &&
-        role === "owner"
-    ){
+    /*
+       Admin faqat Ishchi parolini ko‘radi.
+    */
+
+    if (
+        isAdmin() &&
+        target.role !== "user"
+    ) {
 
         alert(
-            "❌ Owner hisobini bu yerdan ko‘rish mumkin emas."
+            "❌ Bu user himoyalangan."
         );
 
         return;
@@ -2382,13 +2344,13 @@ async function showUserPassword(id){
         );
 
 
-    if(!el)
-        return;
+    if (!el) return;
 
 
-    if(
-        el.dataset.visible === "true"
-    ){
+    if (
+        el.dataset.visible ===
+        "true"
+    ) {
 
         el.textContent =
             "••••••••";
@@ -2397,11 +2359,12 @@ async function showUserPassword(id){
             "false";
 
         return;
+
     }
 
 
     el.textContent =
-        user.password ||
+        target.password ||
         "Parol mavjud emas";
 
 
@@ -2415,15 +2378,15 @@ async function showUserPassword(id){
    CREATE USER
 ========================================================= */
 
-async function createUser(event){
+async function createUser(event) {
 
     event.preventDefault();
 
 
-    if(!canManage()){
+    if (!isManager()) {
 
         alert(
-            "❌ Sizda user yaratish huquqi yo‘q."
+            "❌ Faqat Admin yoki Owner user yaratadi."
         );
 
         return;
@@ -2467,11 +2430,11 @@ async function createUser(event){
             .toLowerCase();
 
 
-    if(
+    if (
         !name ||
         !username ||
         !password
-    ){
+    ) {
 
         alert(
             "❌ Barcha maydonlarni to‘ldiring."
@@ -2482,11 +2445,11 @@ async function createUser(event){
 
 
     /*
-       Ikkinchi Owner yaratishga
-       hech qachon ruxsat berilmaydi.
+       UI'da Owner tanlanmaydi.
+       Owner faqat bitta.
     */
 
-    if(role === "owner"){
+    if (role === "owner") {
 
         alert(
             "❌ Yangi Owner yaratib bo‘lmaydi."
@@ -2500,10 +2463,10 @@ async function createUser(event){
        Admin faqat Ishchi yaratadi.
     */
 
-    if(
+    if (
         isAdmin() &&
         role !== "user"
-    ){
+    ) {
 
         alert(
             "❌ Admin faqat Ishchi yaratishi mumkin."
@@ -2524,7 +2487,7 @@ async function createUser(event){
             .limit(1);
 
 
-    if(check.error){
+    if (check.error) {
 
         alert(
             "❌ " +
@@ -2535,7 +2498,7 @@ async function createUser(event){
     }
 
 
-    if(check.data?.length){
+    if (check.data?.length) {
 
         alert(
             "❌ Bu login allaqachon mavjud."
@@ -2561,10 +2524,10 @@ async function createUser(event){
             });
 
 
-    if(r.error){
+    if (r.error) {
 
         alert(
-            "❌ " +
+            "❌ User yaratilmadi:\n" +
             r.error.message
         );
 
@@ -2590,46 +2553,48 @@ async function createUser(event){
 
 
 /* =========================================================
-   CHANGE PASSWORD
+   CHANGE USER PASSWORD
 ========================================================= */
 
-async function changeUserPassword(id){
+async function changeUserPassword(id) {
 
-    const user =
+    if (!isManager()) return;
+
+
+    const target =
         await getUser(id);
 
 
-    if(!user)
-        return;
+    if (!target) return;
 
 
-    const role =
-        String(
-            user.role || ""
-        )
-        .toLowerCase();
+    /*
+       Owner parolini hech kim o‘zgartira olmaydi.
+    */
 
-
-    if(
-        isAdmin() &&
-        role !== "user"
-    ){
+    if (
+        target.role === "owner"
+    ) {
 
         alert(
-            "❌ Admin Admin yoki Owner parolini o‘zgartira olmaydi."
+            "❌ Owner parolini bu yerdan o‘zgartirib bo‘lmaydi."
         );
 
         return;
     }
 
 
-    if(
-        isOwner() &&
-        role === "owner"
-    ){
+    /*
+       Admin faqat Ishchi parolini o‘zgartiradi.
+    */
+
+    if (
+        isAdmin() &&
+        target.role !== "user"
+    ) {
 
         alert(
-            "❌ Owner hisobini bu yerdan o‘zgartirib bo‘lmaydi."
+            "❌ Admin faqat Ishchi hisobini boshqaradi."
         );
 
         return;
@@ -2643,11 +2608,10 @@ async function changeUserPassword(id){
         );
 
 
-    if(p === null)
-        return;
+    if (p === null) return;
 
 
-    if(!p.trim()){
+    if (!p.trim()) {
 
         alert(
             "❌ Parol bo‘sh bo‘lmasligi kerak."
@@ -2661,12 +2625,12 @@ async function changeUserPassword(id){
         await supabaseClient
             .from("users")
             .update({
-                password:p.trim()
+                password: p.trim()
             })
-            .eq("id",id);
+            .eq("id", id);
 
 
-    if(r.error){
+    if (r.error) {
 
         alert(
             "❌ " +
@@ -2691,43 +2655,37 @@ async function changeUserPassword(id){
    CHANGE USERNAME
 ========================================================= */
 
-async function changeUsername(id){
+async function changeUsername(id) {
+
+    if (!isManager()) return;
+
 
     const user =
         await getUser(id);
 
 
-    if(!user)
-        return;
+    if (!user) return;
 
 
-    const role =
-        String(
-            user.role || ""
-        )
-        .toLowerCase();
-
-
-    if(
-        isAdmin() &&
-        role !== "user"
-    ){
+    if (
+        user.role === "owner"
+    ) {
 
         alert(
-            "❌ Admin Admin yoki Owner loginini o‘zgartira olmaydi."
+            "❌ Owner loginini o‘zgartirib bo‘lmaydi."
         );
 
         return;
     }
 
 
-    if(
-        isOwner() &&
-        role === "owner"
-    ){
+    if (
+        isAdmin() &&
+        user.role !== "user"
+    ) {
 
         alert(
-            "❌ Owner loginini bu yerdan o‘zgartirib bo‘lmaydi."
+            "❌ Admin faqat Ishchi loginini o‘zgartiradi."
         );
 
         return;
@@ -2741,15 +2699,14 @@ async function changeUsername(id){
         );
 
 
-    if(u === null)
-        return;
+    if (u === null) return;
 
 
     const username =
         u.trim();
 
 
-    if(!username){
+    if (!username) {
 
         alert(
             "❌ Login bo‘sh bo‘lmasligi kerak."
@@ -2774,7 +2731,7 @@ async function changeUsername(id){
             .limit(1);
 
 
-    if(c.error){
+    if (c.error) {
 
         alert(
             "❌ " +
@@ -2785,7 +2742,7 @@ async function changeUsername(id){
     }
 
 
-    if(c.data?.length){
+    if (c.data?.length) {
 
         alert(
             "❌ Bu login allaqachon mavjud."
@@ -2807,7 +2764,7 @@ async function changeUsername(id){
             );
 
 
-    if(r.error){
+    if (r.error) {
 
         alert(
             "❌ " +
@@ -2815,17 +2772,6 @@ async function changeUsername(id){
         );
 
         return;
-    }
-
-
-    if(
-        Number(id) ===
-        Number(currentUser.id)
-    ){
-
-        currentUser.username =
-            username;
-
     }
 
 
@@ -2843,45 +2789,25 @@ async function changeUsername(id){
    DELETE USER
 ========================================================= */
 
-async function deleteUser(id){
+async function deleteUser(id) {
 
-    if(!canManage())
-        return;
-
-
-    if(
-        Number(id) ===
-        Number(currentUser.id)
-    ){
-
-        alert(
-            "❌ O‘zingizni o‘chira olmaysiz."
-        );
-
-        return;
-    }
+    if (!isManager()) return;
 
 
-    const user =
+    const target =
         await getUser(id);
 
 
-    if(!user)
-        return;
-
-
-    const role =
-        String(
-            user.role || ""
-        )
-        .toLowerCase();
+    if (!target) return;
 
 
     /*
        Ownerni hech kim o‘chira olmaydi.
     */
 
-    if(role === "owner"){
+    if (
+        target.role === "owner"
+    ) {
 
         alert(
             "❌ Ownerni o‘chirish mumkin emas."
@@ -2895,25 +2821,45 @@ async function deleteUser(id){
        Admin boshqa Adminni o‘chira olmaydi.
     */
 
-    if(
+    if (
         isAdmin() &&
-        role === "admin"
-    ){
+        target.role !== "user"
+    ) {
 
         alert(
-            "❌ Admin boshqa Adminni o‘chira olmaydi."
+            "❌ Admin faqat Ishchini o‘chira oladi."
         );
 
         return;
     }
 
 
-    if(
-        !confirm(
-            `${user.name} userini o‘chirmoqchimisiz?`
-        )
-    )
+    /*
+       O‘zini o‘chira olmaydi.
+    */
+
+    if (
+        Number(id) ===
+        Number(currentUser?.id)
+    ) {
+
+        alert(
+            "❌ O‘zingizni o‘chira olmaysiz."
+        );
+
         return;
+    }
+
+
+    if (
+        !confirm(
+            "Bu userni o‘chirmoqchimisiz?"
+        )
+    ) {
+
+        return;
+
+    }
 
 
     const r =
@@ -2926,7 +2872,7 @@ async function deleteUser(id){
             );
 
 
-    if(r.error){
+    if (r.error) {
 
         alert(
             "❌ " +
@@ -2951,7 +2897,7 @@ async function deleteUser(id){
    EVENTS
 ========================================================= */
 
-async function getEvents(){
+async function getEvents() {
 
     const r =
         await supabaseClient
@@ -2959,15 +2905,15 @@ async function getEvents(){
             .select("*")
             .order(
                 "created_at",
-                {ascending:false}
+                {
+                    ascending: false
+                }
             );
 
 
-    if(r.error){
+    if (r.error) {
 
-        console.error(
-            r.error
-        );
+        console.error(r.error);
 
         return [];
 
@@ -2979,25 +2925,21 @@ async function getEvents(){
 }
 
 
-function eventImage(event){
+function eventImage(event) {
 
-    if(event.image_url){
+    if (event.image_url) {
 
         return `
-
         <img
             src="${escapeHTML(event.image_url)}"
             alt="${escapeHTML(event.title)}"
-            class="event-card-image"
-        >
-
+            class="event-card-image">
         `;
 
     }
 
 
     return `
-
     <div
         class="event-card-image"
         style="
@@ -3006,17 +2948,14 @@ function eventImage(event){
             justify-content:center;
             font-size:55px;
         ">
-
         🎪
-
     </div>
-
     `;
 
 }
 
 
-function createEventHTML(event){
+function createEventHTML(event) {
 
     return `
 
@@ -3027,26 +2966,22 @@ function createEventHTML(event){
         <div class="event-card-body">
 
             <div class="event-card-title">
-
-                ${escapeHTML(event.title)}
-
+                ${escapeHTML(
+                    event.title
+                )}
             </div>
 
             <div class="event-card-description">
-
                 ${escapeHTML(
                     event.description ||
                     "Tavsif mavjud emas."
                 )}
-
             </div>
 
             <div class="event-card-date">
-
                 ${formatDateTime(
                     event.created_at
                 )}
-
             </div>
 
         </div>
@@ -3058,31 +2993,27 @@ function createEventHTML(event){
 }
 
 
-function createWorkerEventHTML(event){
+function createWorkerEventHTML(event) {
 
     const del =
-        canManage()
+        isManager()
 
-        ?
+            ?
 
         `
-
         <div class="event-admin-actions">
 
             <button
                 type="button"
                 class="btn-delete"
                 onclick="deleteEvent(${Number(event.id)})">
-
                 🗑 O‘chirish
-
             </button>
 
         </div>
-
         `
 
-        :
+            :
 
         "";
 
@@ -3096,26 +3027,22 @@ function createWorkerEventHTML(event){
         <div class="event-card-body">
 
             <div class="event-card-title">
-
-                ${escapeHTML(event.title)}
-
+                ${escapeHTML(
+                    event.title
+                )}
             </div>
 
             <div class="event-card-description">
-
                 ${escapeHTML(
                     event.description ||
                     "Tavsif mavjud emas."
                 )}
-
             </div>
 
             <div class="event-card-date">
-
                 ${formatDateTime(
                     event.created_at
                 )}
-
             </div>
 
             ${del}
@@ -3133,13 +3060,12 @@ function createWorkerEventHTML(event){
    CUSTOMER EVENTS
 ========================================================= */
 
-async function loadCustomerEvents(){
+async function loadCustomerEvents() {
 
     const c =
         document.getElementById(
             "customerEventsList"
         );
-
 
     const p =
         document.getElementById(
@@ -3147,8 +3073,7 @@ async function loadCustomerEvents(){
         );
 
 
-    if(!c || !p)
-        return;
+    if (!c || !p) return;
 
 
     const events =
@@ -3173,9 +3098,7 @@ async function loadCustomerEvents(){
 
 
     const start =
-        (
-            customerEventsPage - 1
-        ) *
+        (customerEventsPage - 1) *
         EVENTS_PER_PAGE;
 
 
@@ -3189,13 +3112,13 @@ async function loadCustomerEvents(){
     c.innerHTML =
         page.length
 
-        ?
+            ?
 
         page
             .map(createEventHTML)
             .join("")
 
-        :
+            :
 
         `
         <div class="no-orders">
@@ -3224,8 +3147,8 @@ async function loadCustomerEvents(){
             loadCustomerEvents();
 
             window.scrollTo({
-                top:0,
-                behavior:"smooth"
+                top: 0,
+                behavior: "smooth"
             });
 
         }
@@ -3238,13 +3161,12 @@ async function loadCustomerEvents(){
    WORKER EVENTS
 ========================================================= */
 
-async function loadWorkerEvents(){
+async function loadWorkerEvents() {
 
     const c =
         document.getElementById(
             "workerEventsList"
         );
-
 
     const p =
         document.getElementById(
@@ -3252,8 +3174,7 @@ async function loadWorkerEvents(){
         );
 
 
-    if(!c || !p)
-        return;
+    if (!c || !p) return;
 
 
     const events =
@@ -3278,9 +3199,7 @@ async function loadWorkerEvents(){
 
 
     const start =
-        (
-            workerEventsPage - 1
-        ) *
+        (workerEventsPage - 1) *
         EVENTS_PER_PAGE;
 
 
@@ -3294,15 +3213,13 @@ async function loadWorkerEvents(){
     c.innerHTML =
         page.length
 
-        ?
+            ?
 
         page
-            .map(
-                createWorkerEventHTML
-            )
+            .map(createWorkerEventHTML)
             .join("")
 
-        :
+            :
 
         `
         <div class="no-orders">
@@ -3341,14 +3258,14 @@ function renderPagination(
     totalPages,
     currentPage,
     onPage
-){
+) {
 
-    if(totalPages <= 1){
+    if (totalPages <= 1) {
 
-        container.innerHTML =
-            "";
+        container.innerHTML = "";
 
         return;
+
     }
 
 
@@ -3358,26 +3275,28 @@ function renderPagination(
             type="button"
             data-page="${currentPage - 1}"
             ${currentPage === 1 ? "disabled" : ""}>
-
             ← Oldingi
-
         </button>
 
     `;
 
 
-    for(
+    for (
         let i = 1;
         i <= totalPages;
         i++
-    ){
+    ) {
 
         html += `
 
             <button
                 type="button"
                 data-page="${i}"
-                class="${i === currentPage ? "active" : ""}">
+                class="${
+                    i === currentPage
+                        ? "active"
+                        : ""
+                }">
 
                 ${i}
 
@@ -3393,7 +3312,11 @@ function renderPagination(
         <button
             type="button"
             data-page="${currentPage + 1}"
-            ${currentPage === totalPages ? "disabled" : ""}>
+            ${
+                currentPage === totalPages
+                    ? "disabled"
+                    : ""
+            }>
 
             Keyingi sahifa →
 
@@ -3406,8 +3329,7 @@ function renderPagination(
     `;
 
 
-    container.innerHTML =
-        html;
+    container.innerHTML = html;
 
 
     container
@@ -3426,10 +3348,10 @@ function renderPagination(
                         );
 
 
-                    if(
+                    if (
                         page >= 1 &&
                         page <= totalPages
-                    ){
+                    ) {
 
                         onPage(page);
 
@@ -3444,37 +3366,33 @@ function renderPagination(
 
 
 /* =========================================================
-   IMAGE
+   EVENT IMAGE
 ========================================================= */
 
-function fileToDataURL(file){
+function fileToDataURL(file) {
 
     return new Promise(
-        (resolve,reject) => {
+        (resolve, reject) => {
 
             const reader =
                 new FileReader();
 
 
-            reader.onload =
-                () =>
-                    resolve(
-                        reader.result
-                    );
+            reader.onload = () =>
+                resolve(
+                    reader.result
+                );
 
 
-            reader.onerror =
-                () =>
-                    reject(
-                        new Error(
-                            "Rasm o‘qilmadi."
-                        )
-                    );
+            reader.onerror = () =>
+                reject(
+                    new Error(
+                        "Rasm o‘qilmadi."
+                    )
+                );
 
 
-            reader.readAsDataURL(
-                file
-            );
+            reader.readAsDataURL(file);
 
         }
     );
@@ -3486,12 +3404,12 @@ function fileToDataURL(file){
    SAVE EVENT
 ========================================================= */
 
-async function saveEventFromForm(event){
+async function saveEventFromForm(event) {
 
     event.preventDefault();
 
 
-    if(!canManage()){
+    if (!isManager()) {
 
         alert(
             "❌ Faqat Admin yoki Owner tadbir qo‘sha oladi."
@@ -3527,7 +3445,7 @@ async function saveEventFromForm(event){
             .files[0];
 
 
-    if(!title){
+    if (!title) {
 
         alert(
             "❌ Tadbir nomini kiriting."
@@ -3540,15 +3458,15 @@ async function saveEventFromForm(event){
     let imageUrl = "";
 
 
-    try{
+    try {
 
-        if(file){
+        if (file) {
 
-            if(
+            if (
                 !file.type.startsWith(
                     "image/"
                 )
-            ){
+            ) {
 
                 alert(
                     "❌ Faqat rasm fayli yuklang."
@@ -3558,10 +3476,10 @@ async function saveEventFromForm(event){
             }
 
 
-            if(
+            if (
                 file.size >
                 2 * 1024 * 1024
-            ){
+            ) {
 
                 alert(
                     "❌ Rasm hajmi 2 MB dan kichik bo‘lsin."
@@ -3587,19 +3505,17 @@ async function saveEventFromForm(event){
                     title,
 
                     description:
-                        description ||
-                        null,
+                        description || null,
 
                     image_url:
-                        imageUrl ||
-                        null
+                        imageUrl || null
 
                 })
                 .select()
                 .single();
 
 
-        if(r.error){
+        if (r.error) {
 
             alert(
                 "❌ Tadbir qo‘shilmadi:\n" +
@@ -3629,8 +3545,9 @@ async function saveEventFromForm(event){
             "✅ Tadbir muvaffaqiyatli qo‘shildi."
         );
 
+    }
 
-    }catch(err){
+    catch (err) {
 
         console.error(err);
 
@@ -3651,18 +3568,20 @@ async function saveEventFromForm(event){
    DELETE EVENT
 ========================================================= */
 
-async function deleteEvent(id){
+async function deleteEvent(id) {
 
-    if(!canManage())
-        return;
+    if (!isManager()) return;
 
 
-    if(
+    if (
         !confirm(
             "Bu tadbirni o‘chirmoqchimisiz?"
         )
-    )
+    ) {
+
         return;
+
+    }
 
 
     const r =
@@ -3675,7 +3594,7 @@ async function deleteEvent(id){
             );
 
 
-    if(r.error){
+    if (r.error) {
 
         alert(
             "❌ " +
@@ -3689,9 +3608,6 @@ async function deleteEvent(id){
     await loadWorkerEvents();
 
 
-    await loadCustomerEvents();
-
-
     alert(
         "✅ Tadbir o‘chirildi."
     );
@@ -3700,10 +3616,10 @@ async function deleteEvent(id){
 
 
 /* =========================================================
-   APPLICATION MODAL
+   CUSTOMER APPLICATION
 ========================================================= */
 
-function openOrderModal(){
+function openOrderModal() {
 
     const m =
         document.getElementById(
@@ -3711,8 +3627,7 @@ function openOrderModal(){
         );
 
 
-    if(!m)
-        return;
+    if (!m) return;
 
 
     m.classList.remove(
@@ -3736,7 +3651,7 @@ function openOrderModal(){
 }
 
 
-function closeOrderModal(){
+function closeOrderModal() {
 
     document
         .getElementById(
@@ -3749,11 +3664,7 @@ function closeOrderModal(){
 }
 
 
-/* =========================================================
-   APPLICATION
-========================================================= */
-
-async function submitApplication(event){
+async function submitApplication(event) {
 
     event.preventDefault();
 
@@ -3782,42 +3693,42 @@ async function submitApplication(event){
         );
 
 
-    if(!name || !phone){
+    if (!name || !phone) {
 
-        message.innerHTML = `
-
+        message.innerHTML =
+            `
             <div class="error">
-
                 ❌ Ism va telefon raqamini kiriting.
-
             </div>
-
-        `;
+            `;
 
         return;
     }
 
 
-    try{
+    try {
 
         const r =
             await supabaseClient
                 .from("applications")
                 .insert({
 
-                    full_name:name,
+                    full_name: name,
 
-                    phone:phone,
+                    phone: phone,
 
-                    status:"new"
+                    status: "new"
 
                 })
                 .select()
                 .single();
 
 
-        if(r.error)
+        if (r.error) {
+
             throw r.error;
+
+        }
 
 
         const app =
@@ -3836,14 +3747,15 @@ async function submitApplication(event){
         );
 
 
-        message.innerHTML = `
+        message.innerHTML =
+            `
 
             <div
                 style="
                     padding:15px;
                     border-radius:10px;
                     background:#dcfce7;
-                    color:#15803d;
+                    color:#15803d
                 ">
 
                 ✅ Arizangiz yuborildi!
@@ -3860,7 +3772,7 @@ async function submitApplication(event){
 
             </div>
 
-        `;
+            `;
 
 
         document
@@ -3875,12 +3787,14 @@ async function submitApplication(event){
             phone
         );
 
+    }
 
-    }catch(err){
+    catch (err) {
 
         console.error(err);
 
-        message.innerHTML = `
+        message.innerHTML =
+            `
 
             <div class="error">
 
@@ -3895,7 +3809,7 @@ async function submitApplication(event){
 
             </div>
 
-        `;
+            `;
 
     }
 
@@ -3909,12 +3823,15 @@ async function submitApplication(event){
 function startApplicationPolling(
     id,
     phone
-){
+) {
 
-    if(applicationTimer)
+    if (applicationTimer) {
+
         clearInterval(
             applicationTimer
         );
+
+    }
 
 
     checkApplicationStatus(
@@ -3936,7 +3853,7 @@ function startApplicationPolling(
 }
 
 
-function restoreApplicationStatus(){
+function restoreApplicationStatus() {
 
     const id =
         localStorage.getItem(
@@ -3950,10 +3867,10 @@ function restoreApplicationStatus(){
         );
 
 
-    if(
+    if (
         id &&
         phone
-    ){
+    ) {
 
         startApplicationPolling(
             id,
@@ -3968,7 +3885,7 @@ function restoreApplicationStatus(){
 async function checkApplicationStatus(
     id,
     phone
-){
+) {
 
     const r =
         await supabaseClient
@@ -3976,16 +3893,25 @@ async function checkApplicationStatus(
             .select(
                 "id,status,full_name,phone,created_at"
             )
-            .eq("id",id)
-            .eq("phone",phone)
+            .eq(
+                "id",
+                id
+            )
+            .eq(
+                "phone",
+                phone
+            )
             .maybeSingle();
 
 
-    if(
+    if (
         r.error ||
         !r.data
-    )
+    ) {
+
         return;
+
+    }
 
 
     const box =
@@ -3994,14 +3920,13 @@ async function checkApplicationStatus(
         );
 
 
-    if(!box)
-        return;
+    if (!box) return;
 
 
-    if(
+    if (
         r.data.status ===
         "accepted"
-    ){
+    ) {
 
         box.classList.remove(
             "hidden"
@@ -4012,7 +3937,8 @@ async function checkApplicationStatus(
             "#16a34a";
 
 
-        box.innerHTML = `
+        box.innerHTML =
+            `
 
             <strong>
                 ✅ Sizning arizangiz qabul qilindi
@@ -4024,10 +3950,9 @@ async function checkApplicationStatus(
 
             <br><br>
 
-            Ariza:
-            #${r.data.id}
+            Ariza: #${r.data.id}
 
-        `;
+            `;
 
 
         clearInterval(
@@ -4035,16 +3960,15 @@ async function checkApplicationStatus(
         );
 
 
-        applicationTimer =
-            null;
+        applicationTimer = null;
 
     }
 
 
-    else if(
+    else if (
         r.data.status ===
         "rejected"
-    ){
+    ) {
 
         box.classList.remove(
             "hidden"
@@ -4055,7 +3979,8 @@ async function checkApplicationStatus(
             "#dc2626";
 
 
-        box.innerHTML = `
+        box.innerHTML =
+            `
 
             <strong>
                 ❌ Arizangiz rad etildi.
@@ -4063,10 +3988,9 @@ async function checkApplicationStatus(
 
             <br><br>
 
-            Ariza:
-            #${r.data.id}
+            Ariza: #${r.data.id}
 
-        `;
+            `;
 
 
         clearInterval(
@@ -4074,8 +3998,7 @@ async function checkApplicationStatus(
         );
 
 
-        applicationTimer =
-            null;
+        applicationTimer = null;
 
     }
 
@@ -4083,10 +4006,10 @@ async function checkApplicationStatus(
 
 
 /* =========================================================
-   APPLICATIONS ADMIN / OWNER
+   APPLICATIONS - ADMIN / OWNER
 ========================================================= */
 
-async function loadApplications(){
+async function loadApplications() {
 
     const c =
         document.getElementById(
@@ -4094,11 +4017,14 @@ async function loadApplications(){
         );
 
 
-    if(
+    if (
         !c ||
-        !canManage()
-    )
+        !isManager()
+    ) {
+
         return;
+
+    }
 
 
     const r =
@@ -4107,24 +4033,24 @@ async function loadApplications(){
             .select("*")
             .order(
                 "created_at",
-                {ascending:false}
+                {
+                    ascending: false
+                }
             );
 
 
-    if(r.error){
+    if (r.error) {
 
-        c.innerHTML = `
-
+        c.innerHTML =
+            `
             <div class="no-orders">
 
-                ❌
-                ${escapeHTML(
+                ❌ ${escapeHTML(
                     r.error.message
                 )}
 
             </div>
-
-        `;
+            `;
 
         return;
     }
@@ -4137,7 +4063,7 @@ async function loadApplications(){
     c.innerHTML =
         apps.length
 
-        ?
+            ?
 
         apps
             .map(
@@ -4145,10 +4071,9 @@ async function loadApplications(){
             )
             .join("")
 
-        :
+            :
 
         `
-
         <div class="no-orders">
 
             <h3>
@@ -4160,42 +4085,37 @@ async function loadApplications(){
             </p>
 
         </div>
-
         `;
 
 }
 
 
-/* =========================================================
-   APPLICATION HTML
-========================================================= */
-
-function createApplicationHTML(a){
+function createApplicationHTML(a) {
 
     const statuses = {
 
-        new:[
-            "status-new",
-            "Yangi"
-        ],
+        new:
+            [
+                "status-new",
+                "Yangi"
+            ],
 
-        accepted:[
-            "status-accepted",
-            "Qabul qilingan"
-        ],
+        accepted:
+            [
+                "status-accepted",
+                "Qabul qilingan"
+            ],
 
-        rejected:[
-            "status-rejected",
-            "Rad etilgan"
-        ]
+        rejected:
+            [
+                "status-rejected",
+                "Rad etilgan"
+            ]
 
     };
 
 
-    const [
-        cls,
-        text
-    ] =
+    const [cls, text] =
         statuses[a.status] ||
         statuses.new;
 
@@ -4203,7 +4123,7 @@ function createApplicationHTML(a){
     const buttons =
         a.status === "new"
 
-        ?
+            ?
 
         `
 
@@ -4212,16 +4132,17 @@ function createApplicationHTML(a){
             <button
                 type="button"
                 class="accept-btn"
-                onclick="updateApplicationStatus(${Number(a.id)},'accepted')">
+                onclick="updateApplicationStatus(${Number(a.id)}, 'accepted')">
 
                 ✅ Qabul qilish
 
             </button>
 
+
             <button
                 type="button"
                 class="reject-btn"
-                onclick="updateApplicationStatus(${Number(a.id)},'rejected')">
+                onclick="updateApplicationStatus(${Number(a.id)}, 'rejected')">
 
                 ❌ Rad etish
 
@@ -4231,7 +4152,7 @@ function createApplicationHTML(a){
 
         `
 
-        :
+            :
 
         "";
 
@@ -4246,8 +4167,7 @@ function createApplicationHTML(a){
 
                 <div class="application-name">
 
-                    👤
-                    ${escapeHTML(
+                    👤 ${escapeHTML(
                         a.full_name
                     )}
 
@@ -4276,7 +4196,9 @@ function createApplicationHTML(a){
                 </span>
 
                 <strong>
-                    ${escapeHTML(a.phone)}
+                    ${escapeHTML(
+                        a.phone
+                    )}
                 </strong>
 
             </div>
@@ -4321,39 +4243,32 @@ function createApplicationHTML(a){
 async function updateApplicationStatus(
     id,
     status
-){
+) {
 
-    if(!canManage())
-        return;
+    if (!isManager()) return;
 
 
-    if(
+    if (
         !confirm(
             status === "accepted"
-
-                ?
-
-                "Bu arizani qabul qilasizmi?"
-
-                :
-
-                "Bu arizani rad qilasizmi?"
+                ? "Bu arizani qabul qilasizmi?"
+                : "Bu arizani rad qilasizmi?"
         )
-    )
+    ) {
+
         return;
+
+    }
 
 
     const data = {
-
         status
-
     };
 
 
-    if(
-        status ===
-        "accepted"
-    ){
+    if (
+        status === "accepted"
+    ) {
 
         data.accepted_at =
             new Date()
@@ -4372,7 +4287,7 @@ async function updateApplicationStatus(
             );
 
 
-    if(r.error){
+    if (r.error) {
 
         alert(
             "❌ " +
@@ -4387,89 +4302,21 @@ async function updateApplicationStatus(
 
 
     alert(
-
         status === "accepted"
-
-            ?
-
-            "✅ Ariza qabul qilindi."
-
-            :
-
-            "❌ Ariza rad etildi."
-
+            ? "✅ Ariza qabul qilindi."
+            : "❌ Ariza rad etildi."
     );
 
 }
 
 
 /* =========================================================
-   SESSION RESTORE
+   SUPABASE TEST
 ========================================================= */
 
-async function restoreUserSession(){
+function testSupabaseConnection() {
 
-    const id =
-        localStorage.getItem(
-            "goldshow_user_id"
-        );
-
-
-    if(!id)
-        return;
-
-
-    if(!supabaseClient)
-        return;
-
-
-    try{
-
-        const result =
-            await supabaseClient
-                .from("users")
-                .select(
-                    "id,name,username,role"
-                )
-                .eq(
-                    "id",
-                    Number(id)
-                )
-                .single();
-
-
-        if(result.error ||
-           !result.data){
-
-            localStorage.removeItem(
-                "goldshow_user_id"
-            );
-
-            return;
-        }
-
-
-        currentUser =
-            result.data;
-
-
-        currentUser.role =
-            String(
-                currentUser.role || ""
-            )
-            .toLowerCase();
-
-
-        await openMainPage();
-
-
-    }catch(err){
-
-        console.error(
-            err
-        );
-
-    }
+    return !!supabaseClient;
 
 }
 
@@ -4481,6 +4328,7 @@ async function restoreUserSession(){
 document.addEventListener(
     "DOMContentLoaded",
     async () => {
+
 
         updateDate();
 
@@ -4573,10 +4421,10 @@ document.addEventListener(
                 "click",
                 e => {
 
-                    if(
+                    if (
                         e.target.id ===
                         "orderModal"
-                    ){
+                    ) {
 
                         closeOrderModal();
 
@@ -4587,9 +4435,6 @@ document.addEventListener(
 
 
         calculateRemaining();
-
-
-        await restoreUserSession();
 
     }
 );
