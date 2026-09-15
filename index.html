@@ -21,9 +21,8 @@
 
     <div class="landing-box">
 
-        <div class="brand-logo big-logo">
-            <span>GOLD</span>
-            <b>SHOW</b>
+        <div class="landing-logo">
+            GOLD <span>SHOW</span>
         </div>
 
         <p class="landing-subtitle">
@@ -36,18 +35,14 @@
                 type="button"
                 class="landing-btn customer-btn"
                 onclick="openCustomerPage()">
-
                 👤 Buyurtmachi
-
             </button>
 
             <button
                 type="button"
                 class="landing-btn worker-btn"
                 onclick="openWorkerLogin()">
-
-                👷 Xodimlar kirishi
-
+                👷 Ishchi / Admin
             </button>
 
         </div>
@@ -65,17 +60,12 @@
 
     <div class="login-box">
 
-        <div class="brand-logo login-logo">
-            <span>GOLD</span>
-            <b>SHOW</b>
-        </div>
-
-        <div class="owner-badge">
-            👑 OWNER / ADMIN / ISHCHI
+        <div class="logo">
+            GOLD <span>SHOW</span>
         </div>
 
         <p class="login-title">
-            Gold Show boshqaruv tizimiga kirish
+            Owner / Admin / Ishchi tizimiga kirish
         </p>
 
         <form id="loginForm">
@@ -108,9 +98,7 @@
             type="button"
             class="back-home-btn"
             onclick="backToLanding()">
-
             ← Bosh sahifaga
-
         </button>
 
     </div>
@@ -126,53 +114,47 @@
 
     <header class="customer-header">
 
-        <div class="brand-logo customer-logo">
-            <span>GOLD</span>
-            <b>SHOW</b>
+        <div class="customer-logo">
+            GOLD <span>SHOW</span>
         </div>
 
         <button
             type="button"
             class="customer-order-btn"
             onclick="openOrderModal()">
-
             📩 Buyurtma berish
-
         </button>
 
     </header>
+
 
     <main class="customer-container">
 
         <div class="customer-title-row">
 
             <div>
-
-                <h1>
-                    Tadbirlar
-                </h1>
+                <h1>Tadbirlar</h1>
 
                 <p>
                     Gold Show xizmatlari va tadbirlari
                 </p>
-
             </div>
 
             <button
                 type="button"
                 class="customer-back-btn"
                 onclick="backToLanding()">
-
                 ← Orqaga
-
             </button>
 
         </div>
+
 
         <div
             id="customerEventsList"
             class="customer-events-grid">
         </div>
+
 
         <div
             id="customerPagination"
@@ -180,6 +162,7 @@
         </div>
 
     </main>
+
 
     <div
         id="customerStatusBox"
@@ -193,28 +176,27 @@
      APPLICATION MODAL
 ========================================================= -->
 
-<div
-    id="orderModal"
-    class="modal-overlay hidden">
+<div id="orderModal" class="modal-overlay hidden">
 
     <div class="modal-box">
 
         <button
             type="button"
             class="modal-close"
-            onclick="closeOrderModal()">
-
+            onclick="closeOrderModal()"
+            aria-label="Yopish">
             ×
-
         </button>
 
+
         <h2>
-            Buyurtma berish uchun ariza
+            Buyurtma berish uchun ariza qoldirish
         </h2>
 
         <p class="modal-subtitle">
             Arizangizni qoldiring, biz siz bilan bog‘lanamiz.
         </p>
+
 
         <div class="trust-number">
 
@@ -227,6 +209,7 @@
             </strong>
 
         </div>
+
 
         <form id="applicationForm">
 
@@ -245,6 +228,7 @@
 
             </div>
 
+
             <div class="form-group">
 
                 <label for="applicationPhone">
@@ -260,15 +244,15 @@
 
             </div>
 
+
             <button
                 type="submit"
                 class="save-btn">
-
                 📩 Ariza yuborish
-
             </button>
 
         </form>
+
 
         <div
             id="applicationMessage"
@@ -281,33 +265,27 @@
 
 
 <!-- =========================================================
-     MAIN ADMIN / OWNER / WORKER PAGE
+     MAIN PAGE
 ========================================================= -->
 
 <section id="mainPage" class="main-page hidden">
 
+
+    <!-- SIDEBAR -->
+
     <aside class="sidebar">
 
         <div class="sidebar-logo">
-
-            <div class="brand-logo">
-                <span>GOLD</span>
-                <b>SHOW</b>
-            </div>
-
+            GOLD <span>SHOW</span>
         </div>
 
-
-        <!-- USER INFO -->
 
         <div class="user-info">
 
             <div
                 id="userAvatar"
                 class="avatar">
-
                 G
-
             </div>
 
             <div>
@@ -325,17 +303,13 @@
         </div>
 
 
-        <!-- MENU -->
-
         <nav>
 
             <button
                 type="button"
                 class="menu-btn active"
                 onclick="showPage('dashboardPage', this)">
-
                 🏠 Bosh sahifa
-
             </button>
 
 
@@ -343,9 +317,7 @@
                 type="button"
                 class="menu-btn"
                 onclick="showPage('ordersPage', this)">
-
                 📋 Zakaslar
-
             </button>
 
 
@@ -354,9 +326,7 @@
                 id="addOrderMenu"
                 class="menu-btn"
                 onclick="showPage('addOrderPage', this)">
-
                 ➕ Zakas qo‘shish
-
             </button>
 
 
@@ -364,9 +334,7 @@
                 type="button"
                 class="menu-btn"
                 onclick="showPage('workerEventsPage', this)">
-
                 🎪 Tadbirlar
-
             </button>
 
 
@@ -375,9 +343,7 @@
                 id="applicationsMenu"
                 class="menu-btn"
                 onclick="showPage('applicationsPage', this)">
-
                 📩 Arizalar
-
             </button>
 
 
@@ -386,9 +352,7 @@
                 id="usersMenu"
                 class="menu-btn"
                 onclick="showPage('usersPage', this)">
-
                 👥 Userlar
-
             </button>
 
         </nav>
@@ -398,19 +362,18 @@
             type="button"
             class="logout-btn"
             onclick="logout()">
-
             🚪 Chiqish
-
         </button>
 
     </aside>
 
 
-    <!-- =====================================================
-         CONTENT
-    ====================================================== -->
+    <!-- CONTENT -->
 
     <main class="content">
+
+
+        <!-- HEADER -->
 
         <div class="top-header">
 
@@ -425,6 +388,7 @@
                 </p>
 
             </div>
+
 
             <div class="today">
 
@@ -441,15 +405,16 @@
         </div>
 
 
-        <!-- =================================================
+        <!-- =====================================================
              DASHBOARD
-        ================================================== -->
+        ====================================================== -->
 
         <section
             id="dashboardPage"
             class="page">
 
             <div class="stats">
+
 
                 <div class="stat-card">
 
@@ -559,9 +524,9 @@
         </section>
 
 
-        <!-- =================================================
+        <!-- =====================================================
              ORDERS
-        ================================================== -->
+        ====================================================== -->
 
         <section
             id="ordersPage"
@@ -581,6 +546,7 @@
 
                 </div>
 
+
                 <input
                     type="search"
                     id="searchInput"
@@ -588,6 +554,7 @@
                 >
 
             </div>
+
 
             <div
                 id="ordersList"
@@ -597,15 +564,16 @@
         </section>
 
 
-        <!-- =================================================
-             ADD ORDER
-        ================================================== -->
+        <!-- =====================================================
+             ADD / EDIT ORDER
+        ====================================================== -->
 
         <section
             id="addOrderPage"
             class="page hidden">
 
             <div class="form-container">
+
 
                 <div class="form-title">
 
@@ -623,9 +591,7 @@
                 <div
                     id="editBadge"
                     class="edit-badge hidden">
-
                     ✏️ Tahrirlash rejimi
-
                 </div>
 
 
@@ -641,7 +607,9 @@
                         👤 Mijoz ma’lumotlari
                     </h3>
 
+
                     <div class="form-grid">
+
 
                         <div class="form-group">
 
@@ -724,12 +692,16 @@
                         🖥️ Ekran va sahna
                     </h3>
 
+
                     <div class="form-grid">
 
+
                         <div class="form-group">
+
                             <label for="screenHeight">
                                 Ekran balandligi
                             </label>
+
                             <input
                                 type="number"
                                 step="0.1"
@@ -737,13 +709,16 @@
                                 id="screenHeight"
                                 value="0"
                             >
+
                         </div>
 
 
                         <div class="form-group">
+
                             <label for="screenWidth">
                                 Ekran eni
                             </label>
+
                             <input
                                 type="number"
                                 step="0.1"
@@ -751,13 +726,16 @@
                                 id="screenWidth"
                                 value="0"
                             >
+
                         </div>
 
 
                         <div class="form-group">
+
                             <label for="stageWidth">
                                 Sahna eni
                             </label>
+
                             <input
                                 type="number"
                                 step="0.1"
@@ -765,13 +743,16 @@
                                 id="stageWidth"
                                 value="0"
                             >
+
                         </div>
 
 
                         <div class="form-group">
+
                             <label for="stageLength">
                                 Sahna uzunligi
                             </label>
+
                             <input
                                 type="number"
                                 step="0.1"
@@ -779,6 +760,7 @@
                                 id="stageLength"
                                 value="0"
                             >
+
                         </div>
 
 
@@ -859,83 +841,103 @@
                         💡 Texnika
                     </h3>
 
+
                     <div class="form-grid">
 
+
                         <div class="form-group">
+
                             <label for="lights">
                                 Chiroqlar
                             </label>
+
                             <input
                                 type="number"
                                 min="0"
                                 id="lights"
                                 value="0"
                             >
+
                         </div>
 
 
                         <div class="form-group">
+
                             <label for="galava">
                                 Galava
                             </label>
+
                             <input
                                 type="number"
                                 min="0"
                                 id="galava"
                                 value="0"
                             >
+
                         </div>
 
 
                         <div class="form-group">
+
                             <label for="ledwash">
                                 LED Wash
                             </label>
+
                             <input
                                 type="number"
                                 min="0"
                                 id="ledwash"
                                 value="0"
                             >
+
                         </div>
 
 
                         <div class="form-group">
+
                             <label for="confetti">
                                 Konfetti
                             </label>
+
                             <input
                                 type="number"
                                 min="0"
                                 id="confetti"
                                 value="0"
                             >
+
                         </div>
 
 
                         <div class="form-group">
+
                             <label for="dim">
                                 Dim apparat
                             </label>
+
                             <input
                                 type="number"
                                 min="0"
                                 id="dim"
                                 value="0"
                             >
+
                         </div>
 
 
                         <div class="form-group">
+
                             <label for="firework">
                                 Firework
                             </label>
+
                             <input
                                 type="number"
                                 min="0"
                                 id="firework"
                                 value="0"
                             >
+
                         </div>
 
                     </div>
@@ -945,7 +947,9 @@
                         💰 To‘lov
                     </h3>
 
+
                     <div class="form-grid">
+
 
                         <div class="form-group">
 
@@ -984,7 +988,6 @@
                             <div class="remaining">
 
                                 Qolgan:
-
                                 <span id="remaining">
                                     0 so‘m
                                 </span>
@@ -1000,9 +1003,7 @@
                         type="submit"
                         class="save-btn"
                         id="orderSubmitBtn">
-
                         💾 Zakasni saqlash
-
                     </button>
 
 
@@ -1011,9 +1012,7 @@
                         id="cancelEditBtn"
                         class="cancel-btn hidden"
                         onclick="cancelEditOrder()">
-
                         Bekor qilish
-
                     </button>
 
                 </form>
@@ -1023,9 +1022,9 @@
         </section>
 
 
-        <!-- =================================================
+        <!-- =====================================================
              EVENTS
-        ================================================== -->
+        ====================================================== -->
 
         <section
             id="workerEventsPage"
@@ -1056,9 +1055,11 @@
                     ➕ Yangi tadbir qo‘shish
                 </h3>
 
+
                 <form id="eventForm">
 
                     <div class="form-grid">
+
 
                         <div class="form-group">
 
@@ -1084,8 +1085,8 @@
                             <textarea
                                 id="eventDescription"
                                 rows="5"
-                                placeholder="Tadbir haqida yozing..."
-                            ></textarea>
+                                placeholder="Tadbir haqida yozing...">
+                            </textarea>
 
                         </div>
 
@@ -1114,9 +1115,7 @@
                     <button
                         type="submit"
                         class="save-btn">
-
                         ➕ Tadbirni qo‘shish
-
                     </button>
 
                 </form>
@@ -1129,6 +1128,7 @@
                 class="customer-events-grid">
             </div>
 
+
             <div
                 id="workerPagination"
                 class="pagination">
@@ -1137,9 +1137,9 @@
         </section>
 
 
-        <!-- =================================================
+        <!-- =====================================================
              APPLICATIONS
-        ================================================== -->
+        ====================================================== -->
 
         <section
             id="applicationsPage"
@@ -1170,9 +1170,9 @@
         </section>
 
 
-        <!-- =================================================
+        <!-- =====================================================
              USERS
-        ================================================== -->
+        ====================================================== -->
 
         <section
             id="usersPage"
@@ -1187,9 +1187,8 @@
                     </h2>
 
                     <p>
-                        👑 Owner — Admin va Ishchilarni boshqaradi.
-                        <br>
-                        🛡 Admin — faqat Ishchilarni boshqaradi.
+                        Owner — Admin va Ishchilarni boshqaradi.
+                        Admin — faqat Ishchilarni boshqaradi.
                     </p>
 
                 </div>
@@ -1198,6 +1197,7 @@
                 <form id="userForm">
 
                     <div class="form-grid">
+
 
                         <div class="form-group">
 
@@ -1270,9 +1270,7 @@
                     <button
                         type="submit"
                         class="save-btn">
-
                         👤 User yaratish
-
                     </button>
 
                 </form>
