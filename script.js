@@ -1,4440 +1,1297 @@
-/* =========================================================
-   GOLD SHOW - OWNER / ADMIN / ISHCHI SYSTEM
-========================================================= */
+/* =====================================================
+   GOLD SHOW
+   SCRIPT.JS
+===================================================== */
 
 
-/* =========================================================
-   SUPABASE
-========================================================= */
+/* =====================================================
+   OWNER ACCOUNT
+===================================================== */
 
-const SUPABASE_URL =
-    "https://mvrrftlhjlbrsiexnwjq.supabase.co";
-
-const SUPABASE_PUBLISHABLE_KEY =
-    "sb_publishable_MFI3LFGRmSviFv6ygJnXyg_wFktEpyP";
-
-let supabaseClient = null;
-
-if (
-    window.supabase &&
-    typeof window.supabase.createClient === "function"
-) {
-    supabaseClient =
-        window.supabase.createClient(
-            SUPABASE_URL,
-            SUPABASE_PUBLISHABLE_KEY
-        );
-}
+const OWNER = {
+    name: "Foziljon",
+    username: "Foziljon",
+    password: "Foziljon2010",
+    role: "owner"
+};
 
 
-/* =========================================================
-   OWNER BOOTSTRAP LOGIN
-========================================================= */
+/* =====================================================
+   STORAGE
+===================================================== */
+
+let users =
+    JSON.parse(localStorage.getItem("goldshow_users")) || [];
+
+let orders =
+    JSON.parse(localStorage.getItem("goldshow_orders")) || [];
+
 
 /*
-   Vaqtinchalik Owner login.
-
-   Login: Foziljon
-   Parol: Foziljon2010
-
-   Bu Supabase users jadvalidagi eski Otabek
-   muammosini chetlab o'tadi.
+   Agar Foziljon hali users ichida bo'lmasa,
+   avtomatik Owner sifatida qo'shiladi.
 */
 
-const OWNER_LOGIN = "Foziljon";
-const OWNER_PASSWORD = "Foziljon2010";
+function createOwner() {
 
-
-/* =========================================================
-   GLOBAL VARIABLES
-========================================================= */
-
-let currentUser = null;
-
-let customerEventsPage = 1;
-
-let workerEventsPage = 1;
-
-const EVENTS_PER_PAGE = 10;
-
-let applicationTimer = null;
-
-
-/* =========================================================
-   MONTHS
-========================================================= */
-
-const UZ_MONTHS = [
-    "yanvar",
-    "fevral",
-    "mart",
-    "aprel",
-    "may",
-    "iyun",
-    "iyul",
-    "avgust",
-    "sentabr",
-    "oktabr",
-    "noyabr",
-    "dekabr"
-];
-
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-function escapeHTML(value) {
-
-    return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-
-function formatMoney(value) {
-
-    return Number(value || 0)
-        .toLocaleString("uz-UZ") +
-        " so‘m";
-}
-
-
-function getToday() {
-
-    const now = new Date();
-
-    return `${now.getFullYear()}-${String(
-        now.getMonth() + 1
-    ).padStart(2, "0")}-${String(
-        now.getDate()
-    ).padStart(2, "0")}`;
-}
-
-
-function formatDate(value) {
-
-    if (!value) return "—";
-
-    const p = String(value).split("-");
-
-    if (p.length !== 3) {
-        return String(value);
-    }
-
-    const y = Number(p[0]);
-    const m = Number(p[1]);
-    const d = Number(p[2]);
-
-    if (!y || !m || !d) {
-        return String(value);
-    }
-
-    return `${d}-${UZ_MONTHS[m - 1]} ${y}-yil`;
-}
-
-
-function formatDateTime(value) {
-
-    if (!value) return "—";
-
-    const d = new Date(value);
-
-    if (Number.isNaN(d.getTime())) {
-        return "—";
-    }
-
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-
-    const hour = String(d.getHours()).padStart(2, "0");
-    const minute = String(d.getMinutes()).padStart(2, "0");
-
-    return `${day}.${month}.${year} ${hour}:${minute}`;
-}
-
-
-function updateDate() {
-
-    const el = document.getElementById("todayDate");
-
-    if (!el) return;
-
-    const d = new Date();
-
-    el.textContent =
-        `${d.getDate()}-${UZ_MONTHS[d.getMonth()]} ${d.getFullYear()}-yil`;
-}
-
-
-/* =========================================================
-   ROLE HELPERS
-========================================================= */
-
-function isOwner() {
-
-    return currentUser?.role === "owner";
-}
-
-
-function isAdmin() {
-
-    return currentUser?.role === "admin";
-}
-
-
-function isManager() {
-
-    return (
-        currentUser?.role === "owner" ||
-        currentUser?.role === "admin"
+    const ownerExists = users.some(
+        user => user.username === OWNER.username
     );
-}
 
+    if (!ownerExists) {
 
-/* =========================================================
-   PAGE CONTROL
-========================================================= */
+        users.unshift({
+            id: Date.now(),
+            name: OWNER.name,
+            username: OWNER.username,
+            password: OWNER.password,
+            role: OWNER.role
+        });
 
-function hideAllPages() {
-
-    [
-        "landingPage",
-        "loginPage",
-        "customerPage",
-        "mainPage"
-    ].forEach(id => {
-
-        document
-            .getElementById(id)
-            ?.classList.add("hidden");
-
-    });
-}
-
-
-function backToLanding() {
-
-    currentUser = null;
-
-    if (applicationTimer) {
-        clearInterval(applicationTimer);
+        saveUsers();
     }
-
-    applicationTimer = null;
-
-    hideAllPages();
-
-    document
-        .getElementById("landingPage")
-        ?.classList.remove("hidden");
-
-    closeOrderModal();
 }
 
 
-async function openCustomerPage() {
-
-    hideAllPages();
-
-    document
-        .getElementById("customerPage")
-        ?.classList.remove("hidden");
-
-    customerEventsPage = 1;
-
-    await loadCustomerEvents();
-
-    restoreApplicationStatus();
-}
+createOwner();
 
 
-function openWorkerLogin() {
+/* =====================================================
+   ELEMENTS
+===================================================== */
 
-    hideAllPages();
+const loginPage =
+    document.getElementById("loginPage");
 
-    document
-        .getElementById("loginPage")
-        ?.classList.remove("hidden");
+const mainPage =
+    document.getElementById("mainPage");
 
-    document
-        .getElementById("username")
-        ?.focus();
-}
+const usernameInput =
+    document.getElementById("username");
+
+const passwordInput =
+    document.getElementById("password");
+
+const loginButton =
+    document.getElementById("loginButton");
+
+const loginMessage =
+    document.getElementById("loginMessage");
+
+const togglePassword =
+    document.getElementById("togglePassword");
+
+const eyeOpen =
+    document.getElementById("eyeOpen");
+
+const eyeClosed =
+    document.getElementById("eyeClosed");
 
 
-/* =========================================================
+/* =====================================================
+   PASSWORD EYE
+===================================================== */
+
+togglePassword.addEventListener(
+    "click",
+    function () {
+
+        if (passwordInput.type === "password") {
+
+            passwordInput.type = "text";
+
+            eyeOpen.style.display = "none";
+
+            eyeClosed.style.display = "block";
+
+            togglePassword.setAttribute(
+                "aria-label",
+                "Parolni yashirish"
+            );
+
+        } else {
+
+            passwordInput.type = "password";
+
+            eyeOpen.style.display = "block";
+
+            eyeClosed.style.display = "none";
+
+            togglePassword.setAttribute(
+                "aria-label",
+                "Parolni ko'rsatish"
+            );
+
+        }
+
+    }
+);
+
+
+/* =====================================================
    LOGIN
-========================================================= */
+===================================================== */
 
-async function login(event) {
-
-    if (event) {
-        event.preventDefault();
-    }
-
-    const usernameElement =
-        document.getElementById("username");
-
-    const passwordElement =
-        document.getElementById("password");
-
-    const errorElement =
-        document.getElementById("loginError");
-
-
-    if (
-        !usernameElement ||
-        !passwordElement ||
-        !errorElement
-    ) {
-        return;
-    }
-
+function login() {
 
     const username =
-        usernameElement.value.trim();
+        usernameInput.value.trim();
 
     const password =
-        passwordElement.value.trim();
+        passwordInput.value;
 
 
-    errorElement.textContent = "";
+    loginMessage.className =
+        "login-message";
 
 
     if (!username || !password) {
 
-        errorElement.textContent =
+        loginMessage.textContent =
             "❌ Login va parolni kiriting.";
+
+        loginMessage.classList.add("error");
 
         return;
     }
 
 
     /*
-       =====================================================
-       OWNER BOOTSTRAP
-       =====================================================
+       Avval Ownerni tekshiramiz.
+       Bu orqali Foziljon/Foziljon2010
+       har doim Owner sifatida ishlaydi.
     */
 
     if (
-        username === OWNER_LOGIN &&
-        password === OWNER_PASSWORD
+        username === OWNER.username &&
+        password === OWNER.password
     ) {
 
-        currentUser = {
-
-            id: null,
-
-            name: "Foziljon",
-
-            username: "Foziljon",
-
-            role: "owner"
-
+        const ownerUser = {
+            name: OWNER.name,
+            username: OWNER.username,
+            role: OWNER.role
         };
 
+        localStorage.setItem(
+            "goldshow_current_user",
+            JSON.stringify(ownerUser)
+        );
 
-        usernameElement.value = "";
-
-        passwordElement.value = "";
-
-
-        await openOwnerPage();
+        showMainPage(ownerUser);
 
         return;
     }
 
 
     /*
-       =====================================================
-       SUPABASE LOGIN
-       =====================================================
+       Keyin boshqa foydalanuvchilarni tekshiramiz.
     */
 
-    if (!supabaseClient) {
+    const user = users.find(
+        item =>
+            item.username === username &&
+            item.password === password
+    );
 
-        errorElement.textContent =
-            "❌ Supabase ulanmagan.";
+
+    if (!user) {
+
+        loginMessage.textContent =
+            "❌ Login yoki parol noto‘g‘ri.";
+
+        loginMessage.classList.add("error");
 
         return;
     }
 
 
-    try {
-
-        const result =
-            await supabaseClient
-                .from("users")
-                .select(
-                    "id,name,username,password,role"
-                )
-                .eq("username", username)
-                .eq("password", password)
-                .limit(1);
+    localStorage.setItem(
+        "goldshow_current_user",
+        JSON.stringify({
+            name: user.name,
+            username: user.username,
+            role: user.role
+        })
+    );
 
 
-        if (result.error) {
+    showMainPage(user);
+}
 
-            errorElement.textContent =
-                "❌ " + result.error.message;
 
-            return;
+loginButton.addEventListener(
+    "click",
+    login
+);
+
+
+/* ENTER BILAN KIRISH */
+
+usernameInput.addEventListener(
+    "keydown",
+    function (event) {
+
+        if (event.key === "Enter") {
+            login();
         }
 
+    }
+);
 
-        if (!result.data?.length) {
 
-            errorElement.textContent =
-                "❌ Login yoki parol noto‘g‘ri.";
+passwordInput.addEventListener(
+    "keydown",
+    function (event) {
 
-            return;
+        if (event.key === "Enter") {
+            login();
         }
 
+    }
+);
 
-        const user = result.data[0];
+
+/* =====================================================
+   SHOW MAIN PAGE
+===================================================== */
+
+function showMainPage(user) {
+
+    loginPage.classList.add("hidden");
+
+    mainPage.classList.remove("hidden");
+
+
+    document.getElementById(
+        "currentUserName"
+    ).textContent = user.name;
+
+
+    document.getElementById(
+        "currentUserRole"
+    ).textContent =
+        user.role.toUpperCase();
+
+
+    document.getElementById(
+        "userAvatar"
+    ).textContent =
+        user.name.charAt(0).toUpperCase();
+
+
+    updateUsersTable();
+
+    updateOrderList();
+
+    updateStats();
+
+
+    /*
+       Owner bo'lmagan userga
+       Users menyusini ko'rsatmaymiz.
+    */
+
+    const usersMenu =
+        document.querySelector(
+            '[data-section="usersSection"]'
+        );
+
+
+    if (user.role === "owner") {
+
+        usersMenu.style.display = "flex";
+
+    } else {
+
+        usersMenu.style.display = "none";
+
+    }
+}
+
+
+/* =====================================================
+   AUTO LOGIN
+===================================================== */
+
+const savedUser =
+    JSON.parse(
+        localStorage.getItem(
+            "goldshow_current_user"
+        )
+    );
+
+
+if (savedUser) {
+
+    showMainPage(savedUser);
+
+}
+
+
+/* =====================================================
+   LOGOUT
+===================================================== */
+
+document.getElementById(
+    "logoutButton"
+).addEventListener(
+    "click",
+    function () {
+
+        localStorage.removeItem(
+            "goldshow_current_user"
+        );
+
+        mainPage.classList.add("hidden");
+
+        loginPage.classList.remove("hidden");
+
+        usernameInput.value = "";
+
+        passwordInput.value = "";
+
+        loginMessage.textContent = "";
+
+    }
+);
+
+
+/* =====================================================
+   MENU
+===================================================== */
+
+const menuItems =
+    document.querySelectorAll(".menu-item");
+
+
+menuItems.forEach(
+    item => {
+
+        item.addEventListener(
+            "click",
+            function () {
+
+                menuItems.forEach(
+                    button =>
+                        button.classList.remove("active")
+                );
+
+
+                item.classList.add("active");
+
+
+                const sectionId =
+                    item.getAttribute(
+                        "data-section"
+                    );
+
+
+                document.querySelectorAll(
+                    ".content-section"
+                ).forEach(
+                    section => {
+
+                        section.classList.remove(
+                            "active-section"
+                        );
+
+                    }
+                );
+
+
+                document
+                    .getElementById(sectionId)
+                    .classList.add(
+                        "active-section"
+                    );
+
+            }
+        );
+
+    }
+);
+
+
+/* =====================================================
+   USERS STORAGE
+===================================================== */
+
+function saveUsers() {
+
+    localStorage.setItem(
+        "goldshow_users",
+        JSON.stringify(users)
+    );
+
+}
+
+
+/* =====================================================
+   USERS TABLE
+===================================================== */
+
+function updateUsersTable() {
+
+    const table =
+        document.getElementById(
+            "usersTable"
+        );
+
+
+    table.innerHTML = "";
+
+
+    users.forEach(
+        user => {
+
+            const row =
+                document.createElement("tr");
+
+
+            let roleName =
+                "Ishchi";
+
+
+            if (user.role === "owner") {
+                roleName = "OWNER";
+            }
+
+            if (user.role === "admin") {
+                roleName = "ADMIN";
+            }
+
+
+            const deleteButton =
+                user.role === "owner"
+                    ? `<span>🔒</span>`
+                    : `
+                        <button
+                            class="delete-user"
+                            data-id="${user.id}"
+                        >
+                            🗑️
+                        </button>
+                    `;
+
+
+            row.innerHTML = `
+
+                <td>
+                    <strong>
+                        ${escapeHtml(user.name)}
+                    </strong>
+                </td>
+
+                <td>
+                    ${escapeHtml(user.username)}
+                </td>
+
+                <td>
+                    <span class="user-role">
+                        ${roleName}
+                    </span>
+                </td>
+
+                <td>
+                    <span class="status">
+                        ● Aktiv
+                    </span>
+                </td>
+
+                <td>
+                    ${deleteButton}
+                </td>
+
+            `;
+
+
+            table.appendChild(row);
+
+        }
+    );
+
+
+    document.querySelectorAll(
+        ".delete-user"
+    ).forEach(
+        button => {
+
+            button.addEventListener(
+                "click",
+                function () {
+
+                    const id =
+                        Number(
+                            this.dataset.id
+                        );
+
+
+                    deleteUser(id);
+
+                }
+            );
+
+        }
+    );
+}
+
+
+/* =====================================================
+   DELETE USER
+===================================================== */
+
+function deleteUser(id) {
+
+    const user =
+        users.find(
+            item => item.id === id
+        );
+
+
+    if (!user) {
+        return;
+    }
+
+
+    if (user.role === "owner") {
+
+        alert(
+            "Ownerni o‘chirib bo‘lmaydi."
+        );
+
+        return;
+    }
+
+
+    const confirmDelete =
+        confirm(
+            `"${user.name}" foydalanuvchisini o‘chirishni xohlaysizmi?`
+        );
+
+
+    if (!confirmDelete) {
+        return;
+    }
+
+
+    users =
+        users.filter(
+            item => item.id !== id
+        );
+
+
+    saveUsers();
+
+    updateUsersTable();
+
+    updateStats();
+
+}
+
+
+/* =====================================================
+   ADD USER MODAL
+===================================================== */
+
+const userModal =
+    document.getElementById(
+        "userModal"
+    );
+
+
+document.getElementById(
+    "addUserButton"
+).addEventListener(
+    "click",
+    function () {
+
+        userModal.classList.remove(
+            "hidden"
+        );
+
+    }
+);
+
+
+document.getElementById(
+    "closeUserModal"
+).addEventListener(
+    "click",
+    function () {
+
+        userModal.classList.add(
+            "hidden"
+        );
+
+    }
+);
+
+
+/* =====================================================
+   NEW PASSWORD EYE
+===================================================== */
+
+document.getElementById(
+    "toggleNewPassword"
+).addEventListener(
+    "click",
+    function () {
+
+        const input =
+            document.getElementById(
+                "newUserPassword"
+            );
+
+
+        if (input.type === "password") {
+
+            input.type = "text";
+
+            this.textContent = "🙈";
+
+        } else {
+
+            input.type = "password";
+
+            this.textContent = "👁️";
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   SAVE USER
+===================================================== */
+
+document.getElementById(
+    "saveUserButton"
+).addEventListener(
+    "click",
+    function () {
+
+        const name =
+            document.getElementById(
+                "newUserName"
+            ).value.trim();
+
+
+        const username =
+            document.getElementById(
+                "newUserLogin"
+            ).value.trim();
+
+
+        const password =
+            document.getElementById(
+                "newUserPassword"
+            ).value;
 
 
         const role =
-            String(user.role || "")
-                .trim()
-                .toLowerCase();
+            document.getElementById(
+                "newUserRole"
+            ).value;
 
 
         if (
-            ![
-                "owner",
-                "admin",
-                "user"
-            ].includes(role)
+            !name ||
+            !username ||
+            !password
         ) {
 
-            errorElement.textContent =
-                "❌ User roli noto‘g‘ri.";
+            alert(
+                "Barcha maydonlarni to‘ldiring."
+            );
 
             return;
         }
 
 
-        currentUser = {
+        /*
+           Login takrorlanmasligi
+        */
 
-            id: user.id,
+        const exists =
+            users.some(
+                user =>
+                    user.username.toLowerCase() ===
+                    username.toLowerCase()
+            );
 
-            name: user.name,
 
-            username: user.username,
+        if (exists) {
+
+            alert(
+                "Bu login allaqachon mavjud."
+            );
+
+            return;
+        }
+
+
+        users.push({
+
+            id: Date.now(),
+
+            name: name,
+
+            username: username,
+
+            password: password,
 
             role: role
+
+        });
+
+
+        saveUsers();
+
+        updateUsersTable();
+
+        updateStats();
+
+
+        /*
+           Formani tozalash
+        */
+
+        document.getElementById(
+            "newUserName"
+        ).value = "";
+
+
+        document.getElementById(
+            "newUserLogin"
+        ).value = "";
+
+
+        document.getElementById(
+            "newUserPassword"
+        ).value = "";
+
+
+        document.getElementById(
+            "newUserRole"
+        ).value = "worker";
+
+
+        userModal.classList.add(
+            "hidden"
+        );
+
+
+        alert(
+            "✅ Foydalanuvchi muvaffaqiyatli qo‘shildi."
+        );
+
+    }
+);
+
+
+/* =====================================================
+   ORDER STORAGE
+===================================================== */
+
+function saveOrders() {
+
+    localStorage.setItem(
+        "goldshow_orders",
+        JSON.stringify(orders)
+    );
+
+}
+
+
+/* =====================================================
+   ADD ORDER MODAL
+===================================================== */
+
+const orderModal =
+    document.getElementById(
+        "orderModal"
+    );
+
+
+document.getElementById(
+    "addOrderButton"
+).addEventListener(
+    "click",
+    function () {
+
+        orderModal.classList.remove(
+            "hidden"
+        );
+
+    }
+);
+
+
+document.getElementById(
+    "closeOrderModal"
+).addEventListener(
+    "click",
+    function () {
+
+        orderModal.classList.add(
+            "hidden"
+        );
+
+    }
+);
+
+
+/* =====================================================
+   SAVE ORDER
+===================================================== */
+
+document.getElementById(
+    "saveOrderButton"
+).addEventListener(
+    "click",
+    function () {
+
+        const clientName =
+            document.getElementById(
+                "clientName"
+            ).value.trim();
+
+
+        const clientPhone =
+            document.getElementById(
+                "clientPhone"
+            ).value.trim();
+
+
+        const location =
+            document.getElementById(
+                "eventLocation"
+            ).value.trim();
+
+
+        const eventDate =
+            document.getElementById(
+                "eventDate"
+            ).value;
+
+
+        if (
+            !clientName ||
+            !location ||
+            !eventDate
+        ) {
+
+            alert(
+                "Mijoz, manzil va tadbir vaqtini kiriting."
+            );
+
+            return;
+        }
+
+
+        const order = {
+
+            id: Date.now(),
+
+            clientName:
+                clientName,
+
+            clientPhone:
+                clientPhone,
+
+            location:
+                location,
+
+            eventDate:
+                eventDate,
+
+            screenHeight:
+                document.getElementById(
+                    "screenHeight"
+                ).value,
+
+            screenLength:
+                document.getElementById(
+                    "screenLength"
+                ).value,
+
+            stageWidth:
+                document.getElementById(
+                    "stageWidth"
+                ).value,
+
+            stageLength:
+                document.getElementById(
+                    "stageLength"
+                ).value,
+
+            ledCount:
+                document.getElementById(
+                    "ledCount"
+                ).value,
+
+            lightCount:
+                document.getElementById(
+                    "lightCount"
+                ).value,
+
+            confettiCount:
+                document.getElementById(
+                    "confettiCount"
+                ).value,
+
+            galavaCount:
+                document.getElementById(
+                    "galavaCount"
+                ).value,
+
+            totalAmount:
+                document.getElementById(
+                    "totalAmount"
+                ).value,
+
+            paidAmount:
+                document.getElementById(
+                    "paidAmount"
+                ).value
 
         };
 
 
-        usernameElement.value = "";
+        orders.push(order);
 
-        passwordElement.value = "";
+        saveOrders();
 
+        updateOrderList();
 
-        if (role === "owner") {
+        updateStats();
 
-            await openOwnerPage();
 
-        }
-
-        else if (role === "admin") {
-
-            await openAdminPage();
-
-        }
-
-        else {
-
-            await openWorkerPage();
-
-        }
-
-    }
-
-    catch (err) {
-
-        console.error(err);
-
-        errorElement.textContent =
-            "❌ " +
-            (err.message ||
-                "Kirishda xatolik.");
-
-    }
-}
-
-
-/* =========================================================
-   OPEN PANELS
-========================================================= */
-
-async function openOwnerPage() {
-
-    await prepareMainPage("OWNER PANEL 👑");
-
-    toggleRoleMenus(true);
-
-    await showPage("dashboardPage");
-}
-
-
-async function openAdminPage() {
-
-    await prepareMainPage("ADMIN PANEL");
-
-    toggleRoleMenus(true);
-
-    await showPage("dashboardPage");
-}
-
-
-async function openWorkerPage() {
-
-    await prepareMainPage("ISHCHI PANEL");
-
-    toggleRoleMenus(false);
-
-    await showPage("dashboardPage");
-}
-
-
-/* =========================================================
-   ROLE MENUS
-========================================================= */
-
-function toggleRoleMenus(isManagerRole) {
-
-    [
-        "addOrderMenu",
-        "applicationsMenu",
-        "usersMenu"
-    ].forEach(id => {
-
-        const el =
-            document.getElementById(id);
-
-        if (el) {
-
-            el.style.display =
-                isManagerRole
-                    ? "block"
-                    : "none";
-        }
-
-    });
-
-
-    document
-        .getElementById("workerEventAdminForm")
-        ?.classList.toggle(
-            "hidden",
-            !isManagerRole
-        );
-}
-
-
-/* =========================================================
-   PREPARE MAIN PAGE
-========================================================= */
-
-async function prepareMainPage(panelTitle) {
-
-    hideAllPages();
-
-    document
-        .getElementById("mainPage")
-        ?.classList.remove("hidden");
-
-
-    if (currentUser) {
-
-        document.getElementById(
-            "currentUser"
-        ).textContent =
-            currentUser.name;
-
-
-        document.getElementById(
-            "userRole"
-        ).textContent =
-            currentUser.role === "owner"
-                ? "OWNER 👑"
-                : currentUser.role === "admin"
-                    ? "ADMIN"
-                    : "ISHCHI";
-
-
-        document.getElementById(
-            "userAvatar"
-        ).textContent =
-            (currentUser.name || "G")
-                .charAt(0)
-                .toUpperCase();
-
-    }
-
-
-    document.getElementById(
-        "pageTitle"
-    ).textContent = panelTitle;
-
-
-    updateDate();
-
-
-    await updateDashboard();
-
-    await displayOrders();
-
-    await loadWorkerEvents();
-
-
-    if (isManager()) {
-
-        await displayUsers();
-
-        await loadApplications();
-
-    }
-
-}
-
-
-/* =========================================================
-   OPEN MAIN
-========================================================= */
-
-async function openMainPage() {
-
-    if (!currentUser) return;
-
-
-    if (isOwner()) {
-
-        await openOwnerPage();
-
-    }
-
-    else if (isAdmin()) {
-
-        await openAdminPage();
-
-    }
-
-    else {
-
-        await openWorkerPage();
-
-    }
-
-}
-
-
-/* =========================================================
-   LOGOUT
-========================================================= */
-
-function logout() {
-
-    if (applicationTimer) {
-
-        clearInterval(applicationTimer);
-
-    }
-
-    applicationTimer = null;
-
-    backToLanding();
-}
-
-
-/* =========================================================
-   SHOW PAGE
-========================================================= */
-
-async function showPage(pageId, button = null) {
-
-    const managerOnly = [
-        "usersPage",
-        "applicationsPage",
-        "addOrderPage"
-    ];
-
-
-    if (
-        managerOnly.includes(pageId) &&
-        !isManager()
-    ) {
-
-        alert(
-            "❌ Bu sahifa faqat Admin yoki Owner uchun."
-        );
-
-        return;
-    }
-
-
-    document
-        .querySelectorAll("#mainPage .page")
-        .forEach(p =>
-            p.classList.add("hidden")
+        orderModal.classList.add(
+            "hidden"
         );
 
 
-    const target =
-        document.getElementById(pageId);
-
-
-    if (!target) return;
-
-
-    target.classList.remove("hidden");
-
-
-    const titles = {
-
-        dashboardPage:
-            isOwner()
-                ? "OWNER PANEL 👑"
-                : isAdmin()
-                    ? "ADMIN PANEL"
-                    : "ISHCHI PANEL",
-
-        ordersPage:
-            "Zakaslar",
-
-        addOrderPage:
-            "Zakas qo‘shish",
-
-        workerEventsPage:
-            "Tadbirlar",
-
-        applicationsPage:
-            "Arizalar",
-
-        usersPage:
-            "Userlar"
-
-    };
-
-
-    document.getElementById(
-        "pageTitle"
-    ).textContent =
-        titles[pageId] || "Gold Show";
-
-
-    document
-        .querySelectorAll(
-            "#mainPage .menu-btn"
-        )
-        .forEach(b =>
-            b.classList.remove("active")
-        );
-
-
-    if (button) {
-
-        button.classList.add("active");
-
-    }
-
-
-    if (pageId === "dashboardPage") {
-
-        await updateDashboard();
-
-    }
-
-
-    if (pageId === "ordersPage") {
-
-        await displayOrders();
-
-    }
-
-
-    if (pageId === "addOrderPage") {
-
-        calculateRemaining();
-
-    }
-
-
-    if (pageId === "workerEventsPage") {
-
-        await loadWorkerEvents();
-
-    }
-
-
-    if (pageId === "applicationsPage") {
-
-        await loadApplications();
-
-    }
-
-
-    if (pageId === "usersPage") {
-
-        await displayUsers();
-
-    }
-
-}
-
-
-/* =========================================================
-   ORDER FORM
-========================================================= */
-
-function calculateRemaining() {
-
-    const total =
-        Number(
-            document.getElementById(
-                "totalPrice"
-            )?.value
-        ) || 0;
-
-
-    const paid =
-        Number(
-            document.getElementById(
-                "paid"
-            )?.value
-        ) || 0;
-
-
-    const el =
-        document.getElementById(
-            "remaining"
-        );
-
-
-    if (el) {
-
-        el.textContent =
-            formatMoney(
-                total - paid
-            );
-
-    }
-
-}
-
-
-function getOrderFromForm() {
-
-    const v = id =>
-        document.getElementById(id)?.value ?? "";
-
-
-    return {
-
-        client_name:
-            v("clientName").trim(),
-
-        client_phone:
-            v("clientPhone").trim(),
-
-        location:
-            v("location").trim(),
-
-        event_date:
-            v("eventDate"),
-
-        event_time:
-            v("eventTime"),
-
-        screen_height:
-            Number(v("screenHeight")) || 0,
-
-        screen_width:
-            Number(v("screenWidth")) || 0,
-
-        stage_width:
-            Number(v("stageWidth")) || 0,
-
-        stage_length:
-            Number(v("stageLength")) || 0,
-
-        curtain:
-            v("curtain") || "Yo‘q",
-
-        lights:
-            Number(v("lights")) || 0,
-
-        galava:
-            Number(v("galava")) || 0,
-
-        ledwash:
-            Number(v("ledwash")) || 0,
-
-        confetti:
-            Number(v("confetti")) || 0,
-
-        dim:
-            Number(v("dim")) || 0,
-
-        firework:
-            Number(v("firework")) || 0,
-
-        side_screens:
-            Number(v("sideScreens")) || 0,
-
-        side_height:
-            Number(v("sideHeight")) || 0,
-
-        side_width:
-            Number(v("sideWidth")) || 0,
-
-        paid:
-            Number(v("paid")) || 0,
-
-        total_price:
-            Number(v("totalPrice")) || 0
-
-    };
-
-}
-
-
-async function saveOrderFromForm(event) {
-
-    event.preventDefault();
-
-
-    if (!isManager()) {
-
-        alert(
-            "❌ Faqat Admin yoki Owner zakas qo‘sha oladi."
-        );
-
-        return;
-    }
-
-
-    const order =
-        getOrderFromForm();
-
-
-    if (!order.client_name) {
-
-        alert(
-            "❌ Mijoz ismini kiriting."
-        );
-
-        return;
-    }
-
-
-    if (!order.client_phone) {
-
-        alert(
-            "❌ Telefon raqamini kiriting."
-        );
-
-        return;
-    }
-
-
-    if (!order.location) {
-
-        alert(
-            "❌ Manzilni kiriting."
-        );
-
-        return;
-    }
-
-
-    if (!order.event_date) {
-
-        alert(
-            "❌ Tadbir sanasini tanlang."
-        );
-
-        return;
-    }
-
-
-    if (!order.event_time) {
-
-        alert(
-            "❌ Tadbir vaqtini tanlang."
-        );
-
-        return;
-    }
-
-
-    order.remaining =
-        order.total_price -
-        order.paid;
-
-
-    const editingId =
-        document
-            .getElementById(
-                "editingOrderId"
-            )
-            ?.value.trim();
-
-
-    try {
-
-        const result =
-            editingId
-
-                ? await supabaseClient
-                    .from("orders")
-                    .update(order)
-                    .eq(
-                        "id",
-                        Number(editingId)
-                    )
-                    .select()
-                    .single()
-
-                : await supabaseClient
-                    .from("orders")
-                    .insert(order)
-                    .select()
-                    .single();
-
-
-        if (result.error) {
-
-            throw result.error;
-
-        }
-
-
-        resetOrderForm();
-
-        await displayOrders();
-
-        await updateDashboard();
-
-        await showPage(
-            "ordersPage"
-        );
+        clearOrderForm();
 
 
         alert(
-            editingId
-                ? "✅ Zakas yangilandi."
-                : "✅ Zakas muvaffaqiyatli qo‘shildi."
+            "✅ Zakas muvaffaqiyatli saqlandi."
         );
 
     }
-
-    catch (err) {
-
-        console.error(err);
-
-        alert(
-            "❌ Zakas qo‘shilmadi:\n" +
-            (
-                err.message ||
-                "Noma’lum xatolik"
-            )
-        );
-
-    }
-
-}
+);
 
 
-/* =========================================================
-   ORDERS
-========================================================= */
+/* =====================================================
+   ORDER LIST
+===================================================== */
 
-async function getOrders() {
+function updateOrderList() {
 
-    if (!supabaseClient) {
-
-        return [];
-
-    }
-
-
-    const result =
-        await supabaseClient
-            .from("orders")
-            .select("*")
-            .order(
-                "event_date",
-                { ascending: false }
-            )
-            .order(
-                "event_time",
-                { ascending: false }
-            );
-
-
-    if (result.error) {
-
-        console.error(result.error);
-
-        return [];
-
-    }
-
-
-    return result.data || [];
-
-}
-
-
-async function displayOrders() {
-
-    const container =
+    const list =
         document.getElementById(
             "ordersList"
         );
 
 
-    if (!container) return;
+    if (orders.length === 0) {
 
+        list.innerHTML = `
 
-    let orders =
-        await getOrders();
+            <div class="empty-box">
 
-
-    const search =
-        (
-            document.getElementById(
-                "searchInput"
-            )?.value || ""
-        )
-        .toLowerCase()
-        .trim();
-
-
-    if (search) {
-
-        orders =
-            orders.filter(o =>
-
-                String(
-                    o.client_name
-                )
-                .toLowerCase()
-                .includes(search)
-
-                ||
-
-                String(
-                    o.client_phone
-                )
-                .toLowerCase()
-                .includes(search)
-
-                ||
-
-                String(
-                    o.location
-                )
-                .toLowerCase()
-                .includes(search)
-
-            );
-
-    }
-
-
-    if (!orders.length) {
-
-        container.innerHTML =
-            `
-            <div class="no-orders">
+                📋
 
                 <h3>
-                    📭 Zakas topilmadi
+                    Hozircha zakas yo‘q
                 </h3>
 
                 <p>
-                    Hozircha zakas mavjud emas.
+                    Yangi zakas qo‘shish uchun
+                    yuqoridagi tugmani bosing.
                 </p>
 
             </div>
-            `;
 
-        return;
-
-    }
-
-
-    container.innerHTML =
-        orders
-            .map(createOrderHTML)
-            .join("");
-
-}
-
-
-function createOrderHTML(order) {
-
-    const adminButtons =
-        isManager()
-
-            ?
-
-        `
-        <div
-            class="user-actions"
-            style="margin-top:15px">
-
-            <button
-                type="button"
-                class="btn-edit"
-                onclick="editOrder(${Number(order.id)})">
-                ✏️ Tahrirlash
-            </button>
-
-            <button
-                type="button"
-                class="btn-delete"
-                onclick="deleteOrder(${Number(order.id)})">
-                🗑 O‘chirish
-            </button>
-
-        </div>
-        `
-
-            :
-
-        "";
-
-
-    return `
-
-    <div class="order-card">
-
-        <div class="order-header">
-
-            <div>
-
-                <div class="order-client">
-                    👤 ${escapeHTML(
-                        order.client_name
-                    )}
-                </div>
-
-                <div>
-                    📞 ${escapeHTML(
-                        order.client_phone
-                    )}
-                </div>
-
-            </div>
-
-
-            <div class="order-date">
-
-                📅 ${formatDate(
-                    order.event_date
-                )}
-
-                <br>
-
-                ⏰ ${escapeHTML(
-                    order.event_time || ""
-                )}
-
-            </div>
-
-        </div>
-
-
-        <div class="order-grid">
-
-
-            <div class="info">
-
-                <span>
-                    📍 Manzil
-                </span>
-
-                <strong>
-                    ${escapeHTML(
-                        order.location
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    🖥 Ekran
-                </span>
-
-                <strong>
-                    ${order.screen_height || 0}m
-                    ×
-                    ${order.screen_width || 0}m
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    🎭 Sahna
-                </span>
-
-                <strong>
-                    ${order.stage_width || 0}m
-                    ×
-                    ${order.stage_length || 0}m
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    💡 Chiroq
-                </span>
-
-                <strong>
-                    ${order.lights || 0}
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    🔆 Galava
-                </span>
-
-                <strong>
-                    ${order.galava || 0}
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    💡 LED Wash
-                </span>
-
-                <strong>
-                    ${order.ledwash || 0}
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    🎉 Konfetti
-                </span>
-
-                <strong>
-                    ${order.confetti || 0}
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    💡 Dim
-                </span>
-
-                <strong>
-                    ${order.dim || 0}
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    🎆 Firework
-                </span>
-
-                <strong>
-                    ${order.firework || 0}
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    🖥 Yon ekran
-                </span>
-
-                <strong>
-                    ${order.side_screens || 0} dona
-
-                    <br>
-
-                    ${order.side_height || 0}m
-                    ×
-                    ${order.side_width || 0}m
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    🎭 Parda
-                </span>
-
-                <strong>
-                    ${escapeHTML(
-                        order.curtain || "Yo‘q"
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    💰 Jami
-                </span>
-
-                <strong class="money">
-                    ${formatMoney(
-                        order.total_price
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    💵 To‘langan
-                </span>
-
-                <strong class="money">
-                    ${formatMoney(
-                        order.paid
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div class="info">
-
-                <span>
-                    ⚠️ Qolgan
-                </span>
-
-                <strong class="remaining-money">
-                    ${formatMoney(
-                        order.remaining
-                    )}
-                </strong>
-
-            </div>
-
-        </div>
-
-
-        ${adminButtons}
-
-    </div>
-
-    `;
-
-}
-
-
-/* =========================================================
-   EDIT ORDER
-========================================================= */
-
-async function editOrder(id) {
-
-    if (!isManager()) return;
-
-
-    const result =
-        await supabaseClient
-            .from("orders")
-            .select("*")
-            .eq("id", id)
-            .single();
-
-
-    if (result.error) {
-
-        alert(
-            "❌ Zakas topilmadi.\n" +
-            result.error.message
-        );
+        `;
 
         return;
     }
 
 
-    const o = result.data;
+    list.innerHTML = "";
 
 
-    const map = {
+    orders.forEach(
+        order => {
 
-        editingOrderId: "id",
-
-        clientName: "client_name",
-
-        clientPhone: "client_phone",
-
-        location: "location",
-
-        eventDate: "event_date",
-
-        eventTime: "event_time",
-
-        screenHeight: "screen_height",
-
-        screenWidth: "screen_width",
-
-        stageWidth: "stage_width",
-
-        stageLength: "stage_length",
-
-        curtain: "curtain",
-
-        lights: "lights",
-
-        galava: "galava",
-
-        ledwash: "ledwash",
-
-        confetti: "confetti",
-
-        dim: "dim",
-
-        firework: "firework",
-
-        sideScreens: "side_screens",
-
-        sideHeight: "side_height",
-
-        sideWidth: "side_width",
-
-        paid: "paid",
-
-        totalPrice: "total_price"
-
-    };
-
-
-    Object.entries(map).forEach(
-        ([id, key]) => {
-
-            const el =
-                document.getElementById(id);
-
-            if (el) {
-
-                el.value =
-                    o[key] ?? "";
-
-            }
-
-        }
-    );
-
-
-    document
-        .getElementById("editBadge")
-        ?.classList.remove("hidden");
-
-
-    document
-        .getElementById("cancelEditBtn")
-        ?.classList.remove("hidden");
-
-
-    document
-        .getElementById(
-            "orderFormTitle"
-        ).textContent =
-        "✏️ Zakasni tahrirlash";
-
-
-    document
-        .getElementById(
-            "orderSubmitBtn"
-        ).textContent =
-        "💾 O‘zgarishlarni saqlash";
-
-
-    calculateRemaining();
-
-
-    await showPage(
-        "addOrderPage"
-    );
-
-}
-
-
-function resetOrderForm() {
-
-    document
-        .getElementById("orderForm")
-        ?.reset();
-
-
-    document
-        .getElementById(
-            "editingOrderId"
-        ).value = "";
-
-
-    document
-        .getElementById("editBadge")
-        ?.classList.add("hidden");
-
-
-    document
-        .getElementById("cancelEditBtn")
-        ?.classList.add("hidden");
-
-
-    document
-        .getElementById(
-            "orderFormTitle"
-        ).textContent =
-        "➕ Yangi zakas qo‘shish";
-
-
-    document
-        .getElementById(
-            "orderSubmitBtn"
-        ).textContent =
-        "💾 Zakasni saqlash";
-
-
-    calculateRemaining();
-
-}
-
-
-function cancelEditOrder() {
-
-    resetOrderForm();
-
-    showPage(
-        "ordersPage"
-    );
-
-}
-
-
-async function deleteOrder(id) {
-
-    if (!isManager()) return;
-
-
-    if (
-        !confirm(
-            "Bu zakasni o‘chirmoqchimisiz?"
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    const result =
-        await supabaseClient
-            .from("orders")
-            .delete()
-            .eq("id", id);
-
-
-    if (result.error) {
-
-        alert(
-            "❌ " +
-            result.error.message
-        );
-
-        return;
-
-    }
-
-
-    await displayOrders();
-
-    await updateDashboard();
-
-
-    alert(
-        "✅ Zakas o‘chirildi."
-    );
-
-}
-
-
-/* =========================================================
-   DASHBOARD
-========================================================= */
-
-async function updateDashboard() {
-
-    const orders =
-        await getOrders();
-
-
-    const today =
-        getToday();
-
-
-    const todayOrders =
-        orders.filter(
-            o => o.event_date === today
-        );
-
-
-    const now =
-        new Date();
-
-
-    const upcoming =
-        orders.filter(o => {
-
-            if (
-                !o.event_date ||
-                !o.event_time
-            ) {
-
-                return false;
-
-            }
-
-
-            const d =
+            const date =
                 new Date(
-                    `${o.event_date}T${o.event_time}`
+                    order.eventDate
                 );
 
 
-            const diff =
-                d.getTime() -
-                now.getTime();
+            const formattedDate =
+                date.toLocaleString(
+                    "uz-UZ"
+                );
 
 
-            return (
-                diff > 0 &&
-                diff <=
-                7 * 86400000
-            );
+            const card =
+                document.createElement(
+                    "div"
+                );
 
-        });
 
+            card.className =
+                "order-card";
 
-    const totalMoney =
-        orders.reduce(
-            (s, o) =>
-                s +
-                Number(
-                    o.total_price || 0
-                ),
-            0
-        );
 
-
-    const totalOrdersEl =
-        document.getElementById(
-            "totalOrders"
-        );
-
-
-    const todayOrdersEl =
-        document.getElementById(
-            "todayOrders"
-        );
-
-
-    const upcomingOrdersEl =
-        document.getElementById(
-            "upcomingOrders"
-        );
-
-
-    const totalMoneyEl =
-        document.getElementById(
-            "totalMoney"
-        );
-
-
-    if (totalOrdersEl)
-        totalOrdersEl.textContent =
-            orders.length;
-
-
-    if (todayOrdersEl)
-        todayOrdersEl.textContent =
-            todayOrders.length;
-
-
-    if (upcomingOrdersEl)
-        upcomingOrdersEl.textContent =
-            upcoming.length;
-
-
-    if (totalMoneyEl)
-        totalMoneyEl.textContent =
-            formatMoney(
-                totalMoney
-            );
-
-
-    await displayTodayOrders();
-
-    await checkNotifications();
-
-}
-
-
-async function displayTodayOrders() {
-
-    const c =
-        document.getElementById(
-            "todayOrdersList"
-        );
-
-
-    if (!c) return;
-
-
-    const orders =
-        (
-            await getOrders()
-        )
-        .filter(
-            o =>
-                o.event_date ===
-                getToday()
-        );
-
-
-    c.innerHTML =
-        orders.length
-
-            ?
-
-        orders
-            .map(createOrderHTML)
-            .join("")
-
-            :
-
-        `
-        <div class="no-orders">
-
-            <h3>
-                🎉 Bugun zakas yo‘q
-            </h3>
-
-            <p>
-                Bugungi kun uchun zakas mavjud emas.
-            </p>
-
-        </div>
-        `;
-
-}
-
-
-async function checkNotifications() {
-
-    const c =
-        document.getElementById(
-            "notifications"
-        );
-
-
-    if (!c) return;
-
-
-    const now =
-        new Date();
-
-
-    let html = "";
-
-
-    (
-        await getOrders()
-    )
-    .forEach(o => {
-
-        if (
-            !o.event_date ||
-            !o.event_time
-        ) {
-
-            return;
-
-        }
-
-
-        const d =
-            new Date(
-                `${o.event_date}T${o.event_time}`
-            );
-
-
-        const h =
-            (d - now) /
-            3600000;
-
-
-        if (
-            h > 0 &&
-            h <= 24
-        ) {
-
-            html += `
-
-                <div class="notification">
-
-                    <strong>
-                        🔔 Tadbir yaqinlashmoqda!
-                    </strong>
-
-                    👤 ${escapeHTML(
-                        o.client_name
-                    )}
-
-                    <br>
-
-                    📅 ${formatDate(
-                        o.event_date
-                    )}
-
-                    <br>
-
-                    ⏰ ${escapeHTML(
-                        o.event_time
-                    )}
-
-                    <br>
-
-                    📍 ${escapeHTML(
-                        o.location
-                    )}
-
-                </div>
-
-            `;
-
-        }
-
-    });
-
-
-    c.innerHTML = html;
-
-}
-
-
-/* =========================================================
-   USERS
-========================================================= */
-
-async function displayUsers() {
-
-    const c =
-        document.getElementById(
-            "usersList"
-        );
-
-
-    if (
-        !c ||
-        !isManager()
-    ) {
-
-        return;
-
-    }
-
-
-    const result =
-        await supabaseClient
-            .from("users")
-            .select(
-                "id,name,username,password,role,created_at"
-            )
-            .order(
-                "id",
-                { ascending: true }
-            );
-
-
-    if (result.error) {
-
-        c.innerHTML =
-            `
-            <div class="no-orders">
-                ❌ ${escapeHTML(
-                    result.error.message
-                )}
-            </div>
-            `;
-
-        return;
-    }
-
-
-    const users =
-        result.data || [];
-
-
-    if (!users.length) {
-
-        c.innerHTML =
-            `
-            <div class="no-orders">
+            card.innerHTML = `
 
                 <h3>
-                    👥 Userlar yo‘q
+                    📋 ${escapeHtml(order.clientName)}
                 </h3>
 
-            </div>
-            `;
-
-        return;
-
-    }
-
-
-    c.innerHTML =
-        users
-            .map(user => {
-
-                const role =
-                    String(
-                        user.role || ""
-                    )
-                    .toLowerCase();
-
-
-                const isTargetOwner =
-                    role === "owner";
-
-
-                /*
-                   OWNER:
-                   - user -> boshqaradi
-                   - admin -> boshqaradi
-                   - owner -> tegmaydi
-
-                   ADMIN:
-                   - user -> boshqaradi
-                   - admin -> tegmaydi
-                   - owner -> tegmaydi
-                */
-
-                let canManageTarget =
-                    false;
-
-
-                if (isOwner()) {
-
-                    canManageTarget =
-                        !isTargetOwner;
-
-                }
-
-                else if (isAdmin()) {
-
-                    canManageTarget =
-                        role === "user";
-
-                }
-
-
-                const roleText =
-                    isTargetOwner
-                        ? "OWNER 👑"
-                        : role === "admin"
-                            ? "ADMIN"
-                            : "ISHCHI";
-
-
-                const roleClass =
-                    isTargetOwner
-                        ? "owner-badge"
-                        : "user-role";
-
-
-                const actions =
-                    canManageTarget
-
-                        ?
-
-                    `
-
-                    <button
-                        type="button"
-                        class="btn-view"
-                        onclick="showUserPassword(${Number(user.id)})">
-                        👁 Ko‘rish
-                    </button>
-
-
-                    <button
-                        type="button"
-                        class="btn-edit"
-                        onclick="changeUserPassword(${Number(user.id)})">
-                        🔑 Parol
-                    </button>
-
-
-                    <button
-                        type="button"
-                        class="btn-edit"
-                        onclick="changeUsername(${Number(user.id)})">
-                        ✏️ Login
-                    </button>
-
-
-                    ${
-                        Number(user.id) !==
-                        Number(currentUser?.id)
-
-                            ?
-
-                        `
-                        <button
-                            type="button"
-                            class="btn-delete"
-                            onclick="deleteUser(${Number(user.id)})">
-                            🗑 O‘chirish
-                        </button>
-                        `
-
-                            :
-
-                        ""
-                    }
-
-                    `
-
-                        :
-
-                    `
-                    <span
-                        class="protected-badge user-role">
-                        🔒 Himoyalangan
+                <div class="order-row">
+                    <span>📞 Telefon</span>
+                    <span>
+                        ${escapeHtml(order.clientPhone || "-")}
                     </span>
-                    `;
-
-
-                return `
-
-                <div class="user-card">
-
-                    <div class="user-card-header">
-
-                        <div>
-
-                            <div class="user-card-name">
-
-                                👤 ${escapeHTML(
-                                    user.name
-                                )}
-
-                            </div>
-
-
-                            <span
-                                class="${roleClass}">
-                                ${roleText}
-                            </span>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="user-grid">
-
-                        <div class="user-detail">
-
-                            <span>
-                                🔑 Login
-                            </span>
-
-                            <strong>
-                                ${escapeHTML(
-                                    user.username
-                                )}
-                            </strong>
-
-                        </div>
-
-
-                        <div class="user-detail">
-
-                            <span>
-                                🔒 Parol
-                            </span>
-
-                            <strong
-                                id="password-${user.id}"
-                                data-visible="false">
-
-                                ••••••••
-
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="user-actions">
-
-                        ${actions}
-
-                    </div>
-
-
-                    ${
-                        isTargetOwner
-
-                            ?
-
-                        `
-                        <div class="owner-note">
-
-                            👑 Bu Owner hisob.
-                            Uni Admin o‘zgartira olmaydi.
-
-                        </div>
-                        `
-
-                            :
-
-                        ""
-                    }
-
                 </div>
 
-                `;
-
-            })
-            .join("");
-
-}
-
-
-/* =========================================================
-   GET USER
-========================================================= */
-
-async function getUser(id) {
-
-    const r =
-        await supabaseClient
-            .from("users")
-            .select("*")
-            .eq("id", id)
-            .single();
-
-
-    if (r.error) {
-
-        console.error(r.error);
-
-        return null;
-
-    }
-
-
-    return r.data;
-
-}
-
-
-/* =========================================================
-   SHOW PASSWORD
-========================================================= */
-
-async function showUserPassword(id) {
-
-    if (!isManager()) return;
-
-
-    const target =
-        await getUser(id);
-
-
-    if (!target) return;
-
-
-    /*
-       Admin Owner parolini ko‘ra olmaydi.
-    */
-
-    if (
-        target.role === "owner" &&
-        !isOwner()
-    ) {
-
-        alert(
-            "❌ Owner himoyalangan."
-        );
-
-        return;
-    }
-
-
-    /*
-       Admin faqat Ishchi parolini ko‘radi.
-    */
-
-    if (
-        isAdmin() &&
-        target.role !== "user"
-    ) {
-
-        alert(
-            "❌ Bu user himoyalangan."
-        );
-
-        return;
-    }
-
-
-    const el =
-        document.getElementById(
-            "password-" + id
-        );
-
-
-    if (!el) return;
-
-
-    if (
-        el.dataset.visible ===
-        "true"
-    ) {
-
-        el.textContent =
-            "••••••••";
-
-        el.dataset.visible =
-            "false";
-
-        return;
-
-    }
-
-
-    el.textContent =
-        target.password ||
-        "Parol mavjud emas";
-
-
-    el.dataset.visible =
-        "true";
-
-}
-
-
-/* =========================================================
-   CREATE USER
-========================================================= */
-
-async function createUser(event) {
-
-    event.preventDefault();
-
-
-    if (!isManager()) {
-
-        alert(
-            "❌ Faqat Admin yoki Owner user yaratadi."
-        );
-
-        return;
-    }
-
-
-    const name =
-        document
-            .getElementById(
-                "newUserName"
-            )
-            .value
-            .trim();
-
-
-    const username =
-        document
-            .getElementById(
-                "newUsername"
-            )
-            .value
-            .trim();
-
-
-    const password =
-        document
-            .getElementById(
-                "newUserPassword"
-            )
-            .value
-            .trim();
-
-
-    const role =
-        document
-            .getElementById(
-                "newUserRole"
-            )
-            .value
-            .trim()
-            .toLowerCase();
-
-
-    if (
-        !name ||
-        !username ||
-        !password
-    ) {
-
-        alert(
-            "❌ Barcha maydonlarni to‘ldiring."
-        );
-
-        return;
-    }
-
-
-    /*
-       UI'da Owner tanlanmaydi.
-       Owner faqat bitta.
-    */
-
-    if (role === "owner") {
-
-        alert(
-            "❌ Yangi Owner yaratib bo‘lmaydi."
-        );
-
-        return;
-    }
-
-
-    /*
-       Admin faqat Ishchi yaratadi.
-    */
-
-    if (
-        isAdmin() &&
-        role !== "user"
-    ) {
-
-        alert(
-            "❌ Admin faqat Ishchi yaratishi mumkin."
-        );
-
-        return;
-    }
-
-
-    const check =
-        await supabaseClient
-            .from("users")
-            .select("id")
-            .eq(
-                "username",
-                username
-            )
-            .limit(1);
-
-
-    if (check.error) {
-
-        alert(
-            "❌ " +
-            check.error.message
-        );
-
-        return;
-    }
-
-
-    if (check.data?.length) {
-
-        alert(
-            "❌ Bu login allaqachon mavjud."
-        );
-
-        return;
-    }
-
-
-    const r =
-        await supabaseClient
-            .from("users")
-            .insert({
-
-                name,
-
-                username,
-
-                password,
-
-                role
-
-            });
-
-
-    if (r.error) {
-
-        alert(
-            "❌ User yaratilmadi:\n" +
-            r.error.message
-        );
-
-        return;
-    }
-
-
-    document
-        .getElementById(
-            "userForm"
-        )
-        .reset();
-
-
-    await displayUsers();
-
-
-    alert(
-        "✅ User muvaffaqiyatli yaratildi."
-    );
-
-}
-
-
-/* =========================================================
-   CHANGE USER PASSWORD
-========================================================= */
-
-async function changeUserPassword(id) {
-
-    if (!isManager()) return;
-
-
-    const target =
-        await getUser(id);
-
-
-    if (!target) return;
-
-
-    /*
-       Owner parolini hech kim o‘zgartira olmaydi.
-    */
-
-    if (
-        target.role === "owner"
-    ) {
-
-        alert(
-            "❌ Owner parolini bu yerdan o‘zgartirib bo‘lmaydi."
-        );
-
-        return;
-    }
-
-
-    /*
-       Admin faqat Ishchi parolini o‘zgartiradi.
-    */
-
-    if (
-        isAdmin() &&
-        target.role !== "user"
-    ) {
-
-        alert(
-            "❌ Admin faqat Ishchi hisobini boshqaradi."
-        );
-
-        return;
-    }
-
-
-    const p =
-        prompt(
-            "Yangi parolni kiriting:",
-            ""
-        );
-
-
-    if (p === null) return;
-
-
-    if (!p.trim()) {
-
-        alert(
-            "❌ Parol bo‘sh bo‘lmasligi kerak."
-        );
-
-        return;
-    }
-
-
-    const r =
-        await supabaseClient
-            .from("users")
-            .update({
-                password: p.trim()
-            })
-            .eq("id", id);
-
-
-    if (r.error) {
-
-        alert(
-            "❌ " +
-            r.error.message
-        );
-
-        return;
-    }
-
-
-    await displayUsers();
-
-
-    alert(
-        "✅ Parol o‘zgartirildi."
-    );
-
-}
-
-
-/* =========================================================
-   CHANGE USERNAME
-========================================================= */
-
-async function changeUsername(id) {
-
-    if (!isManager()) return;
-
-
-    const user =
-        await getUser(id);
-
-
-    if (!user) return;
-
-
-    if (
-        user.role === "owner"
-    ) {
-
-        alert(
-            "❌ Owner loginini o‘zgartirib bo‘lmaydi."
-        );
-
-        return;
-    }
-
-
-    if (
-        isAdmin() &&
-        user.role !== "user"
-    ) {
-
-        alert(
-            "❌ Admin faqat Ishchi loginini o‘zgartiradi."
-        );
-
-        return;
-    }
-
-
-    const u =
-        prompt(
-            "Yangi loginni kiriting:",
-            user.username
-        );
-
-
-    if (u === null) return;
-
-
-    const username =
-        u.trim();
-
-
-    if (!username) {
-
-        alert(
-            "❌ Login bo‘sh bo‘lmasligi kerak."
-        );
-
-        return;
-    }
-
-
-    const c =
-        await supabaseClient
-            .from("users")
-            .select("id")
-            .eq(
-                "username",
-                username
-            )
-            .neq(
-                "id",
-                id
-            )
-            .limit(1);
-
-
-    if (c.error) {
-
-        alert(
-            "❌ " +
-            c.error.message
-        );
-
-        return;
-    }
-
-
-    if (c.data?.length) {
-
-        alert(
-            "❌ Bu login allaqachon mavjud."
-        );
-
-        return;
-    }
-
-
-    const r =
-        await supabaseClient
-            .from("users")
-            .update({
-                username
-            })
-            .eq(
-                "id",
-                id
-            );
-
-
-    if (r.error) {
-
-        alert(
-            "❌ " +
-            r.error.message
-        );
-
-        return;
-    }
-
-
-    await displayUsers();
-
-
-    alert(
-        "✅ Login o‘zgartirildi."
-    );
-
-}
-
-
-/* =========================================================
-   DELETE USER
-========================================================= */
-
-async function deleteUser(id) {
-
-    if (!isManager()) return;
-
-
-    const target =
-        await getUser(id);
-
-
-    if (!target) return;
-
-
-    /*
-       Ownerni hech kim o‘chira olmaydi.
-    */
-
-    if (
-        target.role === "owner"
-    ) {
-
-        alert(
-            "❌ Ownerni o‘chirish mumkin emas."
-        );
-
-        return;
-    }
-
-
-    /*
-       Admin boshqa Adminni o‘chira olmaydi.
-    */
-
-    if (
-        isAdmin() &&
-        target.role !== "user"
-    ) {
-
-        alert(
-            "❌ Admin faqat Ishchini o‘chira oladi."
-        );
-
-        return;
-    }
-
-
-    /*
-       O‘zini o‘chira olmaydi.
-    */
-
-    if (
-        Number(id) ===
-        Number(currentUser?.id)
-    ) {
-
-        alert(
-            "❌ O‘zingizni o‘chira olmaysiz."
-        );
-
-        return;
-    }
-
-
-    if (
-        !confirm(
-            "Bu userni o‘chirmoqchimisiz?"
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    const r =
-        await supabaseClient
-            .from("users")
-            .delete()
-            .eq(
-                "id",
-                id
-            );
-
-
-    if (r.error) {
-
-        alert(
-            "❌ " +
-            r.error.message
-        );
-
-        return;
-    }
-
-
-    await displayUsers();
-
-
-    alert(
-        "✅ User o‘chirildi."
-    );
-
-}
-
-
-/* =========================================================
-   EVENTS
-========================================================= */
-
-async function getEvents() {
-
-    const r =
-        await supabaseClient
-            .from("events")
-            .select("*")
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            );
-
-
-    if (r.error) {
-
-        console.error(r.error);
-
-        return [];
-
-    }
-
-
-    return r.data || [];
-
-}
-
-
-function eventImage(event) {
-
-    if (event.image_url) {
-
-        return `
-        <img
-            src="${escapeHTML(event.image_url)}"
-            alt="${escapeHTML(event.title)}"
-            class="event-card-image">
-        `;
-
-    }
-
-
-    return `
-    <div
-        class="event-card-image"
-        style="
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-size:55px;
-        ">
-        🎪
-    </div>
-    `;
-
-}
-
-
-function createEventHTML(event) {
-
-    return `
-
-    <article class="event-card">
-
-        ${eventImage(event)}
-
-        <div class="event-card-body">
-
-            <div class="event-card-title">
-                ${escapeHTML(
-                    event.title
-                )}
-            </div>
-
-            <div class="event-card-description">
-                ${escapeHTML(
-                    event.description ||
-                    "Tavsif mavjud emas."
-                )}
-            </div>
-
-            <div class="event-card-date">
-                ${formatDateTime(
-                    event.created_at
-                )}
-            </div>
-
-        </div>
-
-    </article>
-
-    `;
-
-}
-
-
-function createWorkerEventHTML(event) {
-
-    const del =
-        isManager()
-
-            ?
-
-        `
-        <div class="event-admin-actions">
-
-            <button
-                type="button"
-                class="btn-delete"
-                onclick="deleteEvent(${Number(event.id)})">
-                🗑 O‘chirish
-            </button>
-
-        </div>
-        `
-
-            :
-
-        "";
-
-
-    return `
-
-    <article class="event-card">
-
-        ${eventImage(event)}
-
-        <div class="event-card-body">
-
-            <div class="event-card-title">
-                ${escapeHTML(
-                    event.title
-                )}
-            </div>
-
-            <div class="event-card-description">
-                ${escapeHTML(
-                    event.description ||
-                    "Tavsif mavjud emas."
-                )}
-            </div>
-
-            <div class="event-card-date">
-                ${formatDateTime(
-                    event.created_at
-                )}
-            </div>
-
-            ${del}
-
-        </div>
-
-    </article>
-
-    `;
-
-}
-
-
-/* =========================================================
-   CUSTOMER EVENTS
-========================================================= */
-
-async function loadCustomerEvents() {
-
-    const c =
-        document.getElementById(
-            "customerEventsList"
-        );
-
-    const p =
-        document.getElementById(
-            "customerPagination"
-        );
-
-
-    if (!c || !p) return;
-
-
-    const events =
-        await getEvents();
-
-
-    const total =
-        Math.max(
-            1,
-            Math.ceil(
-                events.length /
-                EVENTS_PER_PAGE
-            )
-        );
-
-
-    customerEventsPage =
-        Math.min(
-            customerEventsPage,
-            total
-        );
-
-
-    const start =
-        (customerEventsPage - 1) *
-        EVENTS_PER_PAGE;
-
-
-    const page =
-        events.slice(
-            start,
-            start + EVENTS_PER_PAGE
-        );
-
-
-    c.innerHTML =
-        page.length
-
-            ?
-
-        page
-            .map(createEventHTML)
-            .join("")
-
-            :
-
-        `
-        <div class="no-orders">
-
-            <h3>
-                🎪 Hozircha tadbirlar yo‘q
-            </h3>
-
-            <p>
-                Tez orada yangi tadbirlar qo‘shiladi.
-            </p>
-
-        </div>
-        `;
-
-
-    renderPagination(
-        p,
-        total,
-        customerEventsPage,
-        pageNum => {
-
-            customerEventsPage =
-                pageNum;
-
-            loadCustomerEvents();
-
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   WORKER EVENTS
-========================================================= */
-
-async function loadWorkerEvents() {
-
-    const c =
-        document.getElementById(
-            "workerEventsList"
-        );
-
-    const p =
-        document.getElementById(
-            "workerPagination"
-        );
-
-
-    if (!c || !p) return;
-
-
-    const events =
-        await getEvents();
-
-
-    const total =
-        Math.max(
-            1,
-            Math.ceil(
-                events.length /
-                EVENTS_PER_PAGE
-            )
-        );
-
-
-    workerEventsPage =
-        Math.min(
-            workerEventsPage,
-            total
-        );
-
-
-    const start =
-        (workerEventsPage - 1) *
-        EVENTS_PER_PAGE;
-
-
-    const page =
-        events.slice(
-            start,
-            start + EVENTS_PER_PAGE
-        );
-
-
-    c.innerHTML =
-        page.length
-
-            ?
-
-        page
-            .map(createWorkerEventHTML)
-            .join("")
-
-            :
-
-        `
-        <div class="no-orders">
-
-            <h3>
-                🎪 Tadbirlar yo‘q
-            </h3>
-
-        </div>
-        `;
-
-
-    renderPagination(
-        p,
-        total,
-        workerEventsPage,
-        pageNum => {
-
-            workerEventsPage =
-                pageNum;
-
-            loadWorkerEvents();
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   PAGINATION
-========================================================= */
-
-function renderPagination(
-    container,
-    totalPages,
-    currentPage,
-    onPage
-) {
-
-    if (totalPages <= 1) {
-
-        container.innerHTML = "";
-
-        return;
-
-    }
-
-
-    let html = `
-
-        <button
-            type="button"
-            data-page="${currentPage - 1}"
-            ${currentPage === 1 ? "disabled" : ""}>
-            ← Oldingi
-        </button>
-
-    `;
-
-
-    for (
-        let i = 1;
-        i <= totalPages;
-        i++
-    ) {
-
-        html += `
-
-            <button
-                type="button"
-                data-page="${i}"
-                class="${
-                    i === currentPage
-                        ? "active"
-                        : ""
-                }">
-
-                ${i}
-
-            </button>
-
-        `;
-
-    }
-
-
-    html += `
-
-        <button
-            type="button"
-            data-page="${currentPage + 1}"
-            ${
-                currentPage === totalPages
-                    ? "disabled"
-                    : ""
-            }>
-
-            Keyingi sahifa →
-
-        </button>
-
-        <span>
-            ${currentPage}/${totalPages}
-        </span>
-
-    `;
-
-
-    container.innerHTML = html;
-
-
-    container
-        .querySelectorAll(
-            "button[data-page]"
-        )
-        .forEach(btn => {
-
-            btn.addEventListener(
-                "click",
-                () => {
-
-                    const page =
-                        Number(
-                            btn.dataset.page
-                        );
-
-
-                    if (
-                        page >= 1 &&
-                        page <= totalPages
-                    ) {
-
-                        onPage(page);
-
-                    }
-
-                }
-            );
-
-        });
-
-}
-
-
-/* =========================================================
-   EVENT IMAGE
-========================================================= */
-
-function fileToDataURL(file) {
-
-    return new Promise(
-        (resolve, reject) => {
-
-            const reader =
-                new FileReader();
-
-
-            reader.onload = () =>
-                resolve(
-                    reader.result
-                );
-
-
-            reader.onerror = () =>
-                reject(
-                    new Error(
-                        "Rasm o‘qilmadi."
-                    )
-                );
-
-
-            reader.readAsDataURL(file);
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   SAVE EVENT
-========================================================= */
-
-async function saveEventFromForm(event) {
-
-    event.preventDefault();
-
-
-    if (!isManager()) {
-
-        alert(
-            "❌ Faqat Admin yoki Owner tadbir qo‘sha oladi."
-        );
-
-        return;
-    }
-
-
-    const title =
-        document
-            .getElementById(
-                "eventTitle"
-            )
-            .value
-            .trim();
-
-
-    const description =
-        document
-            .getElementById(
-                "eventDescription"
-            )
-            .value
-            .trim();
-
-
-    const file =
-        document
-            .getElementById(
-                "eventImage"
-            )
-            .files[0];
-
-
-    if (!title) {
-
-        alert(
-            "❌ Tadbir nomini kiriting."
-        );
-
-        return;
-    }
-
-
-    let imageUrl = "";
-
-
-    try {
-
-        if (file) {
-
-            if (
-                !file.type.startsWith(
-                    "image/"
-                )
-            ) {
-
-                alert(
-                    "❌ Faqat rasm fayli yuklang."
-                );
-
-                return;
-            }
-
-
-            if (
-                file.size >
-                2 * 1024 * 1024
-            ) {
-
-                alert(
-                    "❌ Rasm hajmi 2 MB dan kichik bo‘lsin."
-                );
-
-                return;
-            }
-
-
-            imageUrl =
-                await fileToDataURL(
-                    file
-                );
-
-        }
-
-
-        const r =
-            await supabaseClient
-                .from("events")
-                .insert({
-
-                    title,
-
-                    description:
-                        description || null,
-
-                    image_url:
-                        imageUrl || null
-
-                })
-                .select()
-                .single();
-
-
-        if (r.error) {
-
-            alert(
-                "❌ Tadbir qo‘shilmadi:\n" +
-                r.error.message
-            );
-
-            return;
-        }
-
-
-        document
-            .getElementById(
-                "eventForm"
-            )
-            .reset();
-
-
-        workerEventsPage = 1;
-
-
-        await loadWorkerEvents();
-
-        await loadCustomerEvents();
-
-
-        alert(
-            "✅ Tadbir muvaffaqiyatli qo‘shildi."
-        );
-
-    }
-
-    catch (err) {
-
-        console.error(err);
-
-        alert(
-            "❌ Tadbir qo‘shishda xatolik:\n" +
-            (
-                err.message ||
-                "Noma’lum xatolik"
-            )
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   DELETE EVENT
-========================================================= */
-
-async function deleteEvent(id) {
-
-    if (!isManager()) return;
-
-
-    if (
-        !confirm(
-            "Bu tadbirni o‘chirmoqchimisiz?"
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    const r =
-        await supabaseClient
-            .from("events")
-            .delete()
-            .eq(
-                "id",
-                id
-            );
-
-
-    if (r.error) {
-
-        alert(
-            "❌ " +
-            r.error.message
-        );
-
-        return;
-    }
-
-
-    await loadWorkerEvents();
-
-
-    alert(
-        "✅ Tadbir o‘chirildi."
-    );
-
-}
-
-
-/* =========================================================
-   CUSTOMER APPLICATION
-========================================================= */
-
-function openOrderModal() {
-
-    const m =
-        document.getElementById(
-            "orderModal"
-        );
-
-
-    if (!m) return;
-
-
-    m.classList.remove(
-        "hidden"
-    );
-
-
-    document
-        .getElementById(
-            "applicationMessage"
-        )
-        .innerHTML = "";
-
-
-    document
-        .getElementById(
-            "applicationName"
-        )
-        ?.focus();
-
-}
-
-
-function closeOrderModal() {
-
-    document
-        .getElementById(
-            "orderModal"
-        )
-        ?.classList.add(
-            "hidden"
-        );
-
-}
-
-
-async function submitApplication(event) {
-
-    event.preventDefault();
-
-
-    const name =
-        document
-            .getElementById(
-                "applicationName"
-            )
-            .value
-            .trim();
-
-
-    const phone =
-        document
-            .getElementById(
-                "applicationPhone"
-            )
-            .value
-            .trim();
-
-
-    const message =
-        document.getElementById(
-            "applicationMessage"
-        );
-
-
-    if (!name || !phone) {
-
-        message.innerHTML =
-            `
-            <div class="error">
-                ❌ Ism va telefon raqamini kiriting.
-            </div>
-            `;
-
-        return;
-    }
-
-
-    try {
-
-        const r =
-            await supabaseClient
-                .from("applications")
-                .insert({
-
-                    full_name: name,
-
-                    phone: phone,
-
-                    status: "new"
-
-                })
-                .select()
-                .single();
-
-
-        if (r.error) {
-
-            throw r.error;
-
-        }
-
-
-        const app =
-            r.data;
-
-
-        localStorage.setItem(
-            "goldshow_application_id",
-            String(app.id)
-        );
-
-
-        localStorage.setItem(
-            "goldshow_application_phone",
-            phone
-        );
-
-
-        message.innerHTML =
-            `
-
-            <div
-                style="
-                    padding:15px;
-                    border-radius:10px;
-                    background:#dcfce7;
-                    color:#15803d
-                ">
-
-                ✅ Arizangiz yuborildi!
-
-                <br><br>
-
-                <strong>
-                    Ariza raqami: #${app.id}
-                </strong>
-
-                <br><br>
-
-                Biz siz bilan bog‘lanamiz.
-
-            </div>
-
-            `;
-
-
-        document
-            .getElementById(
-                "applicationForm"
-            )
-            .reset();
-
-
-        startApplicationPolling(
-            app.id,
-            phone
-        );
-
-    }
-
-    catch (err) {
-
-        console.error(err);
-
-        message.innerHTML =
-            `
-
-            <div class="error">
-
-                ❌ Ariza yuborishda xatolik:
-
-                <br>
-
-                ${escapeHTML(
-                    err.message ||
-                    "Noma’lum xatolik"
-                )}
-
-            </div>
-
-            `;
-
-    }
-
-}
-
-
-/* =========================================================
-   APPLICATION STATUS
-========================================================= */
-
-function startApplicationPolling(
-    id,
-    phone
-) {
-
-    if (applicationTimer) {
-
-        clearInterval(
-            applicationTimer
-        );
-
-    }
-
-
-    checkApplicationStatus(
-        id,
-        phone
-    );
-
-
-    applicationTimer =
-        setInterval(
-            () =>
-                checkApplicationStatus(
-                    id,
-                    phone
-                ),
-            8000
-        );
-
-}
-
-
-function restoreApplicationStatus() {
-
-    const id =
-        localStorage.getItem(
-            "goldshow_application_id"
-        );
-
-
-    const phone =
-        localStorage.getItem(
-            "goldshow_application_phone"
-        );
-
-
-    if (
-        id &&
-        phone
-    ) {
-
-        startApplicationPolling(
-            id,
-            phone
-        );
-
-    }
-
-}
-
-
-async function checkApplicationStatus(
-    id,
-    phone
-) {
-
-    const r =
-        await supabaseClient
-            .from("applications")
-            .select(
-                "id,status,full_name,phone,created_at"
-            )
-            .eq(
-                "id",
-                id
-            )
-            .eq(
-                "phone",
-                phone
-            )
-            .maybeSingle();
-
-
-    if (
-        r.error ||
-        !r.data
-    ) {
-
-        return;
-
-    }
-
-
-    const box =
-        document.getElementById(
-            "customerStatusBox"
-        );
-
-
-    if (!box) return;
-
-
-    if (
-        r.data.status ===
-        "accepted"
-    ) {
-
-        box.classList.remove(
-            "hidden"
-        );
-
-
-        box.style.borderLeftColor =
-            "#16a34a";
-
-
-        box.innerHTML =
-            `
-
-            <strong>
-                ✅ Sizning arizangiz qabul qilindi
-            </strong>
-
-            <br><br>
-
-            Tez orada siz bilan bog‘lanamiz.
-
-            <br><br>
-
-            Ariza: #${r.data.id}
-
-            `;
-
-
-        clearInterval(
-            applicationTimer
-        );
-
-
-        applicationTimer = null;
-
-    }
-
-
-    else if (
-        r.data.status ===
-        "rejected"
-    ) {
-
-        box.classList.remove(
-            "hidden"
-        );
-
-
-        box.style.borderLeftColor =
-            "#dc2626";
-
-
-        box.innerHTML =
-            `
-
-            <strong>
-                ❌ Arizangiz rad etildi.
-            </strong>
-
-            <br><br>
-
-            Ariza: #${r.data.id}
-
-            `;
-
-
-        clearInterval(
-            applicationTimer
-        );
-
-
-        applicationTimer = null;
-
-    }
-
-}
-
-
-/* =========================================================
-   APPLICATIONS - ADMIN / OWNER
-========================================================= */
-
-async function loadApplications() {
-
-    const c =
-        document.getElementById(
-            "applicationsList"
-        );
-
-
-    if (
-        !c ||
-        !isManager()
-    ) {
-
-        return;
-
-    }
-
-
-    const r =
-        await supabaseClient
-            .from("applications")
-            .select("*")
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            );
-
-
-    if (r.error) {
-
-        c.innerHTML =
-            `
-            <div class="no-orders">
-
-                ❌ ${escapeHTML(
-                    r.error.message
-                )}
-
-            </div>
-            `;
-
-        return;
-    }
-
-
-    const apps =
-        r.data || [];
-
-
-    c.innerHTML =
-        apps.length
-
-            ?
-
-        apps
-            .map(
-                createApplicationHTML
-            )
-            .join("")
-
-            :
-
-        `
-        <div class="no-orders">
-
-            <h3>
-                📭 Arizalar yo‘q
-            </h3>
-
-            <p>
-                Hozircha buyurtmachi arizasi kelmagan.
-            </p>
-
-        </div>
-        `;
-
-}
-
-
-function createApplicationHTML(a) {
-
-    const statuses = {
-
-        new:
-            [
-                "status-new",
-                "Yangi"
-            ],
-
-        accepted:
-            [
-                "status-accepted",
-                "Qabul qilingan"
-            ],
-
-        rejected:
-            [
-                "status-rejected",
-                "Rad etilgan"
-            ]
-
-    };
-
-
-    const [cls, text] =
-        statuses[a.status] ||
-        statuses.new;
-
-
-    const buttons =
-        a.status === "new"
-
-            ?
-
-        `
-
-        <div class="application-actions">
-
-            <button
-                type="button"
-                class="accept-btn"
-                onclick="updateApplicationStatus(${Number(a.id)}, 'accepted')">
-
-                ✅ Qabul qilish
-
-            </button>
-
-
-            <button
-                type="button"
-                class="reject-btn"
-                onclick="updateApplicationStatus(${Number(a.id)}, 'rejected')">
-
-                ❌ Rad etish
-
-            </button>
-
-        </div>
-
-        `
-
-            :
-
-        "";
-
-
-    return `
-
-    <div class="application-card">
-
-        <div class="application-header">
-
-            <div>
-
-                <div class="application-name">
-
-                    👤 ${escapeHTML(
-                        a.full_name
-                    )}
-
+                <div class="order-row">
+                    <span>📍 Manzil</span>
+                    <span>
+                        ${escapeHtml(order.location)}
+                    </span>
                 </div>
 
-            </div>
+                <div class="order-row">
+                    <span>🕐 Tadbir</span>
+                    <span>
+                        ${formattedDate}
+                    </span>
+                </div>
+
+                <div class="order-row">
+                    <span>📺 LED</span>
+                    <span>
+                        ${order.ledCount || 0}
+                    </span>
+                </div>
+
+                <div class="order-row">
+                    <span>💡 Chiroq</span>
+                    <span>
+                        ${order.lightCount || 0}
+                    </span>
+                </div>
+
+                <div class="order-row">
+                    <span>🎉 Konfeti</span>
+                    <span>
+                        ${order.confettiCount || 0}
+                    </span>
+                </div>
+
+                <div class="order-row">
+                    <span>💰 Jami</span>
+                    <span>
+                        ${formatMoney(order.totalAmount)}
+                    </span>
+                </div>
+
+                <div class="order-row">
+                    <span>💵 To‘langan</span>
+                    <span>
+                        ${formatMoney(order.paidAmount)}
+                    </span>
+                </div>
+
+            `;
 
 
-            <div class="application-time">
+            list.appendChild(card);
 
-                ${formatDateTime(
-                    a.created_at
-                )}
-
-            </div>
-
-        </div>
-
-
-        <div class="application-info">
-
-            <div class="application-detail">
-
-                <span>
-                    📞 Telefon
-                </span>
-
-                <strong>
-                    ${escapeHTML(
-                        a.phone
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div class="application-detail">
-
-                <span>
-                    🆔 Ariza
-                </span>
-
-                <strong>
-                    #${Number(a.id)}
-                </strong>
-
-            </div>
-
-        </div>
-
-
-        <span
-            class="application-status ${cls}">
-
-            ${text}
-
-        </span>
-
-
-        ${buttons}
-
-    </div>
-
-    `;
-
-}
-
-
-/* =========================================================
-   UPDATE APPLICATION
-========================================================= */
-
-async function updateApplicationStatus(
-    id,
-    status
-) {
-
-    if (!isManager()) return;
-
-
-    if (
-        !confirm(
-            status === "accepted"
-                ? "Bu arizani qabul qilasizmi?"
-                : "Bu arizani rad qilasizmi?"
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    const data = {
-        status
-    };
-
-
-    if (
-        status === "accepted"
-    ) {
-
-        data.accepted_at =
-            new Date()
-                .toISOString();
-
-    }
-
-
-    const r =
-        await supabaseClient
-            .from("applications")
-            .update(data)
-            .eq(
-                "id",
-                id
-            );
-
-
-    if (r.error) {
-
-        alert(
-            "❌ " +
-            r.error.message
-        );
-
-        return;
-    }
-
-
-    await loadApplications();
-
-
-    alert(
-        status === "accepted"
-            ? "✅ Ariza qabul qilindi."
-            : "❌ Ariza rad etildi."
+        }
     );
 
 }
 
 
-/* =========================================================
-   SUPABASE TEST
-========================================================= */
+/* =====================================================
+   STATS
+===================================================== */
 
-function testSupabaseConnection() {
+function updateStats() {
 
-    return !!supabaseClient;
+    document.getElementById(
+        "userCount"
+    ).textContent =
+        users.length;
+
+
+    document.getElementById(
+        "orderCount"
+    ).textContent =
+        orders.length;
 
 }
 
 
-/* =========================================================
-   DOM READY
-========================================================= */
+/* =====================================================
+   CLEAR ORDER FORM
+===================================================== */
 
-document.addEventListener(
-    "DOMContentLoaded",
-    async () => {
+function clearOrderForm() {
+
+    const ids = [
+
+        "clientName",
+        "clientPhone",
+        "eventLocation",
+        "eventDate",
+        "screenHeight",
+        "screenLength",
+        "stageWidth",
+        "stageLength",
+        "totalAmount",
+        "paidAmount"
+
+    ];
 
 
-        updateDate();
+    ids.forEach(
+        id => {
+
+            document.getElementById(
+                id
+            ).value = "";
+
+        }
+    );
 
 
-        document
-            .getElementById(
-                "loginForm"
-            )
-            ?.addEventListener(
-                "submit",
-                login
+    document.getElementById(
+        "ledCount"
+    ).value = 0;
+
+
+    document.getElementById(
+        "lightCount"
+    ).value = 0;
+
+
+    document.getElementById(
+        "confettiCount"
+    ).value = 0;
+
+
+    document.getElementById(
+        "galavaCount"
+    ).value = 0;
+
+}
+
+
+/* =====================================================
+   MONEY FORMAT
+===================================================== */
+
+function formatMoney(value) {
+
+    if (
+        value === undefined ||
+        value === null ||
+        value === ""
+    ) {
+
+        return "0 so‘m";
+
+    }
+
+
+    const number =
+        Number(value);
+
+
+    if (Number.isNaN(number)) {
+
+        return "0 so‘m";
+
+    }
+
+
+    return (
+        number.toLocaleString("uz-UZ") +
+        " so‘m"
+    );
+
+}
+
+
+/* =====================================================
+   SECURITY
+===================================================== */
+
+function escapeHtml(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+
+/* =====================================================
+   CLOSE MODALS BY CLICKING OUTSIDE
+===================================================== */
+
+userModal.addEventListener(
+    "click",
+    function (event) {
+
+        if (event.target === userModal) {
+
+            userModal.classList.add(
+                "hidden"
             );
 
-
-        document
-            .getElementById(
-                "orderForm"
-            )
-            ?.addEventListener(
-                "submit",
-                saveOrderFromForm
-            );
-
-
-        document
-            .getElementById(
-                "userForm"
-            )
-            ?.addEventListener(
-                "submit",
-                createUser
-            );
-
-
-        document
-            .getElementById(
-                "eventForm"
-            )
-            ?.addEventListener(
-                "submit",
-                saveEventFromForm
-            );
-
-
-        document
-            .getElementById(
-                "applicationForm"
-            )
-            ?.addEventListener(
-                "submit",
-                submitApplication
-            );
-
-
-        document
-            .getElementById(
-                "searchInput"
-            )
-            ?.addEventListener(
-                "input",
-                displayOrders
-            );
-
-
-        document
-            .getElementById(
-                "totalPrice"
-            )
-            ?.addEventListener(
-                "input",
-                calculateRemaining
-            );
-
-
-        document
-            .getElementById(
-                "paid"
-            )
-            ?.addEventListener(
-                "input",
-                calculateRemaining
-            );
-
-
-        document
-            .getElementById(
-                "orderModal"
-            )
-            ?.addEventListener(
-                "click",
-                e => {
-
-                    if (
-                        e.target.id ===
-                        "orderModal"
-                    ) {
-
-                        closeOrderModal();
-
-                    }
-
-                }
-            );
-
-
-        calculateRemaining();
+        }
 
     }
 );
+
+
+orderModal.addEventListener(
+    "click",
+    function (event) {
+
+        if (event.target === orderModal) {
+
+            orderModal.classList.add(
+                "hidden"
+            );
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   INITIAL UPDATE
+===================================================== */
+
+updateUsersTable();
+
+updateOrderList();
+
+updateStats();
