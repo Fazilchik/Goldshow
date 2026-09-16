@@ -4,199 +4,281 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>GoldshowORG</title>
+    <title>Gold Show</title>
 
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <!-- ============================= -->
-    <!-- LOGIN PAGE -->
-    <!-- ============================= -->
+    <!-- =========================
+         LOGIN PAGE
+    ========================== -->
 
-    <div id="loginPage" class="page">
+    <div id="loginPage" class="login-page">
 
         <div class="login-card">
 
-            <div class="login-logo">
-                <img src="logo.png" alt="Goldshow Logo">
+            <!-- LOGO -->
+            <div class="logo">
+                <span class="logo-gold">GOLD</span>
+                <span class="logo-show">SHOW</span>
             </div>
 
-            <h1 class="goldshow-title">
-                GOLD <span>SHOW</span>
-            </h1>
+            <div class="logo-line"></div>
+
+            <h2>GoldshowORG</h2>
 
             <p class="login-subtitle">
                 Owner / Admin / Ishchi tizimiga kirish
             </p>
 
-            <form id="loginForm">
 
-                <div class="input-group">
+            <!-- LOGIN -->
+            <div class="input-box">
 
-                    <label for="loginUsername">
-                        Login
-                    </label>
+                <label for="username">
+                    Login
+                </label>
+
+                <input
+                    type="text"
+                    id="username"
+                    placeholder="Loginni kiriting"
+                    autocomplete="username"
+                >
+
+            </div>
+
+
+            <!-- PASSWORD -->
+            <div class="input-box">
+
+                <label for="password">
+                    Parol
+                </label>
+
+                <div class="password-wrapper">
 
                     <input
-                        type="text"
-                        id="loginUsername"
-                        placeholder="Loginni kiriting"
-                        autocomplete="username"
-                        required
+                        type="password"
+                        id="password"
+                        placeholder="Parolni kiriting"
+                        autocomplete="current-password"
                     >
 
+                    <!-- KO'Z -->
+                    <button
+                        type="button"
+                        id="togglePassword"
+                        class="eye-button"
+                        aria-label="Parolni ko'rsatish"
+                    >
+
+                        <svg
+                            id="eyeOpen"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+
+                        <svg
+                            id="eyeClosed"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            style="display:none;"
+                        >
+                            <path d="M3 3l18 18"/>
+                            <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/>
+                            <path d="M9.9 4.2A10.6 10.6 0 0 1 12 4c6.5 0 10 8 10 8a18.3 18.3 0 0 1-3.1 4.3"/>
+                            <path d="M6.6 6.6C3.5 8.7 2 12 2 12s3.5 8 10 8a10.8 10.8 0 0 0 4.1-.8"/>
+                        </svg>
+
+                    </button>
+
                 </div>
 
+            </div>
 
-                <div class="input-group">
 
-                    <label for="loginPassword">
-                        Parol
-                    </label>
+            <!-- LOGIN BUTTON -->
+            <button
+                id="loginButton"
+                class="login-button"
+            >
+                🔐 Kirish
+            </button>
 
-                    <div class="password-box">
 
-                        <input
-                            type="password"
-                            id="loginPassword"
-                            placeholder="Parolni kiriting"
-                            autocomplete="current-password"
-                            required
-                        >
+            <!-- ERROR -->
+            <div
+                id="loginMessage"
+                class="login-message"
+            ></div>
 
-                        <button
-                            type="button"
-                            id="showPasswordBtn"
-                            class="eye-button"
-                            title="Parolni ko‘rsatish"
-                        >
-                            👁️
-                        </button>
 
-                    </div>
+            <!-- OWNER INFO -->
+            <div class="owner-info">
 
+                <div class="owner-icon">
+                    👑
                 </div>
 
+                <div>
+                    <strong>Owner kirishi</strong>
+                    <p>Owner uchun maxsus huquqlar mavjud</p>
+                </div>
 
-                <button
-                    type="submit"
-                    class="login-button"
-                >
-                    🔐 Kirish
-                </button>
-
-                <div id="loginMessage"></div>
-
-            </form>
+            </div>
 
         </div>
 
     </div>
 
 
-    <!-- ============================= -->
-    <!-- MAIN APPLICATION -->
-    <!-- ============================= -->
+    <!-- =========================
+         MAIN SYSTEM
+    ========================== -->
 
-    <div id="appPage" class="hidden">
+    <div
+        id="mainPage"
+        class="main-page hidden"
+    >
 
-        <!-- HEADER -->
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
 
-        <header class="top-header">
+            <div class="sidebar-logo">
 
-            <div class="header-left">
+                <div class="small-logo">
+                    <span>GOLD</span>
+                    <b>SHOW</b>
+                </div>
 
-                <img
-                    src="logo.png"
-                    alt="Goldshow"
-                    class="header-logo"
+                <p>GoldshowORG</p>
+
+            </div>
+
+
+            <div class="user-profile">
+
+                <div
+                    id="userAvatar"
+                    class="avatar"
                 >
+                    F
+                </div>
 
                 <div>
-                    <h2>GoldshowORG</h2>
-                    <span id="userRoleText">
-                        Tizim
+
+                    <strong id="currentUserName">
+                        Foziljon
+                    </strong>
+
+                    <span id="currentUserRole">
+                        OWNER
                     </span>
+
                 </div>
 
             </div>
 
 
-            <div class="header-right">
-
-                <span id="currentUserName"></span>
+            <nav class="sidebar-menu">
 
                 <button
-                    id="logoutBtn"
-                    class="logout-button"
+                    class="menu-item active"
+                    data-section="dashboardSection"
                 >
-                    🚪 Chiqish
+                    🏠
+                    <span>Bosh sahifa</span>
                 </button>
 
-            </div>
+                <button
+                    class="menu-item"
+                    data-section="ordersSection"
+                >
+                    📋
+                    <span>Zakaslar</span>
+                </button>
 
-        </header>
+                <button
+                    class="menu-item"
+                    data-section="usersSection"
+                >
+                    👥
+                    <span>Foydalanuvchilar</span>
+                </button>
 
+            </nav>
 
-        <!-- SIDEBAR -->
-
-        <aside class="sidebar">
-
-            <button
-                class="menu-button active"
-                data-section="dashboardSection"
-            >
-                🏠 Bosh sahifa
-            </button>
-
-            <button
-                class="menu-button"
-                data-section="ordersSection"
-            >
-                📋 Zakaslar
-            </button>
 
             <button
-                class="menu-button owner-only"
-                data-section="usersSection"
+                id="logoutButton"
+                class="logout-button"
             >
-                👥 Ishchilar
-            </button>
-
-            <button
-                class="menu-button"
-                data-section="profileSection"
-            >
-                👤 Profil
+                🚪 Chiqish
             </button>
 
         </aside>
 
 
-        <!-- MAIN CONTENT -->
+        <!-- CONTENT -->
+        <main class="content">
 
-        <main class="main-content">
-
-
-            <!-- ============================= -->
-            <!-- DASHBOARD -->
-            <!-- ============================= -->
+            <!-- =====================
+                 DASHBOARD
+            ====================== -->
 
             <section
                 id="dashboardSection"
                 class="content-section active-section"
             >
 
-                <div class="page-heading">
+                <div class="topbar">
 
                     <div>
                         <h1>Bosh sahifa</h1>
+                        <p>GoldshowORG boshqaruv paneli</p>
+                    </div>
+
+                    <div class="role-badge owner-badge">
+                        👑 OWNER
+                    </div>
+
+                </div>
+
+
+                <div class="welcome-card">
+
+                    <div>
+
+                        <span class="welcome-small">
+                            Xush kelibsiz
+                        </span>
+
+                        <h2>
+                            Foziljon 👑
+                        </h2>
 
                         <p>
-                            Goldshow boshqaruv tizimiga xush kelibsiz.
+                            Siz Owner sifatida tizimga kirdingiz.
+                            Barcha boshqaruv huquqlari sizda.
                         </p>
+
+                    </div>
+
+                    <div class="welcome-logo">
+                        GOLD
+                        <b>SHOW</b>
                     </div>
 
                 </div>
@@ -207,28 +289,28 @@
                     <div class="stat-card">
 
                         <div class="stat-icon">
-                            📋
-                        </div>
-
-                        <div>
-                            <span>Jami zakaslar</span>
-                            <strong id="totalOrders">
-                                0
-                            </strong>
-                        </div>
-
-                    </div>
-
-
-                    <div class="stat-card">
-
-                        <div class="stat-icon">
                             👥
                         </div>
 
                         <div>
-                            <span>Ishchilar</span>
-                            <strong id="totalUsers">
+                            <span>Foydalanuvchilar</span>
+                            <strong id="userCount">
+                                1
+                            </strong>
+                        </div>
+
+                    </div>
+
+
+                    <div class="stat-card">
+
+                        <div class="stat-icon">
+                            📋
+                        </div>
+
+                        <div>
+                            <span>Zakaslar</span>
+                            <strong id="orderCount">
                                 0
                             </strong>
                         </div>
@@ -239,13 +321,13 @@
                     <div class="stat-card">
 
                         <div class="stat-icon">
-                            💰
+                            👑
                         </div>
 
                         <div>
-                            <span>Jami summa</span>
-                            <strong id="totalMoney">
-                                0 so‘m
+                            <span>Owner</span>
+                            <strong>
+                                1
                             </strong>
                         </div>
 
@@ -255,13 +337,13 @@
                     <div class="stat-card">
 
                         <div class="stat-icon">
-                            💵
+                            🟢
                         </div>
 
                         <div>
-                            <span>Qolgan summa</span>
-                            <strong id="remainingMoney">
-                                0 so‘m
+                            <span>Tizim</span>
+                            <strong>
+                                Aktiv
                             </strong>
                         </div>
 
@@ -270,12 +352,40 @@
                 </div>
 
 
-                <div class="dashboard-box">
+                <div class="section-card">
 
-                    <h2>Yaqinlashayotgan tadbirlar</h2>
+                    <div class="section-title">
 
-                    <div id="upcomingOrders">
-                        Hozircha zakas yo‘q.
+                        <div>
+                            <h2>Owner huquqlari</h2>
+                            <p>Owner sifatida siz quyidagilarni boshqara olasiz.</p>
+                        </div>
+
+                    </div>
+
+
+                    <div class="permissions">
+
+                        <div>
+                            👥
+                            <span>Foydalanuvchi qo‘shish</span>
+                        </div>
+
+                        <div>
+                            🔑
+                            <span>Login va parolni o‘zgartirish</span>
+                        </div>
+
+                        <div>
+                            📋
+                            <span>Zakaslarni boshqarish</span>
+                        </div>
+
+                        <div>
+                            ✏️
+                            <span>Zakaslarni tahrirlash</span>
+                        </div>
+
                     </div>
 
                 </div>
@@ -283,40 +393,41 @@
             </section>
 
 
-            <!-- ============================= -->
-            <!-- ORDERS -->
-            <!-- ============================= -->
+            <!-- =====================
+                 ORDERS
+            ====================== -->
 
             <section
                 id="ordersSection"
                 class="content-section"
             >
 
-                <div class="page-heading">
+                <div class="topbar">
 
                     <div>
-
                         <h1>Zakaslar</h1>
-
-                        <p>
-                            Barcha tadbir va buyurtmalar.
-                        </p>
-
+                        <p>Goldshow tadbir zakazlari</p>
                     </div>
 
                     <button
-                        id="addOrderBtn"
-                        class="primary-button"
+                        id="addOrderButton"
+                        class="gold-button"
                     >
-                        ➕ Yangi zakas
+                        + Yangi zakas
                     </button>
 
                 </div>
 
 
-                <div class="orders-container">
+                <div
+                    id="ordersList"
+                    class="orders-list"
+                >
 
-                    <div id="ordersList">
+                    <div class="empty-box">
+                        📋
+                        <h3>Hozircha zakas yo‘q</h3>
+                        <p>Yangi zakas qo‘shish uchun yuqoridagi tugmani bosing.</p>
                     </div>
 
                 </div>
@@ -324,104 +435,57 @@
             </section>
 
 
-            <!-- ============================= -->
-            <!-- USERS -->
-            <!-- ============================= -->
+            <!-- =====================
+                 USERS
+            ====================== -->
 
             <section
                 id="usersSection"
                 class="content-section"
             >
 
-                <div class="page-heading">
+                <div class="topbar">
 
                     <div>
-
-                        <h1>Ishchilar</h1>
-
-                        <p>
-                            Ishchilarni boshqarish.
-                        </p>
-
+                        <h1>Foydalanuvchilar</h1>
+                        <p>Owner foydalanuvchilarni boshqaradi</p>
                     </div>
 
                     <button
-                        id="addUserBtn"
-                        class="primary-button"
+                        id="addUserButton"
+                        class="gold-button"
                     >
-                        ➕ Yangi ishchi
+                        + Yangi user
                     </button>
 
                 </div>
 
 
-                <div class="users-table-container">
+                <div class="section-card">
 
-                    <table>
+                    <div class="table-wrapper">
 
-                        <thead>
+                        <table>
 
-                            <tr>
-                                <th>Login</th>
-                                <th>Parol</th>
-                                <th>Rol</th>
-                                <th>Amallar</th>
-                            </tr>
+                            <thead>
 
-                        </thead>
+                                <tr>
+                                    <th>Ism</th>
+                                    <th>Login</th>
+                                    <th>Rol</th>
+                                    <th>Holat</th>
+                                    <th>Amal</th>
+                                </tr>
 
-                        <tbody id="usersTableBody">
-                        </tbody>
+                            </thead>
 
-                    </table>
+                            <tbody id="usersTable">
 
-                </div>
+                            </tbody>
 
-            </section>
-
-
-            <!-- ============================= -->
-            <!-- PROFILE -->
-            <!-- ============================= -->
-
-            <section
-                id="profileSection"
-                class="content-section"
-            >
-
-                <div class="page-heading">
-
-                    <div>
-
-                        <h1>Profil</h1>
-
-                        <p>
-                            Tizimdagi profilingiz.
-                        </p>
+                        </table>
 
                     </div>
-
-                </div>
-
-
-                <div class="profile-card">
-
-                    <div class="profile-logo">
-
-                        <img
-                            src="logo.png"
-                            alt="Logo"
-                        >
-
-                    </div>
-
-                    <h2 id="profileName">
-                        -
-                    </h2>
-
-                    <p id="profileRole">
-                        -
-                    </p>
 
                 </div>
 
@@ -432,478 +496,297 @@
     </div>
 
 
-    <!-- ============================= -->
-    <!-- USER MODAL -->
-    <!-- ============================= -->
+    <!-- =========================
+         ADD USER MODAL
+    ========================== -->
 
     <div
         id="userModal"
         class="modal hidden"
     >
 
-        <div class="modal-content">
+        <div class="modal-box">
 
-            <div class="modal-header">
+            <button
+                class="close-modal"
+                id="closeUserModal"
+            >
+                ×
+            </button>
 
-                <h2>Yangi ishchi qo‘shish</h2>
+            <h2>👤 Yangi foydalanuvchi</h2>
+
+            <p class="modal-subtitle">
+                Ishchi yoki Admin yaratish
+            </p>
+
+
+            <label>
+                Ism
+            </label>
+
+            <input
+                id="newUserName"
+                type="text"
+                placeholder="Masalan: Ali"
+            >
+
+
+            <label>
+                Login
+            </label>
+
+            <input
+                id="newUserLogin"
+                type="text"
+                placeholder="Masalan: ali"
+            >
+
+
+            <label>
+                Parol
+            </label>
+
+            <div class="modal-password">
+
+                <input
+                    id="newUserPassword"
+                    type="password"
+                    placeholder="Parol"
+                >
 
                 <button
-                    class="close-modal"
-                    data-close="userModal"
+                    type="button"
+                    id="toggleNewPassword"
                 >
-                    ×
+                    👁️
                 </button>
 
             </div>
 
 
-            <form id="userForm">
+            <label>
+                Rol
+            </label>
 
-                <div class="form-group">
+            <select id="newUserRole">
 
-                    <label>
-                        Login
-                    </label>
+                <option value="worker">
+                    Ishchi
+                </option>
 
-                    <input
-                        type="text"
-                        id="newUsername"
-                        placeholder="Masalan: Ali"
-                        required
-                    >
+                <option value="admin">
+                    Admin
+                </option>
 
-                </div>
-
-
-                <div class="form-group">
-
-                    <label>
-                        Parol
-                    </label>
-
-                    <div class="password-box">
-
-                        <input
-                            type="password"
-                            id="newUserPassword"
-                            placeholder="Parol"
-                            required
-                        >
-
-                        <button
-                            type="button"
-                            class="eye-button"
-                            id="newUserEye"
-                        >
-                            👁️
-                        </button>
-
-                    </div>
-
-                </div>
+            </select>
 
 
-                <div class="form-group">
-
-                    <label>
-                        Rol
-                    </label>
-
-                    <select id="newUserRole">
-
-                        <option value="worker">
-                            Ishchi
-                        </option>
-
-                        <option value="admin">
-                            Admin
-                        </option>
-
-                    </select>
-
-                </div>
-
-
-                <button
-                    type="submit"
-                    class="primary-button full-width"
-                >
-                    Saqlash
-                </button>
-
-            </form>
+            <button
+                id="saveUserButton"
+                class="gold-button full-button"
+            >
+                Saqlash
+            </button>
 
         </div>
 
     </div>
 
 
-    <!-- ============================= -->
-    <!-- ORDER MODAL -->
-    <!-- ============================= -->
+    <!-- =========================
+         ADD ORDER MODAL
+    ========================== -->
 
     <div
         id="orderModal"
         class="modal hidden"
     >
 
-        <div class="modal-content large-modal">
+        <div class="modal-box large-modal">
 
-            <div class="modal-header">
+            <button
+                class="close-modal"
+                id="closeOrderModal"
+            >
+                ×
+            </button>
 
-                <h2>Yangi zakas</h2>
+            <h2>📋 Yangi zakas</h2>
 
-                <button
-                    class="close-modal"
-                    data-close="orderModal"
-                >
-                    ×
-                </button>
+            <p class="modal-subtitle">
+                Tadbir ma'lumotlarini kiriting
+            </p>
+
+
+            <div class="form-grid">
+
+                <div>
+                    <label>Mijoz ismi</label>
+
+                    <input
+                        id="clientName"
+                        type="text"
+                        placeholder="Mijoz ismi"
+                    >
+                </div>
+
+
+                <div>
+                    <label>Telefon</label>
+
+                    <input
+                        id="clientPhone"
+                        type="text"
+                        placeholder="+998..."
+                    >
+                </div>
+
+
+                <div>
+                    <label>O‘rnatish joyi</label>
+
+                    <input
+                        id="eventLocation"
+                        type="text"
+                        placeholder="Manzil"
+                    >
+                </div>
+
+
+                <div>
+                    <label>Tadbir vaqti</label>
+
+                    <input
+                        id="eventDate"
+                        type="datetime-local"
+                    >
+                </div>
+
+
+                <div>
+                    <label>Ekran balandligi</label>
+
+                    <input
+                        id="screenHeight"
+                        type="text"
+                        placeholder="Masalan: 4 m"
+                    >
+                </div>
+
+
+                <div>
+                    <label>Ekran uzunligi</label>
+
+                    <input
+                        id="screenLength"
+                        type="text"
+                        placeholder="Masalan: 8 m"
+                    >
+                </div>
+
+
+                <div>
+                    <label>Stage kengligi</label>
+
+                    <input
+                        id="stageWidth"
+                        type="text"
+                        placeholder="Masalan: 10 m"
+                    >
+                </div>
+
+
+                <div>
+                    <label>Stage uzunligi</label>
+
+                    <input
+                        id="stageLength"
+                        type="text"
+                        placeholder="Masalan: 6 m"
+                    >
+                </div>
+
+
+                <div>
+                    <label>LED wall soni</label>
+
+                    <input
+                        id="ledCount"
+                        type="number"
+                        value="0"
+                    >
+                </div>
+
+
+                <div>
+                    <label>Chiroqlar soni</label>
+
+                    <input
+                        id="lightCount"
+                        type="number"
+                        value="0"
+                    >
+                </div>
+
+
+                <div>
+                    <label>Konfeti soni</label>
+
+                    <input
+                        id="confettiCount"
+                        type="number"
+                        value="0"
+                    >
+                </div>
+
+
+                <div>
+                    <label>Galava soni</label>
+
+                    <input
+                        id="galavaCount"
+                        type="number"
+                        value="0"
+                    >
+                </div>
+
+
+                <div>
+                    <label>Jami summa</label>
+
+                    <input
+                        id="totalAmount"
+                        type="number"
+                        placeholder="0"
+                    >
+                </div>
+
+
+                <div>
+                    <label>Oldindan to‘langan</label>
+
+                    <input
+                        id="paidAmount"
+                        type="number"
+                        placeholder="0"
+                    >
+                </div>
 
             </div>
 
 
-            <form id="orderForm">
-
-                <div class="form-grid">
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Mijoz nomi
-                        </label>
-
-                        <input
-                            type="text"
-                            id="clientName"
-                            required
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Telefon raqam
-                        </label>
-
-                        <input
-                            type="text"
-                            id="clientPhone"
-                            placeholder="+998"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            O‘rnatish joyi
-                        </label>
-
-                        <input
-                            type="text"
-                            id="location"
-                            required
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Tadbir sanasi
-                        </label>
-
-                        <input
-                            type="date"
-                            id="eventDate"
-                            required
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Tadbir vaqti
-                        </label>
-
-                        <input
-                            type="time"
-                            id="eventTime"
-                            required
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Ekran balandligi
-                        </label>
-
-                        <input
-                            type="text"
-                            id="screenHeight"
-                            placeholder="Masalan: 4m"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Ekran uzunligi
-                        </label>
-
-                        <input
-                            type="text"
-                            id="screenLength"
-                            placeholder="Masalan: 8m"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Stage eni
-                        </label>
-
-                        <input
-                            type="text"
-                            id="stageWidth"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Stage uzunligi
-                        </label>
-
-                        <input
-                            type="text"
-                            id="stageLength"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Lights soni
-                        </label>
-
-                        <input
-                            type="number"
-                            id="lights"
-                            value="0"
-                            min="0"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Galava soni
-                        </label>
-
-                        <input
-                            type="number"
-                            id="galava"
-                            value="0"
-                            min="0"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            LED Wall soni
-                        </label>
-
-                        <input
-                            type="number"
-                            id="ledWall"
-                            value="0"
-                            min="0"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Konfeti soni
-                        </label>
-
-                        <input
-                            type="number"
-                            id="konfeti"
-                            value="0"
-                            min="0"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Dim apparat
-                        </label>
-
-                        <input
-                            type="number"
-                            id="dim"
-                            value="0"
-                            min="0"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Foyerverk
-                        </label>
-
-                        <input
-                            type="number"
-                            id="fireworks"
-                            value="0"
-                            min="0"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Yon ekran soni
-                        </label>
-
-                        <input
-                            type="number"
-                            id="sideScreens"
-                            value="0"
-                            min="0"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Yon ekran o‘lchami
-                        </label>
-
-                        <input
-                            type="text"
-                            id="sideScreenSize"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Stage curtain
-                        </label>
-
-                        <input
-                            type="text"
-                            id="curtain"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            To‘langan summa
-                        </label>
-
-                        <input
-                            type="number"
-                            id="paid"
-                            value="0"
-                            min="0"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Umumiy summa
-                        </label>
-
-                        <input
-                            type="number"
-                            id="totalAmount"
-                            value="0"
-                            min="0"
-                        >
-
-                    </div>
-
-
-                    <div class="form-group full-span">
-
-                        <label>
-                            Qo‘shimcha ma’lumot
-                        </label>
-
-                        <textarea
-                            id="notes"
-                            rows="4"
-                        ></textarea>
-
-                    </div>
-
-                </div>
-
-
-                <button
-                    type="submit"
-                    class="primary-button full-width"
-                >
-                    💾 Zakasni saqlash
-                </button>
-
-            </form>
+            <button
+                id="saveOrderButton"
+                class="gold-button full-button"
+            >
+                💾 Zakasni saqlash
+            </button>
 
         </div>
 
     </div>
 
-
-    <!-- JAVASCRIPT -->
 
     <script src="script.js"></script>
 
