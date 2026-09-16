@@ -1,86 +1,31 @@
+/* =========================================
+   GOLD SHOW - SCRIPT.JS
+========================================= */
+
+
+/* =========================================
+   OWNER
+========================================= */
+
 const OWNER = {
-    name: "Foziljon",
     username: "Foziljon",
     password: "Foziljon2010",
     role: "owner"
 };
 
-const DEFAULT_ADMIN = {
-    name: "Otabek Raximov",
-    username: "Otabek",
-    password: "goldshow",
-    role: "admin"
-};
+
+/* =========================================
+   DEFAULT USERS
+========================================= */
+
+let users = JSON.parse(
+    localStorage.getItem("goldshow_users")
+) || [];
 
 
-const $ = id =>
-    document.getElementById(id);
-
-
-const normRole = role => {
-
-    role = String(
-        role || "worker"
-    ).toLowerCase();
-
-    if (
-        role === "user" ||
-        role === "ishchi" ||
-        role === "worker"
-    ) {
-        return "worker";
-    }
-
-    return role;
-};
-
-
-const esc = value =>
-    String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-
-
-const money = value =>
-    Number(value || 0)
-        .toLocaleString("uz-UZ") +
-    " so‘m";
-
-
-let users =
-    JSON.parse(
-        localStorage.getItem(
-            "goldshow_users"
-        ) || "[]"
-    ).map(
-        user => ({
-            ...user,
-            role: normRole(user.role)
-        })
-    );
-
-
-let orders =
-    JSON.parse(
-        localStorage.getItem(
-            "goldshow_orders"
-        ) || "[]"
-    ).map(
-        order => ({
-            ...order
-        })
-    );
-
-
-let currentUser = null;
-
-
-/* =====================================================
-   STORAGE
-===================================================== */
+/*
+   Owner har doim tizimda mavjud bo‘ladi.
+*/
 
 function saveUsers() {
 
@@ -90,6 +35,15 @@ function saveUsers() {
     );
 
 }
+
+
+/* =========================================
+   ORDERS
+========================================= */
+
+let orders = JSON.parse(
+    localStorage.getItem("goldshow_orders")
+) || [];
 
 
 function saveOrders() {
@@ -102,1610 +56,1572 @@ function saveOrders() {
 }
 
 
-/* =====================================================
-   ENSURE OWNER + ADMIN
-===================================================== */
+/* =========================================
+   CURRENT USER
+========================================= */
 
-function ensureSystemUsers() {
-
-    const ownerIndex =
-        users.findIndex(
-            user =>
-                String(
-                    user.username
-                ).toLowerCase() ===
-                OWNER.username.toLowerCase()
-        );
+let currentUser = JSON.parse(
+    sessionStorage.getItem("goldshow_current_user")
+);
 
 
-    if (
-        ownerIndex >= 0
-    ) {
+/* =========================================
+   ELEMENTS
+========================================= */
 
-        users[ownerIndex] = {
-            ...users[ownerIndex],
-            ...OWNER
-        };
+const loginPage =
+    document.getElementById("loginPage");
 
-    } else {
+const appPage =
+    document.getElementById("appPage");
 
-        users.unshift({
-            ...OWNER,
-            id: Date.now()
-        });
+const loginForm =
+    document.getElementById("loginForm");
 
-    }
+const loginUsername =
+    document.getElementById("loginUsername");
 
+const loginPassword =
+    document.getElementById("loginPassword");
 
-    const adminIndex =
-        users.findIndex(
-            user =>
-                String(
-                    user.username
-                ).toLowerCase() ===
-                DEFAULT_ADMIN.username.toLowerCase()
-        );
+const loginMessage =
+    document.getElementById("loginMessage");
 
+const showPasswordBtn =
+    document.getElementById("showPasswordBtn");
 
-    if (
-        adminIndex < 0
-    ) {
+const logoutBtn =
+    document.getElementById("logoutBtn");
 
-        users.push({
-            ...DEFAULT_ADMIN,
-            id: Date.now() + 1
-        });
+const currentUserName =
+    document.getElementById("currentUserName");
 
-    }
+const userRoleText =
+    document.getElementById("userRoleText");
 
 
-    users.forEach(
-        user => {
-            user.role =
-                normRole(
-                    user.role
-                );
+/* =========================================
+   PASSWORD EYE
+========================================= */
+
+showPasswordBtn.addEventListener(
+    "click",
+    function () {
+
+        if (loginPassword.type === "password") {
+
+            loginPassword.type = "text";
+
+            showPasswordBtn.textContent = "🙈";
+
+        } else {
+
+            loginPassword.type = "password";
+
+            showPasswordBtn.textContent = "👁️";
+
         }
-    );
-
-
-    saveUsers();
-
-}
-
-
-ensureSystemUsers();
-
-
-/* =====================================================
-   ROLE
-===================================================== */
-
-function roleText(role) {
-
-    role =
-        normRole(role);
-
-    if (
-        role === "owner"
-    ) {
-        return "OWNER";
-    }
-
-    if (
-        role === "admin"
-    ) {
-        return "ADMIN";
-    }
-
-    return "ISHCHI";
-}
-
-
-function roleIcon(role) {
-
-    role =
-        normRole(role);
-
-    if (
-        role === "owner"
-    ) {
-        return "👑";
-    }
-
-    if (
-        role === "admin"
-    ) {
-        return "🛡️";
-    }
-
-    return "👷";
-}
-
-
-/* =====================================================
-   PERMISSIONS
-===================================================== */
-
-function hasUserManagement() {
-
-    return [
-        "owner",
-        "admin"
-    ].includes(
-        normRole(
-            currentUser?.role
-        )
-    );
-
-}
-
-
-function canManageTarget(
-    target
-) {
-
-    const me =
-        normRole(
-            currentUser?.role
-        );
-
-    const targetRole =
-        normRole(
-            target?.role
-        );
-
-
-    if (
-        me === "owner"
-    ) {
-
-        return targetRole !== "owner";
 
     }
+);
 
 
-    if (
-        me === "admin"
-    ) {
+/* =========================================
+   NEW USER PASSWORD EYE
+========================================= */
 
-        return targetRole === "worker";
+const newUserEye =
+    document.getElementById("newUserEye");
+
+const newUserPassword =
+    document.getElementById("newUserPassword");
+
+
+newUserEye.addEventListener(
+    "click",
+    function () {
+
+        if (newUserPassword.type === "password") {
+
+            newUserPassword.type = "text";
+
+            newUserEye.textContent = "🙈";
+
+        } else {
+
+            newUserPassword.type = "password";
+
+            newUserEye.textContent = "👁️";
+
+        }
 
     }
+);
 
 
-    return false;
-
-}
-
-
-/* =====================================================
-   LOGIN MESSAGE
-===================================================== */
-
-function showMessage(
-    text,
-    error = true
-) {
-
-    const box =
-        $("loginMessage");
-
-    if (!box) {
-        return;
-    }
-
-    box.textContent =
-        text;
-
-    box.className =
-        "message";
-
-    box.style.color =
-        error
-            ? "#dc2626"
-            : "#15803d";
-
-}
-
-
-/* =====================================================
+/* =========================================
    LOGIN
-===================================================== */
+========================================= */
 
-function login() {
+loginForm.addEventListener(
+    "submit",
+    function (event) {
 
-    const username =
-        $("username")
-            ?.value
-            .trim() || "";
+        event.preventDefault();
 
-    const password =
-        $("password")
-            ?.value || "";
+        const username =
+            loginUsername.value.trim();
+
+        const password =
+            loginPassword.value;
 
 
-    if (
-        !username ||
-        !password
-    ) {
+        /*
+           OWNER LOGIN
+        */
 
-        showMessage(
-            "❌ Login va parolni kiriting."
+        if (
+            username === OWNER.username &&
+            password === OWNER.password
+        ) {
+
+            currentUser = {
+                username: OWNER.username,
+                role: OWNER.role
+            };
+
+            sessionStorage.setItem(
+                "goldshow_current_user",
+                JSON.stringify(currentUser)
+            );
+
+            loginMessage.textContent = "";
+
+            openApplication();
+
+            return;
+        }
+
+
+        /*
+           ISHCHI / ADMIN LOGIN
+        */
+
+        const foundUser = users.find(
+            function (user) {
+
+                return (
+                    user.username === username &&
+                    user.password === password
+                );
+
+            }
         );
 
-        return;
+
+        if (foundUser) {
+
+            currentUser = {
+                username: foundUser.username,
+                role: foundUser.role
+            };
+
+            sessionStorage.setItem(
+                "goldshow_current_user",
+                JSON.stringify(currentUser)
+            );
+
+            loginMessage.textContent = "";
+
+            openApplication();
+
+        } else {
+
+            loginMessage.textContent =
+                "❌ Login yoki parol noto‘g‘ri.";
+
+        }
+
     }
+);
 
 
-    const found =
-        users.find(
-            user =>
-                String(
-                    user.username
-                ).toLowerCase() ===
-                username.toLowerCase() &&
-                String(
-                    user.password
-                ) === password
-        );
+/* =========================================
+   OPEN APPLICATION
+========================================= */
 
+function openApplication() {
 
-    if (!found) {
+    loginPage.classList.add("hidden");
 
-        showMessage(
-            "❌ Login yoki parol noto‘g‘ri."
-        );
+    appPage.classList.remove("hidden");
 
-        return;
-    }
+    updateUserInterface();
 
+    renderUsers();
 
-    currentUser = {
-        ...found,
-        role:
-            normRole(
-                found.role
-            )
-    };
+    renderOrders();
 
-
-    localStorage.setItem(
-        "goldshow_current_user",
-        JSON.stringify(
-            currentUser
-        )
-    );
-
-
-    openApp();
+    updateDashboard();
 
 }
 
 
-/* =====================================================
-   OPEN APP
-===================================================== */
+/* =========================================
+   UPDATE USER UI
+========================================= */
 
-function openApp() {
-
-    $("loginPage")
-        ?.classList
-        .add("hidden");
-
-    $("mainPage")
-        ?.classList
-        .remove("hidden");
-
-
-    refreshUI();
-
-    showSection(
-        "dashboardSection"
-    );
-
-}
-
-
-/* =====================================================
-   LOGOUT
-===================================================== */
-
-function logout() {
-
-    currentUser =
-        null;
-
-    localStorage.removeItem(
-        "goldshow_current_user"
-    );
-
-
-    $("mainPage")
-        ?.classList
-        .add("hidden");
-
-    $("loginPage")
-        ?.classList
-        .remove("hidden");
-
-
-    if (
-        $("username")
-    ) {
-        $("username").value = "";
-    }
-
-    if (
-        $("password")
-    ) {
-        $("password").value = "";
-
-        $("password").type =
-            "password";
-    }
-
-
-    if (
-        $("togglePassword")
-    ) {
-        $("togglePassword")
-            .textContent = "👁️";
-    }
-
-
-    showMessage(
-        "",
-        false
-    );
-
-}
-
-
-/* =====================================================
-   UI
-===================================================== */
-
-function refreshUI() {
+function updateUserInterface() {
 
     if (!currentUser) {
         return;
     }
 
 
-    const role =
-        normRole(
-            currentUser.role
-        );
-
-    const name =
-        currentUser.name ||
+    currentUserName.textContent =
         currentUser.username;
 
 
-    $("currentUserName")
-        .textContent =
-        name;
+    let roleName = "Ishchi";
 
 
-    $("currentUserRole")
-        .textContent =
-        roleText(role);
+    if (currentUser.role === "owner") {
 
+        roleName = "OWNER / ADMIN";
 
-    $("userAvatar")
-        .textContent =
-        name
-            .charAt(0)
-            .toUpperCase();
+    } else if (currentUser.role === "admin") {
 
-
-    const badge =
-        $("roleBadge");
-
-
-    badge.textContent =
-        `${roleIcon(role)} ${roleText(role)}`;
-
-
-    badge.className =
-        "role-badge" +
-        (
-            role === "owner"
-                ? " owner"
-                : ""
-        );
-
-
-    $("welcomeName")
-        .textContent =
-        `${name} ${roleIcon(role)}`;
-
-
-    $("welcomeText")
-        .textContent =
-        role === "owner"
-            ? "Siz Owner sifatida tizimga kirdingiz. Barcha boshqaruv huquqlari sizda."
-            : role === "admin"
-                ? "Siz Admin sifatida tizimga kirdingiz. Userlar va zakaslarni boshqarishingiz mumkin."
-                : "Siz Ishchi sifatida tizimga kirdingiz. Tizimdagi kerakli ma'lumotlardan foydalanishingiz mumkin.";
-
-
-    $("permissionTitle")
-        .textContent =
-        `${roleText(role)} huquqlari`;
-
-
-    $("permissionSubtitle")
-        .textContent =
-        role === "owner"
-            ? "Owner barcha boshqaruv imkoniyatlariga ega."
-            : role === "admin"
-                ? "Admin yangi user qo‘shishi va ishchilarni boshqarishi mumkin."
-                : "Ishchi uchun mavjud tizim imkoniyatlari.";
-
-
-    const permissions =
-        role === "owner"
-            ? [
-                "👥 Foydalanuvchi qo‘shish",
-                "🔑 Login va parolni boshqarish",
-                "📋 Zakaslarni boshqarish",
-                "🛡️ Owner himoyalangan"
-            ]
-            : role === "admin"
-                ? [
-                    "👥 Yangi user qo‘shish",
-                    "🛡️ Ishchilarni boshqarish",
-                    "📋 Zakaslarni boshqarish",
-                    "✏️ Zakaslarni tahrirlash"
-                ]
-                : [
-                    "📋 Zakaslarni ko‘rish",
-                    "📅 Tadbir ma'lumotlari",
-                    "👤 O‘z ish ma’lumotlari",
-                    "🔒 Admin va Owner himoyalangan"
-                ];
-
-
-    $("permissions")
-        .innerHTML =
-        permissions
-            .map(
-                text =>
-                    `<div>${text}</div>`
-            )
-            .join("");
-
-
-    document
-        .querySelectorAll(
-            ".admin-menu"
-        )
-        .forEach(
-            element =>
-                element
-                    .classList
-                    .toggle(
-                        "hidden",
-                        !hasUserManagement()
-                    )
-        );
-
-
-    $("addUserButton")
-        ?.classList
-        .toggle(
-            "hidden",
-            !hasUserManagement()
-        );
-
-
-    $("addOrderButton")
-        ?.classList
-        .toggle(
-            "hidden",
-            ![
-                "owner",
-                "admin"
-            ].includes(role)
-        );
-
-
-    $("usersSubtitle")
-        .textContent =
-        role === "owner"
-            ? "Owner foydalanuvchilarni to‘liq boshqaradi."
-            : "Admin yangi user qo‘sha oladi; Owner himoyalangan.";
-
-
-    updateStats();
-    updateUsersTable();
-    updateOrderList();
-
-}
-
-
-/* =====================================================
-   SECTIONS
-===================================================== */
-
-function showSection(
-    id
-) {
-
-    document
-        .querySelectorAll(
-            ".menu-item"
-        )
-        .forEach(
-            button => {
-
-                button.classList.toggle(
-                    "active",
-                    button.dataset.section === id
-                );
-
-            }
-        );
-
-
-    document
-        .querySelectorAll(
-            ".content-section"
-        )
-        .forEach(
-            section => {
-
-                section.classList.toggle(
-                    "active-section",
-                    section.id === id
-                );
-
-            }
-        );
-
-
-    if (
-        id === "usersSection"
-    ) {
-
-        updateUsersTable();
+        roleName = "ADMIN";
 
     }
 
 
-    if (
-        id === "ordersSection"
-    ) {
-
-        updateOrderList();
-
-    }
-
-}
+    userRoleText.textContent =
+        roleName;
 
 
-document
-    .querySelectorAll(
-        ".menu-item"
-    )
-    .forEach(
-        button => {
-
-            button.addEventListener(
-                "click",
-                () =>
-                    showSection(
-                        button.dataset.section
-                    )
-            );
-
-        }
-    );
+    document.getElementById(
+        "profileName"
+    ).textContent =
+        currentUser.username;
 
 
-/* =====================================================
-   BUTTON EVENTS
-===================================================== */
-
-$("loginButton")
-    ?.addEventListener(
-        "click",
-        login
-    );
+    document.getElementById(
+        "profileRole"
+    ).textContent =
+        roleName;
 
 
-$("username")
-    ?.addEventListener(
-        "keydown",
-        event => {
+    /*
+       Owner bo‘lmasa
+       ishchilar bo‘limini yashiramiz.
+    */
+
+    const ownerButtons =
+        document.querySelectorAll(".owner-only");
+
+
+    ownerButtons.forEach(
+        function (button) {
 
             if (
-                event.key === "Enter"
+                currentUser.role === "owner" ||
+                currentUser.role === "admin"
             ) {
-                login();
+
+                button.style.display = "block";
+
+            } else {
+
+                button.style.display = "none";
+
             }
 
         }
     );
-
-
-$("password")
-    ?.addEventListener(
-        "keydown",
-        event => {
-
-            if (
-                event.key === "Enter"
-            ) {
-                login();
-            }
-
-        }
-    );
-
-
-$("logoutButton")
-    ?.addEventListener(
-        "click",
-        logout
-    );
-
-
-$("togglePassword")
-    ?.addEventListener(
-        "click",
-        () => {
-
-            const input =
-                $("password");
-
-            const visible =
-                input.type === "password";
-
-
-            input.type =
-                visible
-                    ? "text"
-                    : "password";
-
-
-            $("togglePassword")
-                .textContent =
-                visible
-                    ? "🙈"
-                    : "👁️";
-
-        }
-    );
-
-
-/* =====================================================
-   STATS
-===================================================== */
-
-function updateStats() {
-
-    $("userCount")
-        .textContent =
-        users.length;
-
-
-    $("orderCount")
-        .textContent =
-        orders.length;
 
 }
 
 
-/* =====================================================
-   USERS TABLE
-===================================================== */
+/* =========================================
+   LOGOUT
+========================================= */
 
-function updateUsersTable() {
+logoutBtn.addEventListener(
+    "click",
+    function () {
 
-    const table =
-        $("usersTable");
+        sessionStorage.removeItem(
+            "goldshow_current_user"
+        );
 
-    if (!table) {
-        return;
+        currentUser = null;
+
+        appPage.classList.add("hidden");
+
+        loginPage.classList.remove("hidden");
+
+        loginForm.reset();
+
+        loginMessage.textContent = "";
+
     }
+);
 
 
-    if (
-        !hasUserManagement()
-    ) {
+/* =========================================
+   MENU
+========================================= */
 
-        table.innerHTML = "";
-
-        return;
-
-    }
+const menuButtons =
+    document.querySelectorAll(".menu-button");
 
 
-    table.innerHTML =
-        users
-            .map(
-                user => {
+menuButtons.forEach(
+    function (button) {
 
-                    const role =
-                        normRole(
-                            user.role
-                        );
+        button.addEventListener(
+            "click",
+            function () {
 
-
-                    const protectedOwner =
-                        role === "owner";
+                const sectionId =
+                    button.dataset.section;
 
 
-                    const manageable =
-                        canManageTarget(
-                            user
-                        );
+                /*
+                   Owner-only bo‘limni
+                   ishchi ocholmasin.
+                */
 
+                if (
+                    sectionId === "usersSection" &&
+                    currentUser.role !== "owner" &&
+                    currentUser.role !== "admin"
+                ) {
 
-                    let action =
-                        "🔒 Himoyalangan";
-
-
-                    if (
-                        !protectedOwner &&
-                        manageable
-                    ) {
-
-                        action =
-                            `
-                            <button
-                                class="delete-user"
-                                data-id="${Number(user.id)}"
-                            >
-                                🗑️ O‘chirish
-                            </button>
-                            `;
-
-                    }
-
-
-                    return `
-                        <tr>
-
-                            <td>
-                                <strong>
-                                    ${esc(user.name)}
-                                </strong>
-                            </td>
-
-                            <td>
-                                ${esc(user.username)}
-                            </td>
-
-                            <td>
-                                <span class="user-role">
-                                    ${roleText(role)}
-                                </span>
-                            </td>
-
-                            <td>
-                                <span class="status">
-                                    ● Aktiv
-                                </span>
-                            </td>
-
-                            <td>
-                                ${action}
-                            </td>
-
-                        </tr>
-                    `;
+                    return;
 
                 }
-            )
-            .join("");
 
 
-    table
-        .querySelectorAll(
-            ".delete-user"
-        )
-        .forEach(
-            button => {
+                menuButtons.forEach(
+                    function (item) {
 
-                button.addEventListener(
-                    "click",
-                    () =>
-                        deleteUser(
-                            Number(
-                                button.dataset.id
-                            )
-                        )
+                        item.classList.remove("active");
+
+                    }
+                );
+
+
+                button.classList.add("active");
+
+
+                document.querySelectorAll(
+                    ".content-section"
+                ).forEach(
+                    function (section) {
+
+                        section.classList.remove(
+                            "active-section"
+                        );
+
+                    }
+                );
+
+
+                document.getElementById(
+                    sectionId
+                ).classList.add(
+                    "active-section"
                 );
 
             }
         );
 
+    }
+);
+
+
+/* =========================================
+   USER MODAL
+========================================= */
+
+const userModal =
+    document.getElementById("userModal");
+
+const addUserBtn =
+    document.getElementById("addUserBtn");
+
+const userForm =
+    document.getElementById("userForm");
+
+
+addUserBtn.addEventListener(
+    "click",
+    function () {
+
+        if (
+            currentUser.role !== "owner" &&
+            currentUser.role !== "admin"
+        ) {
+            return;
+        }
+
+        userForm.reset();
+
+        userModal.classList.remove("hidden");
+
+    }
+);
+
+
+/* =========================================
+   ADD USER
+========================================= */
+
+userForm.addEventListener(
+    "submit",
+    function (event) {
+
+        event.preventDefault();
+
+
+        if (
+            currentUser.role !== "owner" &&
+            currentUser.role !== "admin"
+        ) {
+
+            return;
+
+        }
+
+
+        const username =
+            document.getElementById(
+                "newUsername"
+            ).value.trim();
+
+
+        const password =
+            document.getElementById(
+                "newUserPassword"
+            ).value;
+
+
+        const role =
+            document.getElementById(
+                "newUserRole"
+            ).value;
+
+
+        if (!username || !password) {
+
+            alert("Login va parolni kiriting.");
+
+            return;
+
+        }
+
+
+        /*
+           OWNER LOGININI
+           qayta yaratishga yo‘l qo‘ymaymiz.
+        */
+
+        if (
+            username.toLowerCase() ===
+            OWNER.username.toLowerCase()
+        ) {
+
+            alert(
+                "Bu login Owner uchun band."
+            );
+
+            return;
+
+        }
+
+
+        /*
+           Bir xil login bo‘lmasin.
+        */
+
+        const exists =
+            users.some(
+                function (user) {
+
+                    return (
+                        user.username.toLowerCase() ===
+                        username.toLowerCase()
+                    );
+
+                }
+            );
+
+
+        if (exists) {
+
+            alert(
+                "Bu login allaqachon mavjud."
+            );
+
+            return;
+
+        }
+
+
+        users.push({
+
+            id: Date.now(),
+
+            username: username,
+
+            password: password,
+
+            role: role
+
+        });
+
+
+        saveUsers();
+
+        renderUsers();
+
+        updateDashboard();
+
+        userModal.classList.add("hidden");
+
+        userForm.reset();
+
+
+        alert(
+            "✅ Ishchi muvaffaqiyatli qo‘shildi."
+        );
+
+    }
+);
+
+
+/* =========================================
+   RENDER USERS
+========================================= */
+
+function renderUsers() {
+
+    const body =
+        document.getElementById(
+            "usersTableBody"
+        );
+
+
+    body.innerHTML = "";
+
+
+    /*
+       OWNER
+    */
+
+    const ownerRow =
+        document.createElement("tr");
+
+
+    ownerRow.innerHTML = `
+
+        <td>
+            <strong>Foziljon</strong>
+        </td>
+
+        <td>
+            <span>••••••••••••</span>
+        </td>
+
+        <td>
+            <span class="role-badge">
+                OWNER
+            </span>
+        </td>
+
+        <td>
+            <span>
+                Asosiy Owner
+            </span>
+        </td>
+
+    `;
+
+
+    body.appendChild(ownerRow);
+
+
+    /*
+       ISHCHILAR
+    */
+
+    users.forEach(
+        function (user) {
+
+            const row =
+                document.createElement("tr");
+
+
+            let roleText =
+                user.role === "admin"
+                    ? "ADMIN"
+                    : "ISHCHI";
+
+
+            row.innerHTML = `
+
+                <td>
+                    <strong>
+                        ${escapeHtml(user.username)}
+                    </strong>
+                </td>
+
+                <td>
+                    <span>
+                        ${escapeHtml(user.password)}
+                    </span>
+                </td>
+
+                <td>
+                    <span class="role-badge">
+                        ${roleText}
+                    </span>
+                </td>
+
+                <td>
+
+                    <button
+                        class="small-button delete-button"
+                        onclick="deleteUser(${user.id})"
+                    >
+                        🗑 O‘chirish
+                    </button>
+
+                </td>
+
+            `;
+
+
+            body.appendChild(row);
+
+        }
+    );
+
 }
 
 
-/* =====================================================
+/* =========================================
    DELETE USER
-===================================================== */
+========================================= */
 
-function deleteUser(
-    id
-) {
+function deleteUser(id) {
 
-    const target =
+    if (
+        currentUser.role !== "owner" &&
+        currentUser.role !== "admin"
+    ) {
+
+        return;
+
+    }
+
+
+    const user =
         users.find(
-            user =>
-                Number(user.id) ===
-                Number(id)
+            function (item) {
+
+                return item.id === id;
+
+            }
         );
 
 
-    if (!target) {
+    if (!user) {
         return;
     }
 
 
-    const role =
-        normRole(
-            target.role
+    const confirmDelete =
+        confirm(
+            `"${user.username}" foydalanuvchisini o‘chirasizmi?`
         );
 
 
-    if (
-        role === "owner"
-    ) {
-
-        alert(
-            "🔒 Ownerni o‘chirib bo‘lmaydi."
-        );
-
+    if (!confirmDelete) {
         return;
-    }
-
-
-    if (
-        !canManageTarget(
-            target
-        )
-    ) {
-
-        alert(
-            "❌ Bu userni o‘chirish huquqi yo‘q."
-        );
-
-        return;
-    }
-
-
-    if (
-        !confirm(
-            `"${target.name}" foydalanuvchisini o‘chirmoqchimisiz?`
-        )
-    ) {
-
-        return;
-
     }
 
 
     users =
         users.filter(
-            user =>
-                Number(user.id) !==
-                Number(id)
+            function (item) {
+
+                return item.id !== id;
+
+            }
         );
 
 
     saveUsers();
 
-    refreshUI();
+    renderUsers();
+
+    updateDashboard();
 
 }
 
 
-/* =====================================================
-   USER MODAL
-===================================================== */
-
-$("addUserButton")
-    ?.addEventListener(
-        "click",
-        () => {
-
-            if (
-                !hasUserManagement()
-            ) {
-
-                alert(
-                    "❌ Sizda user qo‘shish huquqi yo‘q."
-                );
-
-                return;
-            }
-
-
-            $("userModal")
-                ?.classList
-                .remove("hidden");
-
-
-            if (
-                $("newUserRole")
-            ) {
-
-                $("newUserRole")
-                    .value =
-                    normRole(
-                        currentUser.role
-                    ) === "admin"
-                        ? "worker"
-                        : "admin";
-
-            }
-
-        }
-    );
-
-
-$("closeUserModal")
-    ?.addEventListener(
-        "click",
-        () =>
-            $("userModal")
-                ?.classList
-                .add("hidden")
-    );
-
-
-$("userModal")
-    ?.addEventListener(
-        "click",
-        event => {
-
-            if (
-                event.target ===
-                $("userModal")
-            ) {
-
-                $("userModal")
-                    .classList
-                    .add("hidden");
-
-            }
-
-        }
-    );
-
-
-$("toggleNewPassword")
-    ?.addEventListener(
-        "click",
-        () => {
-
-            const input =
-                $("newUserPassword");
-
-
-            input.type =
-                input.type === "password"
-                    ? "text"
-                    : "password";
-
-
-            $("toggleNewPassword")
-                .textContent =
-                input.type === "password"
-                    ? "👁️"
-                    : "🙈";
-
-        }
-    );
-
-
-/* =====================================================
-   CREATE USER
-===================================================== */
-
-$("saveUserButton")
-    ?.addEventListener(
-        "click",
-        () => {
-
-            if (
-                !hasUserManagement()
-            ) {
-
-                alert(
-                    "❌ Sizda huquq yo‘q."
-                );
-
-                return;
-            }
-
-
-            const name =
-                $("newUserName")
-                    .value
-                    .trim();
-
-
-            const username =
-                $("newUserLogin")
-                    .value
-                    .trim();
-
-
-            const password =
-                $("newUserPassword")
-                    .value;
-
-
-            const role =
-                $("newUserRole")
-                    .value;
-
-
-            const me =
-                normRole(
-                    currentUser.role
-                );
-
-
-            if (
-                !name ||
-                !username ||
-                !password
-            ) {
-
-                alert(
-                    "❌ Barcha maydonlarni to‘ldiring."
-                );
-
-                return;
-            }
-
-
-            if (
-                users.some(
-                    user =>
-                        String(
-                            user.username
-                        ).toLowerCase() ===
-                        username.toLowerCase()
-                )
-            ) {
-
-                alert(
-                    "❌ Bu login allaqachon mavjud."
-                );
-
-                return;
-            }
-
-
-            if (
-                role === "owner"
-            ) {
-
-                alert(
-                    "❌ Yangi Owner yaratib bo‘lmaydi."
-                );
-
-                return;
-            }
-
-
-            if (
-                me === "admin" &&
-                role !== "worker"
-            ) {
-
-                alert(
-                    "❌ Admin faqat Ishchi yaratishi mumkin."
-                );
-
-                return;
-            }
-
-
-            users.push({
-
-                id: Date.now(),
-
-                name,
-
-                username,
-
-                password,
-
-                role
-
-            });
-
-
-            saveUsers();
-
-            refreshUI();
-
-
-            $("newUserName")
-                .value = "";
-
-            $("newUserLogin")
-                .value = "";
-
-            $("newUserPassword")
-                .value = "";
-
-
-            $("userModal")
-                .classList
-                .add("hidden");
-
-
-            alert(
-                `✅ ${
-                    role === "admin"
-                        ? "Admin"
-                        : "Ishchi"
-                } muvaffaqiyatli qo‘shildi.`
-            );
-
-        }
-    );
-
-
-/* =====================================================
+/* =========================================
    ORDER MODAL
-===================================================== */
+========================================= */
 
-$("addOrderButton")
-    ?.addEventListener(
-        "click",
-        () => {
+const orderModal =
+    document.getElementById("orderModal");
 
-            $("orderModal")
-                ?.classList
-                .remove("hidden");
+const addOrderBtn =
+    document.getElementById("addOrderBtn");
 
-        }
-    );
+const orderForm =
+    document.getElementById("orderForm");
 
 
-$("closeOrderModal")
-    ?.addEventListener(
-        "click",
-        () =>
-            $("orderModal")
-                ?.classList
-                .add("hidden")
-    );
+addOrderBtn.addEventListener(
+    "click",
+    function () {
 
+        orderForm.reset();
 
-$("orderModal")
-    ?.addEventListener(
-        "click",
-        event => {
+        document.getElementById(
+            "paid"
+        ).value = 0;
 
-            if (
-                event.target ===
-                $("orderModal")
-            ) {
+        document.getElementById(
+            "totalAmount"
+        ).value = 0;
 
-                $("orderModal")
-                    .classList
-                    .add("hidden");
+        orderModal.classList.remove(
+            "hidden"
+        );
 
-            }
-
-        }
-    );
-
-
-/* =====================================================
-   SAVE ORDER
-===================================================== */
-
-$("saveOrderButton")
-    ?.addEventListener(
-        "click",
-        () => {
-
-            if (
-                ![
-                    "owner",
-                    "admin"
-                ].includes(
-                    normRole(
-                        currentUser?.role
-                    )
-                )
-            ) {
-
-                alert(
-                    "❌ Faqat Admin yoki Owner zakas qo‘sha oladi."
-                );
-
-                return;
-            }
-
-
-            const clientName =
-                $("clientName")
-                    .value
-                    .trim();
-
-
-            const clientPhone =
-                $("clientPhone")
-                    .value
-                    .trim();
-
-
-            const location =
-                $("eventLocation")
-                    .value
-                    .trim();
-
-
-            const eventDate =
-                $("eventDate")
-                    .value;
-
-
-            if (
-                !clientName ||
-                !clientPhone ||
-                !location ||
-                !eventDate
-            ) {
-
-                alert(
-                    "❌ Mijoz, telefon, manzil va tadbir vaqtini kiriting."
-                );
-
-                return;
-            }
-
-
-            orders.push({
-
-                id: Date.now(),
-
-                clientName,
-
-                clientPhone,
-
-                location,
-
-                eventDate,
-
-                screenHeight:
-                    $("screenHeight").value,
-
-                screenLength:
-                    $("screenLength").value,
-
-                stageWidth:
-                    $("stageWidth").value,
-
-                stageLength:
-                    $("stageLength").value,
-
-                ledCount:
-                    $("ledCount").value || 0,
-
-                lightCount:
-                    $("lightCount").value || 0,
-
-                confettiCount:
-                    $("confettiCount").value || 0,
-
-                galavaCount:
-                    $("galavaCount").value || 0,
-
-                totalAmount:
-                    $("totalAmount").value || 0,
-
-                paidAmount:
-                    $("paidAmount").value || 0
-
-            });
-
-
-            saveOrders();
-
-            updateStats();
-
-            updateOrderList();
-
-
-            $("orderModal")
-                .classList
-                .add("hidden");
-
-
-            [
-                "clientName",
-                "clientPhone",
-                "eventLocation",
-                "eventDate",
-                "screenHeight",
-                "screenLength",
-                "stageWidth",
-                "stageLength",
-                "totalAmount",
-                "paidAmount"
-            ].forEach(
-                id => {
-
-                    $(id).value = "";
-
-                }
-            );
-
-
-            [
-                "ledCount",
-                "lightCount",
-                "confettiCount",
-                "galavaCount"
-            ].forEach(
-                id => {
-
-                    $(id).value = 0;
-
-                }
-            );
-
-
-            alert(
-                "✅ Zakas muvaffaqiyatli saqlandi."
-            );
-
-        }
-    );
-
-
-/* =====================================================
-   ORDER LIST
-===================================================== */
-
-function updateOrderList() {
-
-    const list =
-        $("ordersList");
-
-    if (!list) {
-        return;
     }
+);
 
 
-    if (
-        !orders.length
-    ) {
+/* =========================================
+   ADD ORDER
+========================================= */
 
-        list.innerHTML = `
-            <div class="empty-box">
-                <h3>
-                    📋 Hozircha zakas yo‘q
-                </h3>
+orderForm.addEventListener(
+    "submit",
+    function (event) {
 
-                <p>
-                    Yangi zakas qo‘shish uchun yuqoridagi tugmani bosing.
-                </p>
+        event.preventDefault();
+
+
+        const order = {
+
+            id: Date.now(),
+
+            clientName:
+                getValue("clientName"),
+
+            clientPhone:
+                getValue("clientPhone"),
+
+            location:
+                getValue("location"),
+
+            eventDate:
+                getValue("eventDate"),
+
+            eventTime:
+                getValue("eventTime"),
+
+            screenHeight:
+                getValue("screenHeight"),
+
+            screenLength:
+                getValue("screenLength"),
+
+            stageWidth:
+                getValue("stageWidth"),
+
+            stageLength:
+                getValue("stageLength"),
+
+            lights:
+                getValue("lights"),
+
+            galava:
+                getValue("galava"),
+
+            ledWall:
+                getValue("ledWall"),
+
+            konfeti:
+                getValue("konfeti"),
+
+            dim:
+                getValue("dim"),
+
+            fireworks:
+                getValue("fireworks"),
+
+            sideScreens:
+                getValue("sideScreens"),
+
+            sideScreenSize:
+                getValue("sideScreenSize"),
+
+            curtain:
+                getValue("curtain"),
+
+            paid:
+                Number(
+                    document.getElementById(
+                        "paid"
+                    ).value
+                ) || 0,
+
+            totalAmount:
+                Number(
+                    document.getElementById(
+                        "totalAmount"
+                    ).value
+                ) || 0,
+
+            notes:
+                getValue("notes"),
+
+            createdBy:
+                currentUser.username,
+
+            createdAt:
+                new Date().toISOString()
+
+        };
+
+
+        orders.push(order);
+
+        saveOrders();
+
+        renderOrders();
+
+        updateDashboard();
+
+        orderModal.classList.add(
+            "hidden"
+        );
+
+        orderForm.reset();
+
+
+        alert(
+            "✅ Zakas muvaffaqiyatli saqlandi."
+        );
+
+    }
+);
+
+
+/* =========================================
+   GET VALUE
+========================================= */
+
+function getValue(id) {
+
+    return document.getElementById(id).value.trim();
+
+}
+
+
+/* =========================================
+   RENDER ORDERS
+========================================= */
+
+function renderOrders() {
+
+    const container =
+        document.getElementById(
+            "ordersList"
+        );
+
+
+    container.innerHTML = "";
+
+
+    if (orders.length === 0) {
+
+        container.innerHTML = `
+
+            <div class="empty-message">
+
+                📋 Hozircha zakaslar mavjud emas.
+
             </div>
+
         `;
 
         return;
+
     }
 
 
-    list.innerHTML =
-        orders
-            .map(
-                order => `
+    /*
+       Eng yangi zakas birinchi chiqadi.
+    */
 
-                    <div class="order-card">
+    const sortedOrders =
+        [...orders].sort(
+            function (a, b) {
+
+                return b.id - a.id;
+
+            }
+        );
+
+
+    sortedOrders.forEach(
+        function (order) {
+
+            const remaining =
+                Math.max(
+                    0,
+                    Number(order.totalAmount) -
+                    Number(order.paid)
+                );
+
+
+            const card =
+                document.createElement("div");
+
+
+            card.className =
+                "order-card";
+
+
+            card.innerHTML = `
+
+                <div class="order-top">
+
+                    <div>
 
                         <h3>
-                            📋
-                            ${esc(
+                            ${escapeHtml(
                                 order.clientName
                             )}
                         </h3>
 
-                        <div class="order-row">
+                    </div>
 
-                            <span>
-                                📞 Telefon
-                            </span>
+                    <div class="order-date">
 
-                            <span>
-                                ${esc(
-                                    order.clientPhone
-                                )}
-                            </span>
-
-                        </div>
-
-
-                        <div class="order-row">
-
-                            <span>
-                                📍 Manzil
-                            </span>
-
-                            <span>
-                                ${esc(
-                                    order.location
-                                )}
-                            </span>
-
-                        </div>
-
-
-                        <div class="order-row">
-
-                            <span>
-                                🕐 Tadbir
-                            </span>
-
-                            <span>
-                                ${esc(
-                                    new Date(
-                                        order.eventDate
-                                    ).toLocaleString(
-                                        "uz-UZ"
-                                    )
-                                )}
-                            </span>
-
-                        </div>
-
-
-                        <div class="order-row">
-
-                            <span>
-                                📺 LED
-                            </span>
-
-                            <span>
-                                ${order.ledCount || 0}
-                            </span>
-
-                        </div>
-
-
-                        <div class="order-row">
-
-                            <span>
-                                💡 Chiroq
-                            </span>
-
-                            <span>
-                                ${order.lightCount || 0}
-                            </span>
-
-                        </div>
-
-
-                        <div class="order-row">
-
-                            <span>
-                                🎉 Konfeti
-                            </span>
-
-                            <span>
-                                ${order.confettiCount || 0}
-                            </span>
-
-                        </div>
-
-
-                        <div class="order-row">
-
-                            <span>
-                                💰 Jami
-                            </span>
-
-                            <span>
-                                ${money(
-                                    order.totalAmount
-                                )}
-                            </span>
-
-                        </div>
-
-
-                        <div class="order-row">
-
-                            <span>
-                                💵 To‘langan
-                            </span>
-
-                            <span>
-                                ${money(
-                                    order.paidAmount
-                                )}
-                            </span>
-
-                        </div>
+                        ${formatDate(
+                            order.eventDate
+                        )}
 
                     </div>
 
-                `
-            )
-            .join("");
-
-}
+                </div>
 
 
-/* =====================================================
-   AUTO LOGIN
-===================================================== */
+                <div class="order-info">
 
-try {
+                    <div>
+                        📍
+                        <strong>Joy:</strong>
+                        ${escapeHtml(
+                            order.location
+                        )}
+                    </div>
 
-    const saved =
-        JSON.parse(
-            localStorage.getItem(
-                "goldshow_current_user"
-            ) || "null"
-        );
+                    <div>
+                        📞
+                        <strong>Telefon:</strong>
+                        ${escapeHtml(
+                            order.clientPhone || "-"
+                        )}
+                    </div>
+
+                    <div>
+                        🕐
+                        <strong>Vaqt:</strong>
+                        ${escapeHtml(
+                            order.eventTime || "-"
+                        )}
+                    </div>
+
+                    <div>
+                        🖥
+                        <strong>Ekran:</strong>
+                        ${escapeHtml(
+                            order.screenHeight || "-"
+                        )}
+                        ×
+                        ${escapeHtml(
+                            order.screenLength || "-"
+                        )}
+                    </div>
+
+                    <div>
+                        🎭
+                        <strong>Stage:</strong>
+                        ${escapeHtml(
+                            order.stageWidth || "-"
+                        )}
+                        ×
+                        ${escapeHtml(
+                            order.stageLength || "-"
+                        )}
+                    </div>
+
+                    <div>
+                        💡
+                        <strong>Lights:</strong>
+                        ${escapeHtml(
+                            order.lights || "0"
+                        )}
+                    </div>
+
+                    <div>
+                        📺
+                        <strong>LED Wall:</strong>
+                        ${escapeHtml(
+                            order.ledWall || "0"
+                        )}
+                    </div>
+
+                    <div>
+                        🎉
+                        <strong>Konfeti:</strong>
+                        ${escapeHtml(
+                            order.konfeti || "0"
+                        )}
+                    </div>
+
+                    <div>
+                        🎆
+                        <strong>Foyerverk:</strong>
+                        ${escapeHtml(
+                            order.fireworks || "0"
+                        )}
+                    </div>
+
+                    <div>
+                        👤
+                        <strong>Kiritgan:</strong>
+                        ${escapeHtml(
+                            order.createdBy
+                        )}
+                    </div>
+
+                </div>
 
 
-    if (
-        saved?.username
-    ) {
+                <div class="order-money">
 
-        const real =
-            users.find(
-                user =>
-                    String(
-                        user.username
-                    ).toLowerCase() ===
-                    String(
-                        saved.username
-                    ).toLowerCase()
-            );
+                    <div>
 
+                        <span>
+                            Umumiy:
+                        </span>
 
-        if (real) {
+                        <strong>
+                            ${formatMoney(
+                                order.totalAmount
+                            )}
+                        </strong>
 
-            currentUser = {
-                ...real,
-                role:
-                    normRole(
-                        real.role
-                    )
-            };
+                    </div>
 
 
-            openApp();
+                    <div>
+
+                        <span>
+                            To‘langan:
+                        </span>
+
+                        <strong>
+                            ${formatMoney(
+                                order.paid
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Qoldiq:
+                        </span>
+
+                        <strong>
+                            ${formatMoney(
+                                remaining
+                            )}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                ${
+                    order.notes
+                    ? `
+                        <div class="order-info"
+                             style="margin-top:15px;">
+
+                            <div>
+                                📝
+                                <strong>
+                                    Izoh:
+                                </strong>
+
+                                ${escapeHtml(
+                                    order.notes
+                                )}
+                            </div>
+
+                        </div>
+                    `
+                    : ""
+                }
+
+
+                <div class="order-actions">
+
+                    <button
+                        class="small-button delete-button"
+                        onclick="deleteOrder(${order.id})"
+                    >
+                        🗑 O‘chirish
+                    </button>
+
+                </div>
+
+            `;
+
+
+            container.appendChild(card);
 
         }
-
-    }
-
-} catch {
-
-    localStorage.removeItem(
-        "goldshow_current_user"
     );
 
 }
 
 
-/* =====================================================
-   INITIAL
-===================================================== */
+/* =========================================
+   DELETE ORDER
+========================================= */
 
-updateUsersTable();
+function deleteOrder(id) {
 
-updateOrderList();
+    const order =
+        orders.find(
+            function (item) {
 
-updateStats();
+                return item.id === id;
+
+            }
+        );
+
+
+    if (!order) {
+        return;
+    }
+
+
+    /*
+       Oddiy ishchi o‘z zakasini o‘chirishga
+       ham ruxsat berilgan.
+    */
+
+    const confirmation =
+        confirm(
+            `"${order.clientName}" zakasini o‘chirasizmi?`
+        );
+
+
+    if (!confirmation) {
+        return;
+    }
+
+
+    orders =
+        orders.filter(
+            function (item) {
+
+                return item.id !== id;
+
+            }
+        );
+
+
+    saveOrders();
+
+    renderOrders();
+
+    updateDashboard();
+
+}
+
+
+/* =========================================
+   DASHBOARD
+========================================= */
+
+function updateDashboard() {
+
+    document.getElementById(
+        "totalOrders"
+    ).textContent =
+        orders.length;
+
+
+    document.getElementById(
+        "totalUsers"
+    ).textContent =
+        users.length;
+
+
+    const total =
+        orders.reduce(
+            function (sum, order) {
+
+                return (
+                    sum +
+                    Number(order.totalAmount || 0)
+                );
+
+            },
+            0
+        );
+
+
+    const paid =
+        orders.reduce(
+            function (sum, order) {
+
+                return (
+                    sum +
+                    Number(order.paid || 0)
+                );
+
+            },
+            0
+        );
+
+
+    const remaining =
+        Math.max(
+            0,
+            total - paid
+        );
+
+
+    document.getElementById(
+        "totalMoney"
+    ).textContent =
+        formatMoney(total);
+
+
+    document.getElementById(
+        "remainingMoney"
+    ).textContent =
+        formatMoney(remaining);
+
+
+    renderUpcomingOrders();
+
+}
+
+
+/* =========================================
+   UPCOMING
+========================================= */
+
+function renderUpcomingOrders() {
+
+    const container =
+        document.getElementById(
+            "upcomingOrders"
+        );
+
+
+    if (orders.length === 0) {
+
+        container.innerHTML =
+            `
+            <div class="empty-message">
+                Hozircha zakas yo‘q.
+            </div>
+            `;
+
+        return;
+
+    }
+
+
+    const today =
+        new Date();
+
+
+    const upcoming =
+        [...orders]
+        .filter(
+            function (order) {
+
+                if (!order.eventDate) {
+                    return false;
+                }
+
+                const date =
+                    new Date(
+                        order.eventDate
+                    );
+
+                return date >= today;
+
+            }
+        )
+        .sort(
+            function (a, b) {
+
+                return (
+                    new Date(a.eventDate) -
+                    new Date(b.eventDate)
+                );
+
+            }
+        )
+        .slice(0, 5);
+
+
+    if (upcoming.length === 0) {
+
+        container.innerHTML =
+            `
+            <div class="empty-message">
+                Yaqinlashayotgan tadbir yo‘q.
+            </div>
+            `;
+
+        return;
+
+    }
+
+
+    container.innerHTML = "";
+
+
+    upcoming.forEach(
+        function (order) {
+
+            const item =
+                document.createElement("div");
+
+
+            item.className =
+                "upcoming-item";
+
+
+            item.innerHTML = `
+
+                <strong>
+                    ${escapeHtml(
+                        order.clientName
+                    )}
+                </strong>
+
+                <br>
+
+                <span>
+                    📅
+                    ${formatDate(
+                        order.eventDate
+                    )}
+
+                    &nbsp;&nbsp;
+
+                    🕐
+                    ${escapeHtml(
+                        order.eventTime
+                    )}
+
+                    &nbsp;&nbsp;
+
+                    📍
+                    ${escapeHtml(
+                        order.location
+                    )}
+                </span>
+
+            `;
+
+
+            container.appendChild(item);
+
+        }
+    );
+
+}
+
+
+/* =========================================
+   MODAL CLOSE
+========================================= */
+
+document.querySelectorAll(
+    ".close-modal"
+).forEach(
+    function (button) {
+
+        button.addEventListener(
+            "click",
+            function () {
+
+                const modalId =
+                    button.dataset.close;
+
+
+                document.getElementById(
+                    modalId
+                ).classList.add(
+                    "hidden"
+                );
+
+            }
+        );
+
+    }
+);
+
+
+/* =========================================
+   CLOSE MODAL OUTSIDE
+========================================= */
+
+document.querySelectorAll(
+    ".modal"
+).forEach(
+    function (modal) {
+
+        modal.addEventListener(
+            "click",
+            function (event) {
+
+                if (
+                    event.target === modal
+                ) {
+
+                    modal.classList.add(
+                        "hidden"
+                    );
+
+                }
+
+            }
+        );
+
+    }
+);
+
+
+/* =========================================
+   FORMAT MONEY
+========================================= */
+
+function formatMoney(number) {
+
+    return (
+        Number(number || 0)
+        .toLocaleString("uz-UZ") +
+        " so‘m"
+    );
+
+}
+
+
+/* =========================================
+   FORMAT DATE
+========================================= */
+
+function formatDate(dateString) {
+
+    if (!dateString) {
+        return "-";
+    }
+
+
+    const parts =
+        dateString.split("-");
+
+
+    if (parts.length !== 3) {
+        return dateString;
+    }
+
+
+    return (
+        parts[2] +
+        "." +
+        parts[1] +
+        "." +
+        parts[0]
+    );
+
+}
+
+
+/* =========================================
+   HTML SECURITY
+========================================= */
+
+function escapeHtml(value) {
+
+    if (value === undefined || value === null) {
+        return "";
+    }
+
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+}
+
+
+/* =========================================
+   AUTO LOGIN SESSION
+========================================= */
+
+if (currentUser) {
+
+    openApplication();
+
+}
+
+
+/* =========================================
+   CONSOLE
+========================================= */
+
+console.log(
+    "Goldshow tizimi ishga tushdi."
+);
+
+console.log(
+    "Owner login: Foziljon"
+);
+
+console.log(
+    "Owner parol: Foziljon2010"
+);
